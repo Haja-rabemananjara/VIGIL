@@ -64,12 +64,19 @@ TODO: architecture diagram
 ### Quick start
 
 ```bash
+# 1. Installation:
+cargo init server
+cargo install sqlx-cli --no-default-features --features postgres
 
 # 2. Start database
 cp .env.example .env
 docker compose -f docker-compose.dev.yml up -d
 
-# 3. Run migrations
+# 3. Migration
+cd server
+sqlx migrate add initial_schema
+
+# 4. Run migrations
 cd server && cargo sqlx migrate run
 
 # 4. Start server
