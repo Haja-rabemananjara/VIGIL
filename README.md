@@ -20,6 +20,10 @@ It is a collaborative operational control room that handles both realities in re
 
 _TODO: justify_
 
+#### Other
+rust-toolchain.toml: To fixe Rust version
+.editorconfig : shared format convetions
+
 ### Why Tauri over Electron
 
 _TODO: justify_
@@ -60,8 +64,6 @@ TODO: architecture diagram
 ### Quick start
 
 ```bash
-# 1. Clone
-git clone <repo-url> && cd VIGIL
 
 # 2. Start database
 cp .env.example .env
