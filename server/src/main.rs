@@ -1,27 +1,18 @@
+use server::config::Config;
+use server::routes;
+use server::state::AppState;
+use server::ws::broadcaster::Broadcaster;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
-
-mod error;
-mod config;
-mod ws;
-mod state;
-mod handlers;
-mod routes;
-mod repo;
-mod domain;
-mod services;
-
-use config::Config;
-use state::AppState;
-use ws::broadcaster::Broadcaster;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("vigil_server=debug,tower_http=debug")),
+                .unwrap_or_else(|_| EnvFilter::new("server=debug,tower_http=debug")),
         )
         .init();
 
@@ -35,7 +26,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Connected to PostgreSQL");
 
     let broadcaster = Broadcaster::new();
-
     let state = AppState { pool, broadcaster };
 
     let app = routes::router()
