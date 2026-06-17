@@ -56,8 +56,6 @@ impl IntoResponse for AppError {
                 (StatusCode::CONFLICT, "CONFLICT", msg.clone())
             }
             AppError::Internal(msg) => {
-                // Log the real error server-side, but don't expose it to the client.
-                // The client sees "Internal server error", the terminal sees the details.
                 tracing::error!("Internal error: {msg}");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
