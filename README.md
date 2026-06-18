@@ -2,7 +2,7 @@
 
 VIGIL is a collaborative operational control room that handles both realities of production operations in real time: **Releases** (planned deployments, validated step by step) and **Incidents** (detected problems, triaged and resolved). The two are connected - a Release can automatically trigger an Incident, and an active Incident can block an ongoing Release.
 
-> Epitech T-DEV-700 - Solo project - Hajatiana Rabemananjara
+> Hajatiana Rabemananjara
 
 ---
 
@@ -47,7 +47,7 @@ PostgreSQL also fits the target deployment story naturally - `db` is one of the 
 ┌────────────────────────────────────────────────────────────────────┐
 │                  VIGIL Application Server (Rust / Axum)              │
 │                                                                       │
-│   routes/   →   handlers/    →   services/    →   domain/           │
+│   routes/   =>   handlers/    =>   services/    =>   domain/           │
 │  (wiring)      (parse/format)   (business logic)  (pure rules)      │
 │                                        │                              │
 │                                        ▼                              │
@@ -150,7 +150,7 @@ cargo clippy
 |--------|------|------|-------------|
 | GET | `/health` | none | Liveness check - returns `{ status, version }` |
 
-### Planned (next tickets)
+### Planned 
 
 | Method | Path | Auth |
 |--------|------|------|
@@ -196,7 +196,7 @@ Mirrors the incidents block structurally (state + transition timestamps), but mo
 Strictly bilateral, never grouped. No `team_id` - access is checked at send time via a shared-team query, not stored as a property of the message.
 
 **Automation** - `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`
-The Action → REAction pipeline. `service_connections` stores AES-256-GCM–encrypted tokens (reversible, unlike session hashing, because the server must reuse them to call external APIs). `rules` separates filterable columns (service/event) from free-form JSONB (filters/payload templates). `webhook_deliveries` and `rule_executions` are append-only logs of what arrived and what happened.
+The Action => REAction pipeline. `service_connections` stores AES-256-GCM–encrypted tokens (reversible, unlike session hashing, because the server must reuse them to call external APIs). `rules` separates filterable columns (service/event) from free-form JSONB (filters/payload templates). `webhook_deliveries` and `rule_executions` are append-only logs of what arrived and what happened.
 
 **Audit** - `audit_log`
 A decoupled observer: no foreign keys to any other table, so it survives deletions elsewhere and never blocks them. Append-only by design - moderation and configuration changes never rewrite history.
@@ -238,6 +238,17 @@ A few cross-cutting decisions worth calling out explicitly, beyond the per-table
 - **`lib.rs` / `main.rs` split.** The application logic lives in a library crate; `main.rs` is a thin binary entry point. This is what makes `tests/` able to spin up a real, fully-wired server instance per test without duplicating bootstrap code.
 - **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Different threat models: a session token only needs to be *verified* (hash comparison is enough, and irreversible by design), while a service token (GitHub, Discord) must be *reused* to call the external API, so it must be decryptable.
 - **WebSocket broadcaster is transport-only.** It exposes `to_team(team_id, event)` and `to_user(user_id, event)`; only services call it, never handlers. Adding a new event type is a new enum variant in `WsEvent` plus a call site in a service - the broadcaster itself never changes.
+
+---
+
+## Contract
+
+POST /auth/signup
+Body: { "email": string, "password": string, "display_name": string }
+
+201 Created  => { id, email, display_name, language, created_at }
+422 Unprocessable => email mal formé / password < 8 / display_name vide
+409 Conflict      => email déjà pris (insensible à la casse)
 
 ---
 
