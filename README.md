@@ -211,6 +211,8 @@ A decoupled observer: no foreign keys to any other table, so it survives deletio
 
 ---
 
+
+
 ## WebSocket Events
 
 Full specification - connection handshake, envelope format, delivery modes, reconnection strategy, and the complete event catalog - lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
@@ -238,6 +240,15 @@ A few cross-cutting decisions worth calling out explicitly, beyond the per-table
 - **`lib.rs` / `main.rs` split.** The application logic lives in a library crate; `main.rs` is a thin binary entry point. This is what makes `tests/` able to spin up a real, fully-wired server instance per test without duplicating bootstrap code.
 - **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Different threat models: a session token only needs to be *verified* (hash comparison is enough, and irreversible by design), while a service token (GitHub, Discord) must be *reused* to call the external API, so it must be decryptable.
 - **WebSocket broadcaster is transport-only.** It exposes `to_team(team_id, event)` and `to_user(user_id, event)`; only services call it, never handlers. Adding a new event type is a new enum variant in `WsEvent` plus a call site in a service - the broadcaster itself never changes.
+
+---
+
+### UUID generation
+
+All UUIDs are generated in Rust (`Uuid::new_v4()`) before being passed to the INSERT query.
+The database columns have no `DEFAULT gen_random_uuid()`. This keeps ID generation independent
+from the database engine and allows the application layer to know the entity ID before persistence,
+which simplifies logging, event broadcasting, and tracing.
 
 ---
 

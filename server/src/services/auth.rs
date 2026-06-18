@@ -23,7 +23,10 @@ pub async fn signup(
         Err(sqlx::Error::Database(db)) if db.is_unique_violation() => {
             Err(AppError::Conflict("email already in use".to_string()))
         }
-        Err(e) => Err(e.into()),
+        Err(e) => {
+            tracing::error!(error = ?e, "insert_user failed");
+            Err(e.into())
+        }
     }
 }
 

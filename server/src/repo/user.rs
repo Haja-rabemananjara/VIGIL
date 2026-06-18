@@ -18,13 +18,15 @@ pub async fn insert_user(
     password_hash: &str,
     display_name: &str,
 ) -> Result<User, sqlx::Error> {
+    let id = Uuid::new_v4();
     sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (email, password_hash, display_name)
-        VALUES ($1, $2, $3)
+        INSERT INTO users (id, email, password_hash, display_name)
+        VALUES ($1, $2, $3, $4)
         RETURNING id, email, password_hash, display_name, language, created_at
         "#,
+        id,
         email,
         password_hash,
         display_name,
