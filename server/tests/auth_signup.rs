@@ -5,9 +5,8 @@ use common::spawn_app;
 #[tokio::test]
 async fn signup_returns_201_and_never_exposes_the_hash() {
     let app = spawn_app().await;
-    let client = reqwest::Client::new();
 
-    let response = client
+    let response = app.client
         .post(format!("{}/auth/signup", app.address))
         .json(&serde_json::json!({
             "email": "alice@example.com",
@@ -29,7 +28,7 @@ async fn signup_returns_201_and_never_exposes_the_hash() {
 #[tokio::test]
 async fn signup_rejects_duplicate_email_case_insensitive_with_409() {
     let app = spawn_app().await;
-    let client = reqwest::Client::new();
+    let client = app.client;
     let url = format!("{}/auth/signup", app.address);
 
     let first = client
@@ -57,7 +56,7 @@ async fn signup_rejects_duplicate_email_case_insensitive_with_409() {
 #[tokio::test]
 async fn signup_rejects_short_password_with_422() {
     let app = spawn_app().await;
-    let client = reqwest::Client::new();
+    let client = app.client;
 
     let response = client
         .post(format!("{}/auth/signup", app.address))

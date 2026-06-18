@@ -5,6 +5,7 @@ use sqlx::{Executor, PgPool};
 use tokio::net::TcpListener;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 pub struct TestApp {
     pub address: String,
     pub pool: PgPool,
@@ -12,6 +13,7 @@ pub struct TestApp {
     pub client: reqwest::Client,
 }
 
+#[allow(dead_code)]
 impl TestApp {
     pub async fn cleanup(self) {
         self.pool.close().await;
