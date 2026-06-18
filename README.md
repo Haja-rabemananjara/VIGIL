@@ -254,13 +254,24 @@ which simplifies logging, event broadcasting, and tracing.
 
 ## Contract
 
+**Sign up**
 POST /auth/signup
 Body: { "email": string, "password": string, "display_name": string }
 
 201 Created  => { id, email, display_name, language, created_at }
-422 Unprocessable => email mal formé / password < 8 / display_name vide
-409 Conflict      => email déjà pris (insensible à la casse)
+422 Unprocessable => email too short / password < 8 / display_name null
+409 Conflict      => email already exists 
 
+WS : none.
+
+**Sign in + sessions**
+POST /auth/signin
+Body: { "email": string, "password": string }
+
+200 OK    => { "token": "hex string", "user": { id, email, display_name, language, created_at } }
+401       => "invalid credentials" 
+
+WS : none.
 ---
 
 ## Target OS

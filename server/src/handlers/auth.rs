@@ -44,3 +44,27 @@ pub async fn signup(
 
     Ok((StatusCode::CREATED, Json(user.into())))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct SigninRequest {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SigninResponse {
+    pub token: String,
+    pub user: UserResponse,
+}
+
+pub async fn signin(
+    State(state): State<AppState>,
+    Json(body): Json<SigninRequest>,
+) -> Result<Json<SigninResponse>, AppError> {
+    let (token, user) = services::auth::signin(&state.pool, &body.email, &body.password).await?;
+
+    Ok(Json(SigninResponse {
+        token,
+        user: user.into(),
+    }))
+}
