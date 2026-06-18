@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Connected to PostgreSQL");
 
-    let broadcaster = Broadcaster::new();
+    let broadcaster = Broadcaster::default();
     let state = AppState { pool, broadcaster };
 
     let app = routes::router()

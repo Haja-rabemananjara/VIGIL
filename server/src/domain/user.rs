@@ -10,14 +10,18 @@ pub fn validate_signup(email: &str, password: &str, display_name: &str) -> Resul
         return Err("email format is invalid".to_string());
     }
     if password.len() < MIN_PASSWORD_LEN {
-        return Err(format!("password must be at least {MIN_PASSWORD_LEN} characters"));
+        return Err(format!(
+            "password must be at least {MIN_PASSWORD_LEN} characters"
+        ));
     }
     let name = display_name.trim();
     if name.is_empty() {
         return Err("display_name must not be empty".to_string());
     }
     if name.chars().count() > MAX_DISPLAY_NAME_LEN {
-        return Err(format!("display_name must be at most {MAX_DISPLAY_NAME_LEN} characters"));
+        return Err(format!(
+            "display_name must be at most {MAX_DISPLAY_NAME_LEN} characters"
+        ));
     }
     Ok(())
 }

@@ -1,9 +1,2 @@
-#[derive(Clone)]
-pub struct Broadcaster {
-}
-
-impl Broadcaster {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+#[derive(Clone, Default)]
+pub struct Broadcaster {}
