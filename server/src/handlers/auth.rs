@@ -139,3 +139,55 @@ impl FromRequestParts<AppState> for AuthUser {
         })
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct AuthSession {
+    pub user_id: Uuid,
+    pub token_hash: Vec<u8>,
+}
+
+impl FromRequestParts<AppState> for AuthSession {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let header = parts
+            .headers
+            .get(AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .ok_or(AppError::Unauthorized(
+                "missing authorization header".to_string(),
+            ))?;
+
+        let token_hex = parse_bearer_token(header).ok_or(AppError::Unauthorized(
+            "invalid authorization format".to_string(),
+        ))?;
+
+        let token_bytes = hex::decode(token_hex)
+            .map_err(|_| AppError::Unauthorized("invalid token format".to_string()))?;
+        let token_hash = Sha256::digest(&token_bytes).to_vec();
+
+        let session = repo::session::find_by_token_hash(&state.pool, &token_hash)
+            .await?
+            .ok_or(AppError::Unauthorized("unknown token".to_string()))?;
+
+        if session.expires_at < chrono::Utc::now() {
+            return Err(AppError::Unauthorized("token expired".to_string()));
+        }
+
+        Ok(AuthSession {
+            user_id: session.user_id,
+            token_hash: session.token_hash,
+        })
+    }
+}
+
+pub async fn signout(
+    State(state): State<AppState>,
+    session: AuthSession,
+) -> Result<StatusCode, AppError> {
+    repo::session::delete_by_token_hash(&state.pool, &session.token_hash).await?;
+    Ok(StatusCode::NO_CONTENT)
+}

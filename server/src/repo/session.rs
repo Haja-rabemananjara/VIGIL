@@ -47,3 +47,10 @@ pub async fn find_by_token_hash(
     .fetch_optional(pool)
     .await
 }
+
+pub async fn delete_by_token_hash(pool: &PgPool, token_hash: &[u8]) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query!(r#"DELETE FROM sessions WHERE token_hash = $1"#, token_hash,)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected())
+}

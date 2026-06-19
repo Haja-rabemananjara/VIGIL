@@ -280,6 +280,15 @@ Header: Authorization: Bearer <token_hex>
 
 200 OK  => { id, email, display_name, language, created_at }
 401     => token invalid, expired or absent
+
+
+**Sign out**
+POST /auth/signout
+Header: Authorization: Bearer <token>
+
+204 No Content  => session deleted, token invalid
+401             => token absent or already invalid
+
 ---
 
 ## Target OS
