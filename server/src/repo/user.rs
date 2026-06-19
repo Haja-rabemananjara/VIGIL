@@ -45,3 +45,14 @@ pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, s
     .fetch_optional(pool)
     .await
 }
+
+pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as!(
+        User,
+        r#"SELECT id, email, password_hash, display_name, language, created_at
+           FROM users WHERE id = $1"#,
+        id,
+    )
+    .fetch_optional(pool)
+    .await
+}

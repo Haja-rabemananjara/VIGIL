@@ -33,3 +33,17 @@ pub async fn insert_session(
     .fetch_one(pool)
     .await
 }
+
+pub async fn find_by_token_hash(
+    pool: &PgPool,
+    token_hash: &[u8],
+) -> Result<Option<Session>, sqlx::Error> {
+    sqlx::query_as!(
+        Session,
+        r#"SELECT id, user_id, token_hash, created_at, expires_at
+           FROM sessions WHERE token_hash = $1"#,
+        token_hash,
+    )
+    .fetch_optional(pool)
+    .await
+}

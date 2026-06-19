@@ -264,6 +264,7 @@ Body: { "email": string, "password": string, "display_name": string }
 
 WS : none.
 
+
 **Sign in + sessions**
 POST /auth/signin
 Body: { "email": string, "password": string }
@@ -272,6 +273,13 @@ Body: { "email": string, "password": string }
 401       => "invalid credentials" 
 
 WS : none.
+
+
+GET /me
+Header: Authorization: Bearer <token_hex>
+
+200 OK  => { id, email, display_name, language, created_at }
+401     => token invalid, expired or absent
 ---
 
 ## Target OS

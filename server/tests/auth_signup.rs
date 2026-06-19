@@ -6,7 +6,8 @@ use common::spawn_app;
 async fn signup_returns_201_and_never_exposes_the_hash() {
     let app = spawn_app().await;
 
-    let response = app.client
+    let response = app
+        .client
         .post(format!("{}/auth/signup", app.address))
         .json(&serde_json::json!({
             "email": "alice@example.com",
