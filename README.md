@@ -87,6 +87,64 @@ The crate is split into `lib.rs` (declares all modules, re-exports `AppError`/`A
 
 ---
 
+### Stack & structure
+
+The project is a monorepo with two top-level directories: `server/` (Rust + Axum)
+and `client/` (Next.js). The client folder hosts both the web and desktop targets:
+
+- The Next.js codebase under `client/src/` is the **single source of truth** for the UI.
+- It is built with `output: 'export'` (static export, CSR only, no Next API routes
+  or server features).
+- The desktop application uses Tauri, located at `client/src-tauri/` (sibling of
+  `client/src/`). It embeds the statically-exported Next.js output, ensuring
+  feature parity between web and desktop by construction.
+
+This avoids any code duplication: a feature written once works on both targets.
+
+### Frontend conventions
+
+- **Next.js App Router** is used (not Pages Router). Routes live under `client/src/app/`.
+- **TypeScript** strict mode.
+- **Tailwind CSS** for styling, with design tokens documented in `UI_GUIDELINES.md`.
+- **shadcn/ui** for accessible base components. Components are copied into
+  `client/src/components/ui/` via the shadcn CLI and may be customized locally.
+- **No hardcoded user-facing strings** : every visible label goes through a `t()`
+  function from `client/src/lib/i18n.ts`. This makes the FR/EN dictionary swap
+  in Phase 2 a one-file change instead of a screen-by-screen rewrite.
+- **Native capabilities behind a `platform/` layer** (`client/src/lib/platform.ts`).
+  Components never call Tauri APIs directly. The web build uses browser fallbacks
+  (or no-ops); the Tauri build will swap implementations without touching components.
+
+### State management
+
+- **React Context** for the auth store (current user, token). It is small, scoped,
+  and changes rarely.
+- **Zustand** for richer client state as the project grows (active team selection,
+  WS connection status, etc.). Introduced incrementally only where Context becomes
+  cumbersome.
+- **TanStack Query** is reserved for later (incidents lists, paginated timelines)
+  when caching and revalidation become valuable.
+
+### Authentication
+
+- Opaque session tokens (32 random bytes, hex-encoded over the wire).
+- Server stores SHA-256 of the token as `BYTEA` (irreversible verification).
+- Passwords hashed with **Argon2** (PHC string, stored as `TEXT`).
+- Token sent on every authenticated request via `Authorization: Bearer <token>`.
+- **Client-side storage in `localStorage`** for VIGIL's scope. This is a deliberate
+  trade-off: simpler than HttpOnly cookies (which would require server-side CORS
+  credentials changes), at the cost of XSS exposure. Acceptable for an academic
+  project, would be reconsidered in a production setting.
+
+### UUID generation
+
+All UUIDs are generated in Rust (`Uuid::new_v4()`) before INSERT, never via
+`DEFAULT gen_random_uuid()` in the database. This keeps ID generation independent
+from the database engine and lets the application layer know the entity ID before
+persistence : useful for logging, event broadcasting, and tracing.
+
+---
+
 ## Installation & Local Setup
 
 ### Prerequisites

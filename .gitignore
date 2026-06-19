@@ -2,13 +2,13 @@
 server/target/
 
 # Node / Next.js
-client-web/node_modules/
-client-web/.next/
-client-web/out/
+client/node_modules/
+client/.next/
+client/out/
+/node_modules
 
 # Tauri
-client-desktop/node_modules/
-client-desktop/src-tauri/target/
+client/src-tauri/target/
 
 # Environment
 .env
