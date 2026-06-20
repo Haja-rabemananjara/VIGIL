@@ -12,6 +12,8 @@ client/src-tauri/target/
 
 # Environment
 .env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
