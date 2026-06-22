@@ -143,6 +143,12 @@ All UUIDs are generated in Rust (`Uuid::new_v4()`) before INSERT, never via
 from the database engine and lets the application layer know the entity ID before
 persistence : useful for logging, event broadcasting, and tracing.
 
+### Naming conventions
+
+Each language follows its idiomatic convention:
+- **Rust**: snake_case (functions/vars), PascalCase (types), enforced by `cargo fmt` + clippy.
+- **TypeScript**: camelCase (functions/vars), PascalCase (types/components), enforced by ESLint + Prettier.
+
 ---
 
 ## Installation & Local Setup
