@@ -1,18 +1,6 @@
-/**
- * Minimal i18n layer.
- *
- * Every user-facing string flows through t('key').
- * We will add FR dictionary and language switching.
- *
- * Keys follow the convention "scope.subscope.element" (e.g. "auth.signin.title").
- * If a key is missing from the dictionary, it returns the key itself, visible
- * in dev as a bug indicator, harmless in prod.
- */
-
 type Dictionary = Record<string, string>;
 
 const en: Dictionary = {
-    // Generic
     "app.name": "VIGIL",
     "common.loading": "Loading...",
     "common.error": "Something went wrong",
@@ -20,7 +8,6 @@ const en: Dictionary = {
     "common.cancel": "Cancel",
     "common.confirm": "Confirm",
 
-    // Auth
     "auth.signin.title": "Sign in to VIGIL",
     "auth.signin.email": "Email",
     "auth.signin.password": "Password",
@@ -36,19 +23,27 @@ const en: Dictionary = {
 
     "auth.signout.label": "Sign out",
 
-    // Errors (matched against AppError codes from the Rust server)
     "auth.error.invalidCredentials": "Invalid email or password",
     "auth.error.emailTaken": "This email is already in use",
     "auth.error.passwordTooShort": "Password must be at least 8 characters",
+
+    "incident.state.open": "Open",
+    "incident.state.acknowledged": "Acknowledged",
+    "incident.state.escalated": "Escalated",
+    "incident.state.resolved": "Resolved",
+
+    "incident.severity.low": "Low",
+    "incident.severity.medium": "Medium",
+    "incident.severity.high": "High",
+    "incident.severity.critical": "Critical",
+
+    "app.shell.noTeamsYet": "No teams yet — create or join one to get started",
+
+    "user.profile": "Profile",
 };
 
-// Single active dictionary.
 const dict: Dictionary = en;
 
-/**
- * Translate a key. Returns the key itself if not found, making missing keys
- * visible in the UI rather than silently shipping blank text.
- */
 export function t(key: string): string {
     return dict[key] ?? key;
 }
