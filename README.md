@@ -2,7 +2,7 @@
 
 VIGIL is a collaborative operational control room that handles both realities of production operations in real time: **Releases** (planned deployments, validated step by step) and **Incidents** (detected problems, triaged and resolved). The two are connected - a Release can automatically trigger an Incident, and an active Incident can block an ongoing Release.
 
-> Epitech T-DEV-700 - Solo project - Hajatiana Rabemananjara
+> Hajatiana Rabemananjara
 
 ---
 
@@ -47,7 +47,7 @@ PostgreSQL also fits the target deployment story naturally - `db` is one of the 
 ┌────────────────────────────────────────────────────────────────────┐
 │                  VIGIL Application Server (Rust / Axum)              │
 │                                                                       │
-│   routes/   →   handlers/    →   services/    →   domain/           │
+│   routes/   =>   handlers/    =>   services/    =>   domain/           │
 │  (wiring)      (parse/format)   (business logic)  (pure rules)      │
 │                                        │                              │
 │                                        ▼                              │
@@ -84,6 +84,70 @@ PostgreSQL also fits the target deployment story naturally - `db` is one of the 
 | WebSocket | `server/src/ws/` | Broadcaster - transport only; services decide *what* and *to whom*, the broadcaster just delivers |
 
 The crate is split into `lib.rs` (declares all modules, re-exports `AppError`/`AppState`) and a thin `main.rs` (wires config, DB pool, router, and calls `axum::serve`). This split exists so integration tests (`server/tests/`) can import the application as a library and spin up real instances against a disposable database, without duplicating the server bootstrap logic.
+
+---
+
+### Stack & structure
+
+The project is a monorepo with two top-level directories: `server/` (Rust + Axum)
+and `client/` (Next.js). The client folder hosts both the web and desktop targets:
+
+- The Next.js codebase under `client/src/` is the **single source of truth** for the UI.
+- It is built with `output: 'export'` (static export, CSR only, no Next API routes
+  or server features).
+- The desktop application uses Tauri, located at `client/src-tauri/` (sibling of
+  `client/src/`). It embeds the statically-exported Next.js output, ensuring
+  feature parity between web and desktop by construction.
+
+This avoids any code duplication: a feature written once works on both targets.
+
+### Frontend conventions
+
+- **Next.js App Router** is used (not Pages Router). Routes live under `client/src/app/`.
+- **TypeScript** strict mode.
+- **Tailwind CSS** for styling, with design tokens documented in `UI_GUIDELINES.md`.
+- **shadcn/ui** for accessible base components. Components are copied into
+  `client/src/components/ui/` via the shadcn CLI and may be customized locally.
+- **No hardcoded user-facing strings** : every visible label goes through a `t()`
+  function from `client/src/lib/i18n.ts`. This makes the FR/EN dictionary swap
+  in Phase 2 a one-file change instead of a screen-by-screen rewrite.
+- **Native capabilities behind a `platform/` layer** (`client/src/lib/platform.ts`).
+  Components never call Tauri APIs directly. The web build uses browser fallbacks
+  (or no-ops); the Tauri build will swap implementations without touching components.
+
+### State management
+
+- **React Context** for the auth store (current user, token). It is small, scoped,
+  and changes rarely.
+- **Zustand** for richer client state as the project grows (active team selection,
+  WS connection status, etc.). Introduced incrementally only where Context becomes
+  cumbersome.
+- **TanStack Query** is reserved for later (incidents lists, paginated timelines)
+  when caching and revalidation become valuable.
+
+### Authentication
+
+- Opaque session tokens (32 random bytes, hex-encoded over the wire).
+- Server stores SHA-256 of the token as `BYTEA` (irreversible verification).
+- Passwords hashed with **Argon2** (PHC string, stored as `TEXT`).
+- Token sent on every authenticated request via `Authorization: Bearer <token>`.
+- **Client-side storage in `localStorage`** for VIGIL's scope. This is a deliberate
+  trade-off: simpler than HttpOnly cookies (which would require server-side CORS
+  credentials changes), at the cost of XSS exposure. Acceptable for an academic
+  project, would be reconsidered in a production setting.
+
+### UUID generation
+
+All UUIDs are generated in Rust (`Uuid::new_v4()`) before INSERT, never via
+`DEFAULT gen_random_uuid()` in the database. This keeps ID generation independent
+from the database engine and lets the application layer know the entity ID before
+persistence : useful for logging, event broadcasting, and tracing.
+
+### Naming conventions
+
+Each language follows its idiomatic convention:
+- **Rust**: snake_case (functions/vars), PascalCase (types), enforced by `cargo fmt` + clippy.
+- **TypeScript**: camelCase (functions/vars), PascalCase (types/components), enforced by ESLint + Prettier.
 
 ---
 
@@ -150,7 +214,7 @@ cargo clippy
 |--------|------|------|-------------|
 | GET | `/health` | none | Liveness check - returns `{ status, version }` |
 
-### Planned (next tickets)
+### Planned 
 
 | Method | Path | Auth |
 |--------|------|------|
@@ -196,7 +260,7 @@ Mirrors the incidents block structurally (state + transition timestamps), but mo
 Strictly bilateral, never grouped. No `team_id` - access is checked at send time via a shared-team query, not stored as a property of the message.
 
 **Automation** - `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`
-The Action → REAction pipeline. `service_connections` stores AES-256-GCM–encrypted tokens (reversible, unlike session hashing, because the server must reuse them to call external APIs). `rules` separates filterable columns (service/event) from free-form JSONB (filters/payload templates). `webhook_deliveries` and `rule_executions` are append-only logs of what arrived and what happened.
+The Action => REAction pipeline. `service_connections` stores AES-256-GCM–encrypted tokens (reversible, unlike session hashing, because the server must reuse them to call external APIs). `rules` separates filterable columns (service/event) from free-form JSONB (filters/payload templates). `webhook_deliveries` and `rule_executions` are append-only logs of what arrived and what happened.
 
 **Audit** - `audit_log`
 A decoupled observer: no foreign keys to any other table, so it survives deletions elsewhere and never blocks them. Append-only by design - moderation and configuration changes never rewrite history.
@@ -210,6 +274,8 @@ A decoupled observer: no foreign keys to any other table, so it survives deletio
 - Foreign keys to `users` never cascade (users are never deleted); foreign keys to `teams` cascade (deleting a team legitimately removes its data)
 
 ---
+
+
 
 ## WebSocket Events
 
@@ -238,6 +304,54 @@ A few cross-cutting decisions worth calling out explicitly, beyond the per-table
 - **`lib.rs` / `main.rs` split.** The application logic lives in a library crate; `main.rs` is a thin binary entry point. This is what makes `tests/` able to spin up a real, fully-wired server instance per test without duplicating bootstrap code.
 - **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Different threat models: a session token only needs to be *verified* (hash comparison is enough, and irreversible by design), while a service token (GitHub, Discord) must be *reused* to call the external API, so it must be decryptable.
 - **WebSocket broadcaster is transport-only.** It exposes `to_team(team_id, event)` and `to_user(user_id, event)`; only services call it, never handlers. Adding a new event type is a new enum variant in `WsEvent` plus a call site in a service - the broadcaster itself never changes.
+
+---
+
+### UUID generation
+
+All UUIDs are generated in Rust (`Uuid::new_v4()`) before being passed to the INSERT query.
+The database columns have no `DEFAULT gen_random_uuid()`. This keeps ID generation independent
+from the database engine and allows the application layer to know the entity ID before persistence,
+which simplifies logging, event broadcasting, and tracing.
+
+---
+
+## Contract
+
+**Sign up**
+POST /auth/signup
+Body: { "email": string, "password": string, "display_name": string }
+
+201 Created  => { id, email, display_name, language, created_at }
+422 Unprocessable => email too short / password < 8 / display_name null
+409 Conflict      => email already exists 
+
+WS : none.
+
+
+**Sign in + sessions**
+POST /auth/signin
+Body: { "email": string, "password": string }
+
+200 OK    => { "token": "hex string", "user": { id, email, display_name, language, created_at } }
+401       => "invalid credentials" 
+
+WS : none.
+
+
+GET /me
+Header: Authorization: Bearer <token_hex>
+
+200 OK  => { id, email, display_name, language, created_at }
+401     => token invalid, expired or absent
+
+
+**Sign out**
+POST /auth/signout
+Header: Authorization: Bearer <token>
+
+204 No Content  => session deleted, token invalid
+401             => token absent or already invalid
 
 ---
 

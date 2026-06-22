@@ -6,11 +6,9 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error>> {
-        let database_url = std::env::var("DATABASE_URL")
-            .map_err(|_| "DATABASE_URL must be set")?;
+        let database_url = std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL must be set")?;
 
-        let server_host = std::env::var("SERVER_HOST")
-            .unwrap_or_else(|_| "0.0.0.0".to_string());
+        let server_host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
 
         let server_port = std::env::var("SERVER_PORT")
             .unwrap_or_else(|_| "8080".to_string())

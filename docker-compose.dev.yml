@@ -1,4 +1,3 @@
-# Dev-only: database + admin UI
 # Usage: docker compose -f docker-compose.dev.yml up -d
 # Stop:  docker compose -f docker-compose.dev.yml down
 # Reset: docker compose -f docker-compose.dev.yml down -v  (destroys data)

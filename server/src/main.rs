@@ -5,6 +5,9 @@ use server::ws::broadcaster::Broadcaster;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
+use axum::http::{HeaderValue, Method};
+use tower_http::cors::CorsLayer;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
@@ -25,11 +28,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Connected to PostgreSQL");
 
-    let broadcaster = Broadcaster::new();
+    let broadcaster = Broadcaster::default();
     let state = AppState { pool, broadcaster };
+
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::AUTHORIZATION,
+        ]);
 
     let app = routes::router()
         .layer(tower_http::trace::TraceLayer::new_for_http())
+        .layer(cors)
         .with_state(state);
 
     let addr = format!("{}:{}", config.server_host, config.server_port);

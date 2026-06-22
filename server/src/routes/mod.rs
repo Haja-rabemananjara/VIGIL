@@ -1,8 +1,10 @@
-use axum::{routing::get, Router};
-use crate::handlers;
+pub mod auth;
+
 use crate::state::AppState;
+use axum::{Router, routing::get};
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/health", get(handlers::health::check))
+        .route("/health", get(crate::handlers::health::check))
+        .merge(auth::routes())
 }
