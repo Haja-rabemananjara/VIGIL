@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { postLoginDestination } from "@/lib/navigation";
 
 export default function SignupPage() {
   const { signup } = useAuth();
@@ -33,7 +34,7 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await signup(email, password, displayName);
-      router.replace("/");
+      router.replace(postLoginDestination());
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {

@@ -1,17 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
-import { AppShell } from "@/components/AppShell";
+import { postLoginDestination } from "@/lib/navigation";
+import { t } from "@/lib/i18n";
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace(postLoginDestination());
+  }, [router]);
+
   return (
     <RequireAuth>
-      <AppShell>
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">Dashboard</h2>
-          <p className="text-muted-foreground">You are signed in.</p>
-        </div>
-      </AppShell>
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">{t("common.loading")}</p>
+      </div>
     </RequireAuth>
   );
 }

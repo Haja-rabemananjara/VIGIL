@@ -40,6 +40,15 @@ const en: Dictionary = {
     "app.shell.noTeamsYet": "No teams yet — create or join one to get started",
 
     "user.profile": "Profile",
+
+    "onboarding.welcome": "Welcome",
+    "onboarding.subtitle": "You're not part of any team yet. Get started below.",
+    "onboarding.create.title": "Create a team",
+    "onboarding.create.desc": "Start a new workspace and invite your teammates.",
+    "onboarding.create.action": "Create a team",
+    "onboarding.join.title": "Join a team",
+    "onboarding.join.desc": "Have an invitation code? Join an existing team.",
+    "onboarding.join.action": "Enter a code",
 };
 
 const dict: Dictionary = en;

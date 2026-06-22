@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { postLoginDestination } from "@/lib/navigation";
 
 export default function SigninPage() {
   const { signin } = useAuth();
@@ -32,7 +33,7 @@ export default function SigninPage() {
     setSubmitting(true);
     try {
       await signin(email, password);
-      router.replace("/");
+      router.replace(postLoginDestination());
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError(t("auth.error.invalidCredentials"));
