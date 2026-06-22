@@ -177,8 +177,8 @@ CREATE TABLE "webhook_deliveries" (
 
 CREATE TABLE "rule_executions" (
   "id" uuid PRIMARY KEY,
-  "rule_id" uuid NOT NULL,
   "delivery_id" uuid,
+  "rule_id" uuid NOT NULL,
   "status" text NOT NULL,
   "result" text,
   "error" text,
@@ -383,8 +383,8 @@ ALTER TABLE "rules" ADD FOREIGN KEY ("team_id") REFERENCES "teams" ("id") DEFERR
 
 ALTER TABLE "rules" ADD FOREIGN KEY ("created_by") REFERENCES "users" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
-ALTER TABLE "rule_executions" ADD FOREIGN KEY ("rule_id") REFERENCES "rules" ("id") DEFERRABLE INITIALLY IMMEDIATE;
-
 ALTER TABLE "rule_executions" ADD FOREIGN KEY ("delivery_id") REFERENCES "webhook_deliveries" ("id") DEFERRABLE INITIALLY IMMEDIATE;
+
+ALTER TABLE "rule_executions" ADD FOREIGN KEY ("rule_id") REFERENCES "rules" ("id") DEFERRABLE INITIALLY IMMEDIATE;
 
 ALTER TABLE "rule_executions" ADD FOREIGN KEY ("incident_id") REFERENCES "incidents" ("id") DEFERRABLE INITIALLY IMMEDIATE;
