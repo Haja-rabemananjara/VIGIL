@@ -41,3 +41,20 @@ pub async fn get_team(pool: &PgPool, user_id: Uuid, team_id: Uuid) -> Result<Tea
         .await?
         .ok_or_else(|| AppError::NotFound("team not found".into()))
 }
+
+pub async fn get_team_as_member(
+    pool: &PgPool,
+    team_id: Uuid,
+    role: Role,
+) -> Result<TeamView, AppError> {
+    let row = repo::teams::find_team_by_id(pool, team_id)
+        .await?
+        .ok_or_else(|| AppError::Internal("team vanished after membership check".into()))?;
+
+    Ok(TeamView {
+        id: row.id,
+        name: row.name,
+        created_at: row.created_at,
+        role,
+    })
+}

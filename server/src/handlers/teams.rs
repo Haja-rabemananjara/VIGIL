@@ -1,13 +1,13 @@
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{ State },
     http::StatusCode,
 };
 use serde::Deserialize;
-use uuid::Uuid;
 
 use crate::domain::team::TeamView;
 use crate::error::AppError;
+use crate::extractors::TeamMember;
 use crate::handlers::auth::AuthUser; // ← ajuste au vrai chemin (cf. ton grep)
 use crate::services;
 use crate::state::AppState;
@@ -36,9 +36,9 @@ pub async fn list_teams(
 
 pub async fn get_team(
     State(state): State<AppState>,
-    user: AuthUser,
-    Path(team_id): Path<Uuid>,
+    member: TeamMember,
 ) -> Result<Json<TeamView>, AppError> {
-    let team = services::teams::get_team(&state.pool, user.id, team_id).await?;
+    let team =
+        services::teams::get_team_as_member(&state.pool, member.team_id, member.role).await?;
     Ok(Json(team))
 }

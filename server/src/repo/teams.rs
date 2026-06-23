@@ -5,6 +5,12 @@ use uuid::Uuid;
 use crate::domain::team::{Role, TeamView};
 use crate::error::AppError;
 
+pub struct MembershipRow {
+    pub team_id: Uuid,
+    pub user_id: Uuid,
+    pub role: String,
+}
+
 pub async fn insert_team(
     conn: &mut PgConnection,
     id: Uuid,
@@ -112,4 +118,49 @@ pub async fn find_team_for_member(
         })
     })
     .transpose()
+}
+
+pub async fn find_membership(
+    pool: &PgPool,
+    team_id: Uuid,
+    user_id: Uuid,
+) -> Result<Option<MembershipRow>, AppError> {
+    let row = sqlx::query_as!(
+        MembershipRow,
+        r#"
+        SELECT team_id, user_id, role
+        FROM team_members
+        WHERE team_id = $1
+          AND user_id = $2
+          AND status = 'active'
+        "#,
+        team_id,
+        user_id,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
+pub async fn find_team_by_id(pool: &PgPool, team_id: Uuid) -> Result<Option<TeamRow>, AppError> {
+    let row = sqlx::query_as!(
+        TeamRow,
+        r#"
+        SELECT id, name, created_at
+        FROM teams
+        WHERE id = $1
+        "#,
+        team_id,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
+pub struct TeamRow {
+    pub id: Uuid,
+    pub name: String,
+    pub created_at: DateTime<Utc>,
 }

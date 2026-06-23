@@ -47,3 +47,37 @@ pub fn validate_team_name(raw: &str) -> Result<String, &'static str> {
     }
     Ok(name.to_string())
 }
+
+impl Role {
+    pub fn level(self) -> u8 {
+        match self {
+            Role::Observer => 0,
+            Role::Responder => 1,
+            Role::Manager => 2,
+        }
+    }
+
+    pub fn has_at_least(self, required: Role) -> bool {
+        self.level() >= required.level()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn role_hierarchy() {
+        assert!(Role::Manager.has_at_least(Role::Observer));
+        assert!(Role::Manager.has_at_least(Role::Responder));
+        assert!(Role::Manager.has_at_least(Role::Manager));
+
+        assert!(Role::Responder.has_at_least(Role::Observer));
+        assert!(Role::Responder.has_at_least(Role::Responder));
+        assert!(!Role::Responder.has_at_least(Role::Manager));
+
+        assert!(Role::Observer.has_at_least(Role::Observer));
+        assert!(!Role::Observer.has_at_least(Role::Responder));
+        assert!(!Role::Observer.has_at_least(Role::Manager));
+    }
+}
