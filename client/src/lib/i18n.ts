@@ -49,6 +49,8 @@ const en: Dictionary = {
   "onboarding.join.title": "Join a team",
   "onboarding.join.desc": "Have an invitation code? Join an existing team.",
   "onboarding.join.action": "Enter a code",
+  "onboarding.myTeams": "Your teams",
+  "onboarding.myTeams.desc": "Incident management will be available in a future update.",
 
   "teams.create.dialogTitle": "Create a new team",
   "teams.create.dialogDesc": "Give your team a name to get started.",

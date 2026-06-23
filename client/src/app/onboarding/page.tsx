@@ -1,13 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/stores/auth";
+import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
-import { saveLastTeam } from "@/lib/navigation";
 import {
   Card,
   CardContent,
@@ -37,10 +36,19 @@ export default function OnboardingPage() {
   const { user, token } = useAuth();
   const router = useRouter();
 
+  const [teams, setTeams] = useState<TeamView[]>([]);
   const [open, setOpen] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Fetch existing teams on mount.
+  useEffect(() => {
+    if (!token) return;
+    api<TeamView[]>("/teams", { token })
+      .then(setTeams)
+      .catch(() => {});
+  }, [token]);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -67,9 +75,9 @@ export default function OnboardingPage() {
         body: { name: trimmed },
       });
 
-      saveLastTeam(team.id);
-
-      router.replace("/onboarding");
+      // Add the new team to the local list
+      setTeams((prev) => [...prev, team]);
+      handleOpenChange(false);
     } catch (e) {
       if (e instanceof ApiError) {
         setError(e.message);
@@ -94,12 +102,39 @@ export default function OnboardingPage() {
             </p>
           </div>
 
+          {/* Existing teams */}
+          {teams.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("onboarding.myTeams")}</CardTitle>
+                <CardDescription>
+                  {t("onboarding.myTeams.desc")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {teams.map((team) => (
+                  <div
+                    key={team.id}
+                    className="flex items-center justify-between rounded-md border px-4 py-2"
+                  >
+                    <span className="font-medium">{team.name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {team.role}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-4">
-            {/* Create a team (ACTIVE) */}
+            {/* Create a team */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("onboarding.create.title")}</CardTitle>
-                <CardDescription>{t("onboarding.create.desc")}</CardDescription>
+                <CardDescription>
+                  {t("onboarding.create.desc")}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full" onClick={() => setOpen(true)}>
@@ -108,11 +143,13 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
 
-            {/* Join a team (disabled) */}
+            {/* Join a team */}
             <Card className="opacity-60">
               <CardHeader>
                 <CardTitle>{t("onboarding.join.title")}</CardTitle>
-                <CardDescription>{t("onboarding.join.desc")}</CardDescription>
+                <CardDescription>
+                  {t("onboarding.join.desc")}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full" variant="outline" disabled>
@@ -135,7 +172,9 @@ export default function OnboardingPage() {
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="team-name">{t("teams.create.nameLabel")}</Label>
+            <Label htmlFor="team-name">
+              {t("teams.create.nameLabel")}
+            </Label>
             <Input
               id="team-name"
               value={teamName}
@@ -145,11 +184,16 @@ export default function OnboardingPage() {
                 if (e.key === "Enter" && !loading) handleCreate();
               }}
             />
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
               {t("teams.create.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={loading}>
