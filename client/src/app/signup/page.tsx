@@ -34,7 +34,9 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await signup(email, password, displayName);
-      router.replace(postLoginDestination());
+      const token = localStorage.getItem("vigil_token") ?? "";
+      const dest = await postLoginDestination(token);
+      router.replace(dest);
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 409) {
@@ -62,7 +64,9 @@ export default function SignupPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName">{t("auth.signup.displayName")}</Label>
+              <Label htmlFor="displayName">
+                {t("auth.signup.displayName")}
+              </Label>
               <Input
                 id="displayName"
                 type="text"

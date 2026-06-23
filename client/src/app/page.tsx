@@ -10,7 +10,9 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace(postLoginDestination());
+    const token = localStorage.getItem("vigil_token");
+    if (!token) return;
+    postLoginDestination(token).then((dest) => router.replace(dest));
   }, [router]);
 
   return (
