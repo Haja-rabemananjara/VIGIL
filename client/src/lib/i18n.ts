@@ -59,6 +59,23 @@ const en: Dictionary = {
   "teams.create.submit": "Create",
   "teams.create.cancel": "Cancel",
   "teams.create.error.empty": "Team name is required",
+
+  "teams.join.dialogTitle": "Join a team",
+  "teams.join.dialogDesc": "Enter the invitation code shared by your team manager.",
+  "teams.join.codeLabel": "Invitation code",
+  "teams.join.codePlaceholder": "e.g. A7X9K2MP",
+  "teams.join.submit": "Join",
+  "teams.join.cancel": "Cancel",
+  "teams.join.error.empty": "Invitation code is required",
+  "teams.join.success": "You joined the team!",
+
+  "teams.invite.dialogTitle": "Invite to team",
+  "teams.invite.dialogDesc": "Share this code with people you want to invite.",
+  "teams.invite.generate": "Generate code",
+  "teams.invite.copy": "Copy",
+  "teams.invite.copied": "Copied!",
+  "teams.invite.close": "Close",
+  "teams.invite.button": "Invite",
 };
 
 const dict: Dictionary = en;
