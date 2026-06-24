@@ -164,3 +164,58 @@ pub struct TeamRow {
     pub name: String,
     pub created_at: DateTime<Utc>,
 }
+
+pub struct MemberRow {
+    pub user_id: Uuid,
+    pub display_name: String,
+    pub email: String,
+    pub role: String,
+    pub joined_at: DateTime<Utc>,
+}
+
+pub async fn list_team_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<MemberRow>, AppError> {
+    let rows = sqlx::query_as!(
+        MemberRow,
+        r#"
+        SELECT u.id AS "user_id!",
+               u.display_name AS "display_name!",
+               u.email AS "email!",
+               tm.role AS "role!",
+               tm.joined_at AS "joined_at!"
+        FROM team_members tm
+        JOIN users u ON u.id = tm.user_id
+        WHERE tm.team_id = $1
+          AND tm.status = 'active'
+        ORDER BY tm.joined_at
+        "#,
+        team_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn update_member_role(
+    pool: &PgPool,
+    team_id: Uuid,
+    user_id: Uuid,
+    new_role: &str,
+) -> Result<bool, AppError> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE team_members
+        SET role = $3
+        WHERE team_id = $1
+          AND user_id = $2
+          AND status = 'active'
+        "#,
+        team_id,
+        user_id,
+        new_role,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}

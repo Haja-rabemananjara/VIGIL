@@ -1,16 +1,22 @@
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{Json, extract::Path, extract::State, http::StatusCode};
 use serde::Deserialize;
+use uuid::Uuid;
 
-use crate::domain::team::TeamView;
+use crate::domain::team::{Role, TeamView};
 use crate::error::AppError;
-use crate::extractors::TeamMember;
-use crate::handlers::auth::AuthUser; // ← ajuste au vrai chemin (cf. ton grep)
+use crate::extractors::{RequireManager, TeamMember};
+use crate::handlers::auth::AuthUser;
 use crate::services;
 use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct CreateTeamRequest {
     pub name: String,
+}
+
+#[derive(Deserialize)]
+pub struct ChangeRoleRequest {
+    pub role: String,
 }
 
 pub async fn create_team(
@@ -37,4 +43,33 @@ pub async fn get_team(
     let team =
         services::teams::get_team_as_member(&state.pool, member.team_id, member.role).await?;
     Ok(Json(team))
+}
+
+pub async fn list_members(
+    State(state): State<AppState>,
+    member: TeamMember,
+) -> Result<Json<Vec<services::teams::MemberView>>, AppError> {
+    let members = services::teams::list_members(&state.pool, member.team_id).await?;
+    Ok(Json(members))
+}
+
+pub async fn change_member_role(
+    State(state): State<AppState>,
+    manager: RequireManager,
+    Path((_, target_user_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<ChangeRoleRequest>,
+) -> Result<StatusCode, AppError> {
+    let new_role = Role::from_db(&body.role)
+        .ok_or_else(|| AppError::Validation(format!("invalid role: {}", body.role)))?;
+
+    services::teams::change_member_role(
+        &state.pool,
+        manager.0.user_id,
+        manager.0.team_id,
+        target_user_id,
+        new_role,
+    )
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

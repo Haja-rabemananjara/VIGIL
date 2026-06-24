@@ -1,5 +1,15 @@
+use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
+
+#[derive(Debug, Serialize)]
+pub struct MemberView {
+    pub user_id: Uuid,
+    pub display_name: String,
+    pub email: String,
+    pub role: String,
+    pub joined_at: String,
+}
 
 use crate::domain::team::{self, Role, TeamView};
 use crate::error::AppError;
@@ -57,4 +67,46 @@ pub async fn get_team_as_member(
         created_at: row.created_at,
         role,
     })
+}
+
+pub async fn list_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<MemberView>, AppError> {
+    let rows = repo::teams::list_team_members(pool, team_id).await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| MemberView {
+            user_id: r.user_id,
+            display_name: r.display_name,
+            email: r.email,
+            role: r.role,
+            joined_at: r.joined_at.to_rfc3339(),
+        })
+        .collect())
+}
+
+pub async fn change_member_role(
+    pool: &PgPool,
+    manager_id: Uuid,
+    team_id: Uuid,
+    target_user_id: Uuid,
+    new_role: Role,
+) -> Result<(), AppError> {
+    if manager_id == target_user_id {
+        return Err(AppError::Validation("cannot change your own role".into()));
+    }
+
+    if new_role == Role::Manager {
+        return Err(AppError::Validation(
+            "use the transfer endpoint to assign the Manager role".into(),
+        ));
+    }
+
+    let updated =
+        repo::teams::update_member_role(pool, team_id, target_user_id, new_role.as_str()).await?;
+
+    if !updated {
+        return Err(AppError::NotFound("member not found".into()));
+    }
+
+    Ok(())
 }

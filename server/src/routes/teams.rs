@@ -1,10 +1,10 @@
+use crate::handlers;
+use crate::state::AppState;
+use axum::routing::patch;
 use axum::{
     Router,
     routing::{get, post},
 };
-
-use crate::handlers;
-use crate::state::AppState;
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -18,4 +18,12 @@ pub fn router() -> Router<AppState> {
             post(handlers::invitations::create_invitation),
         )
         .route("/teams/join", post(handlers::invitations::join_team))
+        .route(
+            "/teams/{team_id}/members",
+            get(handlers::teams::list_members),
+        )
+        .route(
+            "/teams/{team_id}/members/{user_id}/role",
+            patch(handlers::teams::change_member_role),
+        )
 }
