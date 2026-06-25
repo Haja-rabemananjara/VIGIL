@@ -26,4 +26,8 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/members/{user_id}/role",
             patch(handlers::teams::change_member_role),
         )
+        .route(
+            "/teams/{team_id}/transfer-manager",
+            post(handlers::teams::transfer_manager),
+        )
 }

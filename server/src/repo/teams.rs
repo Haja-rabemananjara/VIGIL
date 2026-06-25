@@ -219,3 +219,27 @@ pub async fn update_member_role(
 
     Ok(result.rows_affected() > 0)
 }
+
+pub async fn update_member_role_tx(
+    conn: &mut PgConnection,
+    team_id: Uuid,
+    user_id: Uuid,
+    new_role: &str,
+) -> Result<bool, AppError> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE team_members
+        SET role = $3
+        WHERE team_id = $1
+          AND user_id = $2
+          AND status = 'active'
+        "#,
+        team_id,
+        user_id,
+        new_role,
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}

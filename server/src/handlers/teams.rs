@@ -14,11 +14,6 @@ pub struct CreateTeamRequest {
     pub name: String,
 }
 
-#[derive(Deserialize)]
-pub struct ChangeRoleRequest {
-    pub role: String,
-}
-
 pub async fn create_team(
     State(state): State<AppState>,
     user: AuthUser,
@@ -53,6 +48,11 @@ pub async fn list_members(
     Ok(Json(members))
 }
 
+#[derive(Deserialize)]
+pub struct ChangeRoleRequest {
+    pub role: String,
+}
+
 pub async fn change_member_role(
     State(state): State<AppState>,
     manager: RequireManager,
@@ -68,6 +68,27 @@ pub async fn change_member_role(
         manager.0.team_id,
         target_user_id,
         new_role,
+    )
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+pub struct TransferManagerRequest {
+    pub target_user_id: Uuid,
+}
+
+pub async fn transfer_manager(
+    State(state): State<AppState>,
+    manager: RequireManager,
+    Json(body): Json<TransferManagerRequest>,
+) -> Result<StatusCode, AppError> {
+    services::teams::transfer_manager(
+        &state.pool,
+        manager.0.team_id,
+        manager.0.user_id,
+        body.target_user_id,
     )
     .await?;
 

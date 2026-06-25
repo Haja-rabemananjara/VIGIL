@@ -110,3 +110,49 @@ pub async fn change_member_role(
 
     Ok(())
 }
+
+pub async fn transfer_manager(
+    pool: &PgPool,
+    team_id: Uuid,
+    current_manager_id: Uuid,
+    target_user_id: Uuid,
+) -> Result<(), AppError> {
+    if current_manager_id == target_user_id {
+        return Err(AppError::Validation(
+            "cannot transfer manager role to yourself".into(),
+        ));
+    }
+
+    let target = repo::teams::find_membership(pool, team_id, target_user_id).await?;
+    if target.is_none() {
+        return Err(AppError::NotFound("target member not found".into()));
+    }
+
+    let mut tx = pool.begin().await?;
+
+    repo::teams::update_member_role_tx(
+        &mut tx,
+        team_id,
+        current_manager_id,
+        Role::Responder.as_str(),
+    )
+    .await?;
+
+    let promoted = repo::teams::update_member_role_tx(
+        &mut tx,
+        team_id,
+        target_user_id,
+        Role::Manager.as_str(),
+    )
+    .await?;
+
+    if !promoted {
+        return Err(AppError::Internal(
+            "target member vanished during transfer".into(),
+        ));
+    }
+
+    tx.commit().await?;
+
+    Ok(())
+}
