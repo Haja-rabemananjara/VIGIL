@@ -94,3 +94,12 @@ pub async fn transfer_manager(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+pub async fn leave_team(
+    State(state): State<AppState>,
+    member: TeamMember,
+) -> Result<StatusCode, AppError> {
+    services::teams::leave_team(&state.pool, member.team_id, member.user_id, member.role).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}

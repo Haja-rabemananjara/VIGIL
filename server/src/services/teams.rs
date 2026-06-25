@@ -156,3 +156,24 @@ pub async fn transfer_manager(
 
     Ok(())
 }
+
+pub async fn leave_team(
+    pool: &PgPool,
+    team_id: Uuid,
+    user_id: Uuid,
+    role: Role,
+) -> Result<(), AppError> {
+    if role == Role::Manager {
+        return Err(AppError::Conflict(
+            "transfer the manager role before leaving".into(),
+        ));
+    }
+
+    let updated = repo::teams::deactivate_member(pool, team_id, user_id).await?;
+
+    if !updated {
+        return Err(AppError::Internal("member vanished during leave".into()));
+    }
+
+    Ok(())
+}

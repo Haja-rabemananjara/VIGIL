@@ -30,4 +30,5 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/transfer-manager",
             post(handlers::teams::transfer_manager),
         )
+        .route("/teams/{team_id}/leave", post(handlers::teams::leave_team))
 }
