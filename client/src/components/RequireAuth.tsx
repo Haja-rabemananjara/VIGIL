@@ -6,22 +6,22 @@ import { useAuth } from "@/stores/auth";
 import { t } from "@/lib/i18n";
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
-    const { user, isLoading } = useAuth();
-    const router = useRouter();
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
 
-    useEffect(() => {
-        if (!isLoading && !user) {
-        router.replace("/signin");
-        }
-    }, [isLoading, user, router]);
-
-    if (isLoading || !user) {
-        return (
-        <div className="flex h-screen items-center justify-center">
-            <p className="text-muted-foreground">{t("common.loading")}</p>
-        </div>
-        );
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/signin");
     }
+  }, [isLoading, user, router]);
 
-    return <>{children}</>;
+  if (isLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">{t("common.loading")}</p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }

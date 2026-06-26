@@ -24,6 +24,9 @@ pub enum AppError {
 
     #[error("Internal server error")]
     Internal(String),
+
+    #[error("{0}")]
+    Gone(String),
 }
 
 #[derive(Serialize)]
@@ -57,6 +60,7 @@ impl IntoResponse for AppError {
                     "Internal server error".to_string(),
                 )
             }
+            AppError::Gone(msg) => (StatusCode::GONE, "GONE", msg.clone()),
         };
 
         let body = Json(ErrorResponse {
