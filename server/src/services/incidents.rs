@@ -1,12 +1,14 @@
-use serde::Serialize;
-use sqlx::PgPool;
-use uuid::Uuid;
-
 use crate::{
+    domain,
     domain::incidents::{IncidentSeverity, IncidentStatus},
     error::AppError,
     repo,
 };
+use domain::team;
+use serde::Serialize;
+use sqlx::PgPool;
+use team::Role;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
 pub struct IncidentResponse {
@@ -147,7 +149,7 @@ pub async fn transition_incident_status(
     let from = IncidentStatus::try_from(row.status.as_str())
         .map_err(|e| AppError::Internal(e.to_string()))?;
 
-    if !crate::domain::incidents::can_transition(&from, &to) {
+    if !domain::incidents::can_transition(&from, &to) {
         return Err(AppError::Validation(format!(
             "cannot transition from '{from}' to '{to}'"
         )));
@@ -212,4 +214,46 @@ pub async fn update_incident_severity(
         repo::incidents::update_incident_severity(pool, incident_id, &new_severity).await?;
 
     Ok(IncidentResponse::from_row(updated))
+}
+
+pub async fn assign_responder(
+    pool: &PgPool,
+    incident_id: Uuid,
+    team_id: Uuid,
+    assigned_by: Uuid,
+    target_user_id: Uuid,
+) -> Result<(), AppError> {
+    let row = repo::incidents::find_incident(pool, incident_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("incident not found".into()))?;
+
+    if row.team_id != team_id {
+        return Err(AppError::NotFound("incident not found".into()));
+    }
+
+    let membership = repo::teams::find_membership(pool, team_id, target_user_id)
+        .await?
+        .ok_or_else(|| AppError::Validation("target user is not a member of this team".into()))?;
+
+    let target_role = Role::from_db(membership.role.as_str())
+        .ok_or_else(|| AppError::Internal("invalid role in database".into()))?;
+
+    if !target_role.has_at_least(Role::Responder) {
+        return Err(AppError::Validation(
+            "target user must be at least a Responder".into(),
+        ));
+    }
+
+    repo::incidents::deactivate_current_assignee(pool, incident_id).await?;
+
+    repo::incidents::insert_assignment(
+        pool,
+        Uuid::new_v4(),
+        incident_id,
+        target_user_id,
+        assigned_by,
+    )
+    .await?;
+
+    Ok(())
 }

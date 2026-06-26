@@ -23,4 +23,8 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/incidents/{incident_id}/severity",
             patch(handlers::incidents::update_incident_severity),
         )
+        .route(
+            "/teams/{team_id}/incidents/{incident_id}/assign",
+            post(handlers::incidents::assign_responder),
+        )
 }

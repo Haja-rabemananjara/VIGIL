@@ -126,3 +126,26 @@ pub async fn update_incident_severity(
 
     Ok(Json(serde_json::to_value(incident).unwrap()))
 }
+
+#[derive(Deserialize)]
+pub struct AssignBody {
+    pub user_id: Uuid,
+}
+
+pub async fn assign_responder(
+    State(state): State<AppState>,
+    manager: RequireManager,
+    Path((_team_id, incident_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<AssignBody>,
+) -> Result<StatusCode, AppError> {
+    services::incidents::assign_responder(
+        &state.pool,
+        incident_id,
+        manager.0.team_id,
+        manager.0.user_id,
+        body.user_id,
+    )
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}

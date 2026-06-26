@@ -208,3 +208,47 @@ pub async fn insert_system_timeline_entry(
 
     Ok(())
 }
+
+pub async fn deactivate_current_assignee(
+    pool: &PgPool,
+    incident_id: Uuid,
+) -> Result<bool, AppError> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE incident_assignments
+        SET status        = 'replaced',
+            unassigned_at = now()
+        WHERE incident_id = $1
+          AND status      = 'active'
+        "#,
+        incident_id,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn insert_assignment(
+    pool: &PgPool,
+    id: Uuid,
+    incident_id: Uuid,
+    user_id: Uuid,
+    assigned_by: Uuid,
+) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO incident_assignments
+            (id, incident_id, user_id, assigned_by, status, assigned_at)
+        VALUES ($1, $2, $3, $4, 'active', now())
+        "#,
+        id,
+        incident_id,
+        user_id,
+        assigned_by,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
