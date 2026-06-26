@@ -124,3 +124,92 @@ pub async fn get_incident(
 
     Ok(IncidentResponse::from_row(row))
 }
+
+pub async fn transition_incident_status(
+    pool: &PgPool,
+    incident_id: Uuid,
+    team_id: Uuid,
+    actor_id: Uuid,
+    new_status: String,
+    new_severity: Option<String>,
+) -> Result<IncidentResponse, AppError> {
+    let to = IncidentStatus::try_from(new_status.as_str())
+        .map_err(|_| AppError::Validation(format!("unknown status: {new_status}")))?;
+
+    let row = repo::incidents::find_incident(pool, incident_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("incident not found".into()))?;
+
+    if row.team_id != team_id {
+        return Err(AppError::NotFound("incident not found".into()));
+    }
+
+    let from = IncidentStatus::try_from(row.status.as_str())
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if !crate::domain::incidents::can_transition(&from, &to) {
+        return Err(AppError::Validation(format!(
+            "cannot transition from '{from}' to '{to}'"
+        )));
+    }
+
+    let severity_to_set = match &new_severity {
+        Some(s) => {
+            IncidentSeverity::try_from(s.as_str())
+                .map_err(|_| AppError::Validation(format!("unknown severity: {s}")))?;
+            Some(s.as_str())
+        }
+        None => None,
+    };
+
+    let updated =
+        repo::incidents::update_incident_status(pool, incident_id, &new_status, severity_to_set)
+            .await?;
+
+    let entry_content = match &to {
+        IncidentStatus::Acknowledged => "Incident acknowledged".to_string(),
+        IncidentStatus::Escalated => {
+            if let Some(ref sev) = new_severity {
+                format!("Incident escalated — severity raised to {sev}")
+            } else {
+                "Incident escalated".to_string()
+            }
+        }
+        IncidentStatus::Resolved => "Incident resolved".to_string(),
+        IncidentStatus::Open => "Incident reopened".to_string(),
+    };
+
+    repo::incidents::insert_system_timeline_entry(
+        pool,
+        Uuid::new_v4(),
+        incident_id,
+        actor_id,
+        &entry_content,
+    )
+    .await?;
+
+    Ok(IncidentResponse::from_row(updated))
+}
+
+pub async fn update_incident_severity(
+    pool: &PgPool,
+    incident_id: Uuid,
+    team_id: Uuid,
+    new_severity: String,
+) -> Result<IncidentResponse, AppError> {
+    IncidentSeverity::try_from(new_severity.as_str())
+        .map_err(|_| AppError::Validation(format!("unknown severity: {new_severity}")))?;
+
+    let row = repo::incidents::find_incident(pool, incident_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("incident not found".into()))?;
+
+    if row.team_id != team_id {
+        return Err(AppError::NotFound("incident not found".into()));
+    }
+
+    let updated =
+        repo::incidents::update_incident_severity(pool, incident_id, &new_severity).await?;
+
+    Ok(IncidentResponse::from_row(updated))
+}

@@ -6,6 +6,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::extractors::RequireResponder;
 use crate::{
     error::AppError,
     extractors::{RequireManager, TeamMember},
@@ -75,6 +76,53 @@ pub async fn get_incident(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let incident =
         services::incidents::get_incident(&state.pool, incident_id, member.team_id).await?;
+
+    Ok(Json(serde_json::to_value(incident).unwrap()))
+}
+
+#[derive(Deserialize)]
+pub struct TransitionStatusBody {
+    pub status: String,
+    pub severity: Option<String>,
+}
+
+pub async fn transition_incident_status(
+    State(state): State<AppState>,
+    responder: RequireResponder,
+    Path((_team_id, incident_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<TransitionStatusBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let incident = services::incidents::transition_incident_status(
+        &state.pool,
+        incident_id,
+        responder.0.team_id,
+        responder.0.user_id,
+        body.status,
+        body.severity,
+    )
+    .await?;
+
+    Ok(Json(serde_json::to_value(incident).unwrap()))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateSeverityBody {
+    pub severity: String,
+}
+
+pub async fn update_incident_severity(
+    State(state): State<AppState>,
+    responder: RequireResponder,
+    Path((_team_id, incident_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<UpdateSeverityBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let incident = services::incidents::update_incident_severity(
+        &state.pool,
+        incident_id,
+        responder.0.team_id,
+        body.severity,
+    )
+    .await?;
 
     Ok(Json(serde_json::to_value(incident).unwrap()))
 }

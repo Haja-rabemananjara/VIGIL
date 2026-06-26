@@ -128,3 +128,83 @@ pub async fn find_incident(
 
     Ok(row)
 }
+
+pub async fn update_incident_status(
+    pool: &PgPool,
+    incident_id: Uuid,
+    new_status: &str,
+    new_severity: Option<&str>,
+) -> Result<IncidentRow, AppError> {
+    let row = sqlx::query_as!(
+        IncidentRow,
+        r#"
+        UPDATE incidents
+        SET
+            status          = $2,
+            severity        = COALESCE($3, severity),
+            acknowledged_at = CASE WHEN $2 = 'acknowledged' THEN now() ELSE acknowledged_at END,
+            escalated_at    = CASE WHEN $2 = 'escalated'    THEN now() ELSE escalated_at    END,
+            resolved_at     = CASE WHEN $2 = 'resolved'     THEN now() ELSE resolved_at     END,
+            updated_at      = now()
+        WHERE id = $1
+        RETURNING
+            id, team_id, title, body, severity, status, created_by,
+            created_at, updated_at, acknowledged_at, escalated_at, resolved_at
+        "#,
+        incident_id,
+        new_status,
+        new_severity,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row)
+}
+
+pub async fn update_incident_severity(
+    pool: &PgPool,
+    incident_id: Uuid,
+    new_severity: &str,
+) -> Result<IncidentRow, AppError> {
+    let row = sqlx::query_as!(
+        IncidentRow,
+        r#"
+        UPDATE incidents
+        SET severity   = $2,
+            updated_at = now()
+        WHERE id = $1
+        RETURNING
+            id, team_id, title, body, severity, status, created_by,
+            created_at, updated_at, acknowledged_at, escalated_at, resolved_at
+        "#,
+        incident_id,
+        new_severity,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row)
+}
+
+pub async fn insert_system_timeline_entry(
+    pool: &PgPool,
+    id: Uuid,
+    incident_id: Uuid,
+    author_id: Uuid, // the user who triggered the state change
+    content: &str,
+) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO timeline_entries (id, incident_id, author_id, kind, content, created_at)
+        VALUES ($1, $2, $3, 'system', $4, now())
+        "#,
+        id,
+        incident_id,
+        author_id,
+        content,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}

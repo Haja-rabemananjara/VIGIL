@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    routing::{get, post},
+    routing::{get, patch, post},
 };
 
 use crate::{handlers, state::AppState};
@@ -14,5 +14,13 @@ pub fn router() -> Router<AppState> {
         .route(
             "/teams/{team_id}/incidents/{incident_id}",
             get(handlers::incidents::get_incident),
+        )
+        .route(
+            "/teams/{team_id}/incidents/{incident_id}/status",
+            patch(handlers::incidents::transition_incident_status),
+        )
+        .route(
+            "/teams/{team_id}/incidents/{incident_id}/severity",
+            patch(handlers::incidents::update_incident_severity),
         )
 }
