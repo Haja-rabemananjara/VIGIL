@@ -257,3 +257,94 @@ pub async fn assign_responder(
 
     Ok(())
 }
+
+pub const TIMELINE_MAX_LENGTH: usize = 2000;
+
+#[derive(Debug, Serialize)]
+pub struct TimelineEntryResponse {
+    pub id: Uuid,
+    pub incident_id: Uuid,
+    pub author_id: Uuid,
+    pub kind: String,
+    pub content: String,
+    pub created_at: i64,
+    pub edited_at: Option<i64>,
+}
+
+impl TimelineEntryResponse {
+    fn from_row(row: crate::repo::incidents::TimelineEntryRow) -> Self {
+        Self {
+            id: row.id,
+            incident_id: row.incident_id,
+            author_id: row.author_id,
+            kind: row.kind,
+            content: row.content,
+            created_at: row.created_at.timestamp(),
+            edited_at: row.edited_at.map(|t| t.timestamp()),
+        }
+    }
+}
+
+pub async fn add_timeline_entry(
+    pool: &PgPool,
+    incident_id: Uuid,
+    team_id: Uuid,
+    author_id: Uuid,
+    content: String,
+) -> Result<TimelineEntryResponse, AppError> {
+    if content.len() > TIMELINE_MAX_LENGTH {
+        return Err(AppError::Validation(format!(
+            "content exceeds {TIMELINE_MAX_LENGTH} characters"
+        )));
+    }
+    if content.trim().is_empty() {
+        return Err(AppError::Validation("content cannot be empty".into()));
+    }
+
+    let row = repo::incidents::find_incident(pool, incident_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("incident not found".into()))?;
+
+    if row.team_id != team_id {
+        return Err(AppError::NotFound("incident not found".into()));
+    }
+
+    let id = Uuid::new_v4();
+    repo::incidents::insert_timeline_entry(pool, id, incident_id, author_id, &content).await?;
+
+    let entries = repo::incidents::list_timeline_entries(pool, incident_id, None, 100).await?;
+    let entry = entries
+        .into_iter()
+        .find(|e| e.id == id)
+        .ok_or_else(|| AppError::Internal("entry not found after insert".into()))?;
+
+    Ok(TimelineEntryResponse::from_row(entry))
+}
+
+pub async fn get_timeline(
+    pool: &PgPool,
+    incident_id: Uuid,
+    team_id: Uuid,
+    before_ts: Option<i64>,
+    limit: i64,
+) -> Result<Vec<TimelineEntryResponse>, AppError> {
+    let row = repo::incidents::find_incident(pool, incident_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("incident not found".into()))?;
+
+    if row.team_id != team_id {
+        return Err(AppError::NotFound("incident not found".into()));
+    }
+
+    let before = before_ts
+        .map(|ts| chrono::DateTime::from_timestamp(ts, 0).unwrap_or_else(chrono::Utc::now));
+
+    let limit = limit.clamp(1, 100);
+
+    let rows = repo::incidents::list_timeline_entries(pool, incident_id, before, limit).await?;
+
+    Ok(rows
+        .into_iter()
+        .map(TimelineEntryResponse::from_row)
+        .collect())
+}

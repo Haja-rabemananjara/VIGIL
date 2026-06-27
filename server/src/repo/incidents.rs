@@ -190,7 +190,7 @@ pub async fn insert_system_timeline_entry(
     pool: &PgPool,
     id: Uuid,
     incident_id: Uuid,
-    author_id: Uuid, // the user who triggered the state change
+    author_id: Uuid,
     content: &str,
 ) -> Result<(), AppError> {
     sqlx::query!(
@@ -251,4 +251,64 @@ pub async fn insert_assignment(
     .await?;
 
     Ok(())
+}
+
+pub async fn insert_timeline_entry(
+    pool: &PgPool,
+    id: Uuid,
+    incident_id: Uuid,
+    author_id: Uuid,
+    content: &str,
+) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO timeline_entries
+            (id, incident_id, author_id, kind, content, created_at)
+        VALUES ($1, $2, $3, 'message', $4, now())
+        "#,
+        id,
+        incident_id,
+        author_id,
+        content,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub struct TimelineEntryRow {
+    pub id: Uuid,
+    pub incident_id: Uuid,
+    pub author_id: Uuid,
+    pub kind: String,
+    pub content: String,
+    pub created_at: DateTime<Utc>,
+    pub edited_at: Option<DateTime<Utc>>,
+}
+
+pub async fn list_timeline_entries(
+    pool: &PgPool,
+    incident_id: Uuid,
+    before: Option<DateTime<Utc>>,
+    limit: i64,
+) -> Result<Vec<TimelineEntryRow>, AppError> {
+    let rows = sqlx::query_as!(
+        TimelineEntryRow,
+        r#"
+        SELECT id, incident_id, author_id, kind, content, created_at, edited_at
+        FROM timeline_entries
+        WHERE incident_id = $1
+          AND ($2::timestamptz IS NULL OR created_at < $2)
+        ORDER BY created_at ASC
+        LIMIT $3
+        "#,
+        incident_id,
+        before,
+        limit,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
 }

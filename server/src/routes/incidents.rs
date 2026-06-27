@@ -27,4 +27,8 @@ pub fn router() -> Router<AppState> {
             "/teams/{team_id}/incidents/{incident_id}/assign",
             post(handlers::incidents::assign_responder),
         )
+        .route(
+            "/teams/{team_id}/incidents/{incident_id}/timeline",
+            post(handlers::incidents::add_timeline_entry).get(handlers::incidents::get_timeline),
+        )
 }

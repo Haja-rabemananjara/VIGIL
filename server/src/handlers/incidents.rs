@@ -149,3 +149,58 @@ pub async fn assign_responder(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[derive(Deserialize)]
+pub struct AddTimelineEntryBody {
+    pub content: String,
+}
+
+pub async fn add_timeline_entry(
+    State(state): State<AppState>,
+    responder: RequireResponder,
+    Path((_team_id, incident_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<AddTimelineEntryBody>,
+) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+    let entry = services::incidents::add_timeline_entry(
+        &state.pool,
+        incident_id,
+        responder.0.team_id,
+        responder.0.user_id,
+        body.content,
+    )
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::to_value(entry).unwrap()),
+    ))
+}
+
+#[derive(Deserialize)]
+pub struct TimelineQuery {
+    pub before: Option<i64>,
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+}
+
+fn default_limit() -> i64 {
+    50
+}
+
+pub async fn get_timeline(
+    State(state): State<AppState>,
+    member: TeamMember,
+    Path((_team_id, incident_id)): Path<(Uuid, Uuid)>,
+    Query(params): Query<TimelineQuery>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let entries = services::incidents::get_timeline(
+        &state.pool,
+        incident_id,
+        member.team_id,
+        params.before,
+        params.limit,
+    )
+    .await?;
+
+    Ok(Json(serde_json::json!({ "entries": entries })))
+}
