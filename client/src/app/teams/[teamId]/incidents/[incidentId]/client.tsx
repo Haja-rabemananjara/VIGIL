@@ -96,7 +96,6 @@ export function IncidentDetailClient() {
   const [transitionLoading, setTransitionLoading] = useState(false);
 
   // Fetch everything
-
   useEffect(() => {
     if (!token || !user) return;
     Promise.all([
@@ -124,7 +123,6 @@ export function IncidentDetailClient() {
   }, [timeline]);
 
   // Transition
-
   async function handleTransition(toStatus: IncidentState) {
     if (!incident) return;
     setTransitionLoading(true);
@@ -151,8 +149,13 @@ export function IncidentDetailClient() {
     }
   }
 
-  // Assign
+  // Display Name on the Incidents (creator and author)
+  function displayName(userId: string) : string {
+    const member = members.find((m) => m.user_id === userId);
+    return member?.display_name ?? userId
+  }
 
+  // Assign
   async function handleAssign(userId: string) {
     setAssignLoading(true);
     setAssignError("");
@@ -171,7 +174,6 @@ export function IncidentDetailClient() {
   }
 
   // Timeline post
-
   async function handlePost() {
     const content = composerText.trim();
     if (!content) return;
@@ -191,7 +193,6 @@ export function IncidentDetailClient() {
   }
 
   // Eligible responders for assign dialog
-
   const eligibleMembers = members.filter(
     (m) => m.role === "responder" || m.role === "manager"
   );
@@ -227,7 +228,7 @@ export function IncidentDetailClient() {
           onClick={() => router.push(`/teams/${teamId}/incidents`)}
           className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          ← {t("incidents.detail.backToList")}
+        {t("incidents.detail.backToList")}
         </button>
 
         {/* Header card */}
@@ -248,7 +249,7 @@ export function IncidentDetailClient() {
 
             <div className="text-sm text-muted-foreground">
               {t("incidents.detail.createdBy")}{" "}
-              <span className="text-foreground">{incident.created_by}</span>
+              <span className="text-foreground">{displayName(incident.created_by)}</span>
               {" · "}
               {formatDate(incident.created_at)}
             </div>
@@ -303,7 +304,7 @@ export function IncidentDetailClient() {
                     <span className="font-medium">
                       {entry.kind === "system"
                         ? t("timeline.system")
-                        : entry.author_id}
+                        : displayName(entry.author_id)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDate(entry.created_at)}
