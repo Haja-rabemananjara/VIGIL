@@ -37,7 +37,8 @@ const en: Dictionary = {
   "incident.severity.high": "High",
   "incident.severity.critical": "Critical",
 
-  "app.shell.noTeamsYet": "No teams yet — create or join one to get started",
+  "app.shell.noTeamsYet": "No teams yet, create or join one to get started",
+  "app.shell.addTeam": "Create or join a team",
 
   "user.profile": "Profile",
 
@@ -76,6 +77,50 @@ const en: Dictionary = {
   "teams.invite.copied": "Copied!",
   "teams.invite.close": "Close",
   "teams.invite.button": "Invite",
+
+  "incidents.title": "Incidents",
+  "incidents.empty": "No incidents yet.",
+  "incidents.new": "New incident",
+  "incidents.filter.status": "Status",
+  "incidents.filter.severity": "Severity",
+  "incidents.filter.all": "All",
+  "incidents.col.title": "Title",
+  "incidents.col.status": "Status",
+  "incidents.col.severity": "Severity",
+  "incidents.col.created": "Created",
+
+  "incidents.detail.assignee": "Assignee",
+  "incidents.detail.noAssignee": "Unassigned",
+  "incidents.detail.createdBy": "Created by",
+  "incidents.detail.actions": "Actions",
+  "incidents.detail.acknowledge": "Acknowledge",
+  "incidents.detail.escalate": "Escalate",
+  "incidents.detail.resolve": "Resolve",
+  "incidents.detail.assign": "Assign",
+  "incidents.detail.backToList": "Back to incidents",
+
+  "incidents.create.dialogTitle": "New incident",
+  "incidents.create.dialogDesc": "Declare a new incident for this team.",
+  "incidents.create.titleLabel": "Title",
+  "incidents.create.titlePlaceholder": "e.g. API is returning 500s",
+  "incidents.create.bodyLabel": "Description",
+  "incidents.create.bodyPlaceholder": "What is happening?",
+  "incidents.create.severityLabel": "Severity",
+  "incidents.create.submit": "Create",
+  "incidents.create.cancel": "Cancel",
+  "incidents.create.error.emptyTitle": "Title is required",
+
+  "timeline.empty": "No entries yet.",
+  "timeline.composer.placeholder": "Add a note to the timeline…",
+  "timeline.composer.submit": "Post",
+  "timeline.system": "System",
+  "timeline.edited": "edited",
+
+  "incidents.assign.dialogTitle": "Assign responder",
+  "incidents.assign.dialogDesc": "Select a team member to assign to this incident.",
+  "incidents.assign.submit": "Assign",
+  "incidents.assign.cancel": "Cancel",
+  "incidents.assign.noEligible": "No eligible responders in this team.",
 };
 
 const dict: Dictionary = en;

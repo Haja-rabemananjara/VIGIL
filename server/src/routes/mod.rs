@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod incidents;
 pub mod teams;
 
 use crate::state::AppState;
@@ -9,4 +10,5 @@ pub fn router() -> Router<AppState> {
         .route("/health", get(crate::handlers::health::check))
         .merge(auth::routes())
         .merge(teams::router())
+        .merge(incidents::router())
 }

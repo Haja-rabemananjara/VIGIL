@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
+import { UserMenu } from "@/components/UserMenu";
 
 interface TeamView {
   id: string;
@@ -42,7 +44,7 @@ interface InvitationView {
 
 export default function OnboardingPage() {
   const { user, token } = useAuth();
-
+  const router = useRouter();
 
   const [teams, setTeams] = useState<TeamView[]>([]);
 
@@ -92,6 +94,7 @@ export default function OnboardingPage() {
       });
       setTeams((prev) => [...prev, team]);
       handleCreateOpenChange(false);
+      router.push(`/teams/${team.id}/incidents`);
     } catch (e) {
       setCreateError(e instanceof ApiError ? e.message : "Something went wrong");
     } finally {
@@ -129,6 +132,7 @@ export default function OnboardingPage() {
         },
       ]);
       handleJoinOpenChange(false);
+      router.push(`/teams/${result.team_id}/incidents`);
     } catch (e) {
       if (e instanceof ApiError) {
         setJoinError(e.message);
@@ -180,7 +184,11 @@ export default function OnboardingPage() {
 
   return (
     <RequireAuth>
-      <main className="flex min-h-screen items-center justify-center p-4">
+      <header className="flex h-14 items-center justify-between border-b px-6">
+          <h1 className="text-lg font-semibold">{t("app.name")}</h1>
+          <UserMenu />
+      </header>
+      <main className="flex min-h-screen items-center justify-center"> 
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
             <h1 className="text-2xl font-semibold">
@@ -206,12 +214,15 @@ export default function OnboardingPage() {
                     key={team.id}
                     className="flex items-center justify-between rounded-md border px-4 py-2"
                   >
-                    <div>
-                      <span className="font-medium">{team.name}</span>
+                    <button
+                      onClick={() => router.push(`/teams/${team.id}/incidents`)}
+                      className="cursor-pointer"
+                    >
+                      <span className="font-medium hover:underline">{team.name}</span>
                       <span className="ml-2 text-sm text-muted-foreground">
-                        {team.role}
+                        ({team.role})
                       </span>
-                    </div>
+                    </button>
                     {team.role === "manager" && (
                       <Button
                         variant="outline"

@@ -17,13 +17,10 @@ export async function postLoginDestination(token: string): Promise<string> {
       return "/onboarding";
     }
 
-    // TO DO LATER : uncomment when /teams/[teamId]/incidents exists
-    // const lastTeamId = localStorage.getItem(LAST_TEAM_KEY);
-    // const match = teams.find((t) => t.id === lastTeamId);
-    // const target = match ?? teams[0];
-    // return `/teams/${target.id}/incidents`;
-
-    return "/onboarding";
+    const lastTeamId = localStorage.getItem(LAST_TEAM_KEY);
+    const match = teams.find((t) => t.id === lastTeamId);
+    const target = match ?? teams[0];
+    return `/teams/${target.id}/incidents`;
   } catch {
     return "/onboarding";
   }
