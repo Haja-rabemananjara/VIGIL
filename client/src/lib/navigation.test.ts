@@ -21,7 +21,7 @@ describe("postLoginDestination", () => {
     expect(dest).toBe("/onboarding");
   });
 
-  // TODO(VGL-034): update this test when /teams/:id/incidents exists
+  // TODO: update this test when /teams/:id/incidents exists
   it("returns /onboarding even with teams (team pages not built yet)", async () => {
     mockApi.mockResolvedValue([
       { id: "aaa-111", name: "Alpha", role: "manager", created_at: "" },
