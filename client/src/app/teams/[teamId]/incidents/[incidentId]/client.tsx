@@ -9,6 +9,7 @@ import { StateBadge, type IncidentState } from "@/components/StateBadge";
 import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useVigilSocket } from "@/stores/socket";
 
 interface Incident {
   id: string;
@@ -95,6 +96,8 @@ export function IncidentDetailClient() {
   // Transition loading state
   const [transitionLoading, setTransitionLoading] = useState(false);
 
+  const { lastEvent, reconnectCount } = useVigilSocket();
+
   // Fetch everything
   useEffect(() => {
     if (!token || !user) return;
@@ -121,6 +124,80 @@ export function IncidentDetailClient() {
   useEffect(() => {
     timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [timeline]);
+
+  // Re-fetch everything after reconnection
+  useEffect(() => {
+    if (reconnectCount > 0 && token) {
+      Promise.all([
+        api<Incident>(`/teams/${teamId}/incidents/${incidentId}`, { token }),
+        api<{ entries: TimelineEntry[] }>(
+          `/teams/${teamId}/incidents/${incidentId}/timeline`,
+          { token }
+        ),
+      ])
+        .then(([inc, tl]) => {
+          setIncident(inc);
+          setTimeline(tl.entries);
+        })
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reconnectCount]);
+
+  // React to real-time events for THIS incident
+  useEffect(() => {
+    if (!lastEvent || !incident) return;
+
+    // Only events about this specific incident
+    const eventIncidentId = lastEvent.incident_id as string | undefined;
+    if (eventIncidentId !== incidentId) return;
+
+    switch (lastEvent.type) {
+      case "incident_state_changed": {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIncident((prev) =>
+          prev ? { ...prev, status: lastEvent.new_state as IncidentState } : prev
+        );
+        const actor = lastEvent.by as string;
+        if (actor !== user?.id && token) {
+          api<{ entries: TimelineEntry[] }>(
+            `/teams/${teamId}/incidents/${incidentId}/timeline`,
+            { token }
+          )
+            .then((tl) => setTimeline(tl.entries))
+            .catch(() => {});
+        }
+        break;
+      }
+      case "incident_escalated": {
+        setIncident((prev) =>
+          prev
+            ? { ...prev, severity: lastEvent.new_severity as Severity }
+            : prev
+        );
+        break;
+      }
+      case "timeline_entry_added": {
+        const newEntry: TimelineEntry = {
+          id: lastEvent.entry_id as string,
+          author_id: lastEvent.author_id as string,
+          kind: "message",
+          content: lastEvent.content as string,
+          created_at: lastEvent.at as number,
+          edited_at: null,
+        };
+        setTimeline((prev) => {
+          // Avoid duplicates (the author already added it optimistically or via refetch)
+          if (prev.some((e) => e.id === newEntry.id)) return prev;
+          return [...prev, newEntry];
+        });
+        break;
+      }
+      default:
+        break;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastEvent, incidentId, teamId, token]);
 
   // Transition
   async function handleTransition(toStatus: IncidentState) {
@@ -183,7 +260,10 @@ export function IncidentDetailClient() {
         `/teams/${teamId}/incidents/${incidentId}/timeline`,
         { method: "POST", token, body: { content } }
       );
-      setTimeline((prev) => [...prev, entry]);
+      setTimeline((prev) => {
+        if (prev.some((e) => e.id === entry.id)) return prev;
+        return [...prev, entry];
+      });
       setComposerText("");
     } catch {
       // silent

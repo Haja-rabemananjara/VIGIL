@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveLastTeam } from "@/lib/navigation";
+import { useVigilSocket } from "@/stores/socket";
 
 interface IncidentRow {
   id: string;
@@ -67,6 +68,8 @@ export function IncidentsClient() {
   const [createSeverity, setCreateSeverity] = useState<Severity>("low");
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
+
+  const { lastEvent, reconnectCount } = useVigilSocket();
 
   // Fetch incidents
   async function fetchIncidents() {
@@ -117,6 +120,55 @@ export function IncidentsClient() {
   if (teamId) saveLastTeam(teamId);
 }, [teamId]);
 
+  // Re-fetch everything after a reconnection (catch-up)
+  useEffect(() => {
+    if (reconnectCount > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchIncidents();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reconnectCount]);
+
+  // React to real-time events
+useEffect(() => {
+  if (!lastEvent) return;
+
+  // Only process events for this team
+  if (lastEvent.team_id !== teamId) return;
+
+  switch (lastEvent.type) {
+    case "incident_state_changed": {
+      const eventIncidentId = lastEvent.incident_id as string;
+      const newState = lastEvent.new_state as string;
+
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIncidents((prev) => {
+        const exists = prev.some((inc) => inc.id === eventIncidentId);
+        if (exists) {
+          return prev.map((inc) =>
+            inc.id === eventIncidentId
+              ? { ...inc, status: newState as IncidentState }
+              : inc
+          );
+        }
+        return prev;
+      });
+
+      if (newState === "open") {
+        api<{ incidents: IncidentRow[] }>(
+          `/teams/${teamId}/incidents`,
+          { token: token! }
+        )
+          .then((data) => setIncidents(data.incidents))
+          .catch(() => {});
+      }
+      break;
+    }
+    default:
+      break;
+  }
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [lastEvent, teamId]);
 
   // CREATE INCIDENT
 
