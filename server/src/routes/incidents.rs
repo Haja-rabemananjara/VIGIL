@@ -5,7 +5,7 @@ use axum::{
 
 use crate::{handlers, state::AppState};
 
-pub fn router() -> Router<AppState> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/teams/{team_id}/incidents",

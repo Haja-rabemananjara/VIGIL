@@ -1,0 +1,40 @@
+use serde::{ Serialize};
+use uuid::Uuid;
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum WsEvent {
+    Connected {
+        user_id: Uuid,
+    },
+
+    IncidentStateChanged {
+        team_id: Uuid,
+        incident_id: Uuid,
+        new_state: String,
+        by: Uuid,
+        },
+
+    IncidentEscalated {
+        team_id: Uuid,
+        incident_id: Uuid,
+        new_severity: String,
+        by: Uuid,
+    },
+
+    IncidentAssigned {
+        team_id: Uuid,
+        incident_id: Uuid,
+        assigned_to: Uuid,
+        by: Uuid,
+    },
+
+    TimelineEntryAdded {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        author_id: Uuid,
+        content: String,
+        at: i64,
+    },
+}

@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
 };
 
-pub fn router() -> Router<AppState> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
             "/teams",

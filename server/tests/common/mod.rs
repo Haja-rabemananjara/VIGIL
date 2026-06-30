@@ -69,7 +69,7 @@ pub async fn spawn_app() -> TestApp {
         .await
         .expect("Failed to run migrations on test DB");
 
-    let broadcaster = Broadcaster::default();
+    let broadcaster = Broadcaster::new(pool.clone());
     let state = AppState {
         pool: pool.clone(),
         broadcaster,

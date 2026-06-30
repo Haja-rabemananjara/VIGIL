@@ -28,8 +28,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Connected to PostgreSQL");
 
-    let broadcaster = Broadcaster::default();
-    let state = AppState { pool, broadcaster };
+    let state = AppState {
+        pool: pool.clone(),
+        broadcaster: Broadcaster::new(pool.clone()) };
 
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
