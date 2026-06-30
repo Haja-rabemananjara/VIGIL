@@ -336,29 +336,32 @@ export function IncidentDetailClient() {
 
             {/* Actions (only visible to Responder+) */}
             {canAct && (
-              <div className="flex flex-wrap gap-2 pt-2">
-                {/* Transition buttons */}
-                {nextTransitions.map((toStatus) => (
-                  <Button
-                    key={toStatus}
-                    size="sm"
-                    variant={toStatus === "resolved" ? "default" : "outline"}
-                    disabled={transitionLoading}
-                    onClick={() => handleTransition(toStatus)}
-                  >
-                    {t(TRANSITION_LABELS[toStatus])}
-                  </Button>
-                ))}
-                {/* Assign button (Manager only) */}
-                {isManager && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setAssignOpen(true)}
-                  >
-                    {t("incidents.detail.assign")}
-                  </Button>
-                )}
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex flex-wrap gap-2">
+                  {/* Transition buttons */}
+                  {nextTransitions.map((toStatus) => (
+                    <Button
+                      key={toStatus}
+                      size="sm"
+                      variant={toStatus === "resolved" ? "default" : "outline"}
+                      disabled={transitionLoading}
+                      onClick={() => handleTransition(toStatus)}
+                    >
+                      {t(TRANSITION_LABELS[toStatus])}
+                    </Button>
+                  ))}
+                </div>
+                  {/* Assign button (Manager only) */}
+                  {isManager && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAssignOpen(true)}
+                    >
+                      {t("incidents.detail.assign")}
+                    </Button>
+                  )}
+                
               </div>
             )}
           </CardContent>
