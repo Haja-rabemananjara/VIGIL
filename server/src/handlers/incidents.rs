@@ -29,6 +29,7 @@ pub async fn create_incident(
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let incident = services::incidents::create_incident(
         &state.pool,
+        state.broadcaster,
         manager.0.team_id,
         manager.0.user_id,
         services::incidents::CreateIncidentInput {
@@ -94,6 +95,7 @@ pub async fn transition_incident_status(
 ) -> Result<Json<serde_json::Value>, AppError> {
     let incident = services::incidents::transition_incident_status(
         &state.pool,
+        state.broadcaster,
         incident_id,
         responder.0.team_id,
         responder.0.user_id,
@@ -140,6 +142,7 @@ pub async fn assign_responder(
 ) -> Result<StatusCode, AppError> {
     services::incidents::assign_responder(
         &state.pool,
+        state.broadcaster,
         incident_id,
         manager.0.team_id,
         manager.0.user_id,
@@ -163,6 +166,7 @@ pub async fn add_timeline_entry(
 ) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
     let entry = services::incidents::add_timeline_entry(
         &state.pool,
+        state.broadcaster,
         incident_id,
         responder.0.team_id,
         responder.0.user_id,

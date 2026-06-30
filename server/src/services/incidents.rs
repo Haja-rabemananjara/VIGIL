@@ -3,6 +3,7 @@ use crate::{
     domain::incidents::{IncidentSeverity, IncidentStatus},
     error::AppError,
     repo,
+    ws::{Broadcaster, WsEvent}
 };
 use domain::team;
 use serde::Serialize;
@@ -27,7 +28,7 @@ pub struct IncidentResponse {
 }
 
 impl IncidentResponse {
-    fn from_row(row: crate::repo::incidents::IncidentRow) -> Self {
+    fn from_row(row: repo::incidents::IncidentRow) -> Self {
         Self {
             id: row.id,
             team_id: row.team_id,
@@ -59,6 +60,7 @@ pub struct ListIncidentsInput {
 
 pub async fn create_incident(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     team_id: Uuid,
     created_by: Uuid,
     input: CreateIncidentInput,
@@ -83,6 +85,13 @@ pub async fn create_incident(
         created_by,
     )
     .await?;
+
+    broadcaster.to_team(team_id, WsEvent::IncidentStateChanged {
+        team_id,
+        incident_id: id,
+        new_state: "open".to_string(),
+        by: created_by,
+    }).await;
 
     Ok(IncidentResponse::from_row(row))
 }
@@ -129,6 +138,7 @@ pub async fn get_incident(
 
 pub async fn transition_incident_status(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     incident_id: Uuid,
     team_id: Uuid,
     actor_id: Uuid,
@@ -190,6 +200,24 @@ pub async fn transition_incident_status(
     )
     .await?;
 
+    broadcaster.to_team(team_id, WsEvent::IncidentStateChanged {
+        team_id,
+        incident_id,
+        new_state: new_status.clone(),
+        by: actor_id,
+    }).await;
+
+    if to == IncidentStatus::Escalated {
+        if let Some(ref sev) = new_severity {
+            broadcaster.to_team(team_id, WsEvent::IncidentEscalated {
+                team_id,
+                incident_id,
+                new_severity: sev.clone(),
+                by: actor_id,
+            }).await;
+        }
+    }
+
     Ok(IncidentResponse::from_row(updated))
 }
 
@@ -218,6 +246,7 @@ pub async fn update_incident_severity(
 
 pub async fn assign_responder(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     incident_id: Uuid,
     team_id: Uuid,
     assigned_by: Uuid,
@@ -255,6 +284,20 @@ pub async fn assign_responder(
     )
     .await?;
 
+    broadcaster.to_team(team_id, WsEvent::IncidentAssigned {
+        team_id,
+        incident_id,
+        assigned_to: target_user_id,
+        by: assigned_by
+    }).await;
+
+    broadcaster.to_user(target_user_id, WsEvent::IncidentAssigned {
+        team_id,
+        incident_id,
+        assigned_to: target_user_id,
+        by: assigned_by,
+    });
+
     Ok(())
 }
 
@@ -272,7 +315,7 @@ pub struct TimelineEntryResponse {
 }
 
 impl TimelineEntryResponse {
-    fn from_row(row: crate::repo::incidents::TimelineEntryRow) -> Self {
+    fn from_row(row: repo::incidents::TimelineEntryRow) -> Self {
         Self {
             id: row.id,
             incident_id: row.incident_id,
@@ -287,6 +330,7 @@ impl TimelineEntryResponse {
 
 pub async fn add_timeline_entry(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     incident_id: Uuid,
     team_id: Uuid,
     author_id: Uuid,
@@ -317,6 +361,15 @@ pub async fn add_timeline_entry(
         .into_iter()
         .find(|e| e.id == id)
         .ok_or_else(|| AppError::Internal("entry not found after insert".into()))?;
+
+    broadcaster.to_team(team_id, WsEvent::TimelineEntryAdded {
+        team_id,
+        incident_id,
+        entry_id: id,
+        author_id,
+        content: content.clone(),
+        at: entry.created_at.timestamp(),
+    }).await;
 
     Ok(TimelineEntryResponse::from_row(entry))
 }
