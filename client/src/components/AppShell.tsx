@@ -9,6 +9,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useVigilSocket } from "@/stores/socket";
+import { ConnectionIndicator } from "./ConnectionIndicator";
 
 interface AppShellProps {
   children: ReactNode;
@@ -25,6 +27,7 @@ export function AppShell({ children }: AppShellProps) {
   const { token } = useAuth();
   const pathname = usePathname();
   const [teams, setTeams] = useState<TeamView[]>([]);
+  const { status } = useVigilSocket();
 
   // Active team id read from the URL: /teams/{id}/...
   const activeTeamId =
@@ -41,7 +44,10 @@ export function AppShell({ children }: AppShellProps) {
     <div className="flex h-screen flex-col">
       <header className="flex h-14 items-center justify-between border-b px-6">
         <h1 className="text-lg font-semibold">{t("app.name")}</h1>
-        <UserMenu />
+        <div className="flex items-center gap-3">
+          <ConnectionIndicator status={status} />
+          <UserMenu />
+        </div>
       </header>
       <div className="flex flex-1 overflow-hidden">
         <aside className="flex w-60 flex-col border-r bg-muted/30 p-4">

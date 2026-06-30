@@ -3,11 +3,14 @@
 import type { ReactNode } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
+import { VigilSocketProvider } from "@/stores/socket";
 
 export default function TeamLayout({ children }: { children: ReactNode }) {
   return (
     <RequireAuth>
-      <AppShell>{children}</AppShell>
+      <VigilSocketProvider>
+        <AppShell>{children}</AppShell>
+      </VigilSocketProvider>
     </RequireAuth>
   );
 }

@@ -121,6 +121,10 @@ const en: Dictionary = {
   "incidents.assign.submit": "Assign",
   "incidents.assign.cancel": "Cancel",
   "incidents.assign.noEligible": "No eligible responders in this team.",
+
+  "ws.connected": "Connected",
+  "ws.connecting": "Connecting…",
+  "ws.disconnected": "Disconnected",
 };
 
 const dict: Dictionary = en;

@@ -21,13 +21,12 @@ describe("postLoginDestination", () => {
     expect(dest).toBe("/onboarding");
   });
 
-  // TODO: update this test when /teams/:id/incidents exists
-  it("returns /onboarding even with teams (team pages not built yet)", async () => {
+  it("returns the first team's incidents page when user has teams", async () => {
     mockApi.mockResolvedValue([
       { id: "aaa-111", name: "Alpha", role: "manager", created_at: "" },
     ]);
     const dest = await postLoginDestination("fake-token");
-    expect(dest).toBe("/onboarding");
+    expect(dest).toBe("/teams/aaa-111/incidents");
   });
 
   it("falls back to /onboarding on network error", async () => {
@@ -35,4 +34,14 @@ describe("postLoginDestination", () => {
     const dest = await postLoginDestination("fake-token");
     expect(dest).toBe("/onboarding");
   });
+
+  it("returns the last visited team if stored", async () => {
+  localStorage.setItem("vigil_last_team", "bbb-222");
+  mockApi.mockResolvedValue([
+    { id: "aaa-111", name: "Alpha", role: "manager", created_at: "" },
+    { id: "bbb-222", name: "Beta", role: "observer", created_at: "" },
+  ]);
+  const dest = await postLoginDestination("fake-token");
+  expect(dest).toBe("/teams/bbb-222/incidents");
+});
 });
