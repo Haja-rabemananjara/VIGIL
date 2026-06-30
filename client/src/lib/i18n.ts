@@ -125,6 +125,8 @@ const en: Dictionary = {
   "ws.connected": "Connected",
   "ws.connecting": "Connecting…",
   "ws.disconnected": "Disconnected",
+
+  "presence.watching": "Watching now:",
 };
 
 const dict: Dictionary = en;

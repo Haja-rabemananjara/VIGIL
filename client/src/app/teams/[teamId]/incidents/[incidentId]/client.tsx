@@ -96,7 +96,8 @@ export function IncidentDetailClient() {
   // Transition loading state
   const [transitionLoading, setTransitionLoading] = useState(false);
 
-  const { lastEvent, reconnectCount } = useVigilSocket();
+  const { lastEvent, reconnectCount, send } = useVigilSocket();
+  const [watchers, setWatchers] = useState<string[]>([]);
 
   // Fetch everything
   useEffect(() => {
@@ -144,17 +145,31 @@ export function IncidentDetailClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reconnectCount]);
 
-  // React to real-time events for THIS incident
+  // React to real-time events for this incident
   useEffect(() => {
-    if (!lastEvent || !incident) return;
+      if (!lastEvent) return;
 
-    // Only events about this specific incident
-    const eventIncidentId = lastEvent.incident_id as string | undefined;
-    if (eventIncidentId !== incidentId) return;
+      const eventIncidentId = lastEvent.incident_id as string | undefined;
 
-    switch (lastEvent.type) {
-      case "incident_state_changed": {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+      // Presence doesn't need the incident to be loaded
+      if (lastEvent.type === "presence_update") {
+        const eventResourceId = lastEvent.resource_id as string;
+        if (
+          lastEvent.resource_type === "incident" &&
+          eventResourceId === incidentId
+        ) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setWatchers(lastEvent.watchers as string[]);
+        }
+        return;
+      }
+
+      // All other events need the incident loaded
+      if (!incident) return;
+      if (eventIncidentId !== incidentId) return;
+
+      switch (lastEvent.type) {
+        case "incident_state_changed": {
         setIncident((prev) =>
           prev ? { ...prev, status: lastEvent.new_state as IncidentState } : prev
         );
@@ -198,6 +213,28 @@ export function IncidentDetailClient() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, incidentId, teamId, token]);
+
+  // Presence: tell the server we're watching this incident
+  useEffect(() => {
+    if (!teamId || !incidentId) return;
+
+    send({
+      type: "watch",
+      resource_type: "incident",
+      resource_id: incidentId,
+      team_id: teamId,
+    });
+
+    return () => {
+      send({
+        type: "unwatch",
+        resource_type: "incident",
+        resource_id: incidentId,
+        team_id: teamId,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teamId, incidentId]);
 
   // Transition
   async function handleTransition(toStatus: IncidentState) {
@@ -303,13 +340,42 @@ export function IncidentDetailClient() {
   return (
     <>
       <div className="mx-auto max-w-3xl space-y-6 p-6">
-        {/* Back link */}
+        {/* Back (back to incidents) link */}
         <button
           onClick={() => router.push(`/teams/${teamId}/incidents`)}
           className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
         {t("incidents.detail.backToList")}
         </button>
+
+        {/* Watchers */}
+        {watchers.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {t("presence.watching")}
+            </span>
+            <div className="flex -space-x-2">
+              {watchers.map((userId) => {
+                const name = displayName(userId);
+                const initials = name
+                  .split(" ")
+                  .map((w) => w[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                return (
+                  <div
+                    key={userId}
+                    title={name}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-primary-foreground"
+                  >
+                    {initials}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Header card */}
         <Card>

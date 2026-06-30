@@ -29,12 +29,14 @@ interface VigilSocketContextValue {
   status: ConnectionStatus;
   lastEvent: WsEvent | null;
   reconnectCount: number;
+  send: (message: Record<string, unknown>) => void;
 }
 
 const VigilSocketContext = createContext<VigilSocketContextValue>({
   status: "disconnected",
   lastEvent: null,
   reconnectCount: 0,
+  send: () => {},
 });
 
 export function useVigilSocket() {
@@ -119,8 +121,13 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  function send(message: Record<string, unknown>) {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }
   return (
-    <VigilSocketContext.Provider value={{ status, lastEvent, reconnectCount }}>
+    <VigilSocketContext.Provider value={{ status, lastEvent, reconnectCount, send }}>
       {children}
     </VigilSocketContext.Provider>
   );
