@@ -39,6 +39,7 @@ const en: Dictionary = {
 
   "app.shell.noTeamsYet": "No teams yet, create or join one to get started",
   "app.shell.addTeam": "Create or join a team",
+  "app.shell.members": "Members",
 
   "user.profile": "Profile",
 
@@ -127,6 +128,28 @@ const en: Dictionary = {
   "ws.disconnected": "Disconnected",
 
   "presence.watching": "Watching now:",
+
+  "members.title": "Team members",
+  "members.you": "(you)",
+  "members.role.observer": "Observer",
+  "members.role.responder": "Responder",
+  "members.role.manager": "Manager",
+  "members.promote": "Promote to Responder",
+  "members.demote": "Demote to Observer",
+  "members.transfer": "Transfer Manager role",
+  "members.kick": "Remove from team",
+  "members.leave": "Leave team",
+  "members.invite": "Invite",
+
+  "members.transfer.title": "Transfer Manager role",
+  "members.transfer.desc": "Are you sure you want to transfer the Manager role to {name}? You will become a Responder.",
+  "members.transfer.confirm": "Transfer",
+
+  "members.leave.title": "Leave team",
+  "members.leave.desc": "Are you sure you want to leave this team? You can rejoin later with a new invitation code.",
+  "members.leave.confirm": "Leave",
+
+  "members.leave.managerError": "You must transfer the Manager role before leaving.",
 };
 
 const dict: Dictionary = en;

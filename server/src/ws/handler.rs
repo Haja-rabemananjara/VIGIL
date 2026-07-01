@@ -7,8 +7,13 @@ use axum::{
 };
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 
-use crate::{state::AppState, ws::events::WsEvent};
+use crate::{
+    state::AppState,
+    ws::events::{WsClientMessage, WsEvent},
+    ws::presence::ResourceKey,
+};
 
 #[derive(Deserialize)]
 pub struct WsQuery {
@@ -57,11 +62,14 @@ pub async fn ws_handler(
                 .unwrap();
         }
     };
+
     ws.on_upgrade(move |socket| handle_socket(socket, state, user_id))
 }
 
 async fn handle_socket(mut socket: WebSocket, state: AppState, user_id: uuid::Uuid) {
     let mut rx = state.broadcaster.register(user_id);
+    
+    let mut watching: HashSet<ResourceKey> = HashSet::new();
 
     let hello = WsEvent::Connected { user_id };
     if let Ok(json) = serde_json::to_string(&hello) {
@@ -87,12 +95,79 @@ async fn handle_socket(mut socket: WebSocket, state: AppState, user_id: uuid::Uu
                     None => break,
                 }
             }
+
             msg = socket.recv() => {
                 match msg {
+                    Some(Ok(Message::Text(text))) => {
+                        if let Ok(cmd) = serde_json::from_str::<WsClientMessage>(&text) {
+                            match cmd {
+                                WsClientMessage::Watch { resource_type, resource_id, team_id } => {
+                                    let key = ResourceKey {
+                                        resource_type: resource_type.clone(),
+                                        resource_id,
+                                    };
+                                    watching.insert(key);
+
+                                    let watchers = state.presence.watch(
+                                        user_id,
+                                        resource_type.clone(),
+                                        resource_id,
+                                    );
+
+                                    state.broadcaster.to_team(team_id, WsEvent::PresenceUpdate {
+                                        team_id,
+                                        resource_type,
+                                        resource_id,
+                                        watchers,
+                                    }).await;
+                                }
+                                WsClientMessage::Unwatch { resource_type, resource_id, team_id } => {
+                                    let key = ResourceKey {
+                                        resource_type: resource_type.clone(),
+                                        resource_id,
+                                    };
+                                    watching.remove(&key);
+
+                                    let watchers = state.presence.unwatch(
+                                        user_id,
+                                        resource_type.clone(),
+                                        resource_id,
+                                    );
+
+                                    state.broadcaster.to_team(team_id, WsEvent::PresenceUpdate {
+                                        team_id,
+                                        resource_type,
+                                        resource_id,
+                                        watchers,
+                                    }).await;
+                                }
+                            }
+                        }
+                    }
                     Some(Ok(Message::Close(_))) | None => break,
                     Some(Err(_)) => break,
                     _ => continue,
                 }
+            }
+        }
+    }
+    
+    let affected = state.presence.disconnect(user_id);
+    for (resource_type, resource_id, watchers) in affected {
+        if resource_type == "incident" {
+            if let Ok(Some(row)) = sqlx::query!(
+                "SELECT team_id FROM incidents WHERE id = $1",
+                resource_id,
+            )
+                .fetch_optional(&state.pool)
+                .await
+            {
+                state.broadcaster.to_team(row.team_id, WsEvent::PresenceUpdate {
+                    team_id: row.team_id,
+                    resource_type: resource_type.clone(),
+                    resource_id,
+                    watchers,
+                }).await;
             }
         }
     }

@@ -54,7 +54,7 @@ export function IncidentsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Role — fetched from team membership
+  // Role fetched from team membership
   const [role, setRole] = useState<string | null>(null);
 
   // Filters
@@ -130,8 +130,8 @@ export function IncidentsClient() {
   }, [reconnectCount]);
 
   // React to real-time events
-useEffect(() => {
-  if (!lastEvent) return;
+  useEffect(() => {
+    if (!lastEvent) return;
 
   // Only process events for this team
   if (lastEvent.team_id !== teamId) return;
@@ -161,6 +161,15 @@ useEffect(() => {
         )
           .then((data) => setIncidents(data.incidents))
           .catch(() => {});
+      }
+      break;
+    }
+    case "member_role_changed": {
+      const changedUserId = lastEvent.user_id as string;
+      const newRole = lastEvent.new_role as string;
+      // If MY role changed, update it
+      if (changedUserId === user?.id) {
+        setRole(newRole);
       }
       break;
     }

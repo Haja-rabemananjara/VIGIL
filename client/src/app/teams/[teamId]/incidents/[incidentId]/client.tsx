@@ -98,6 +98,7 @@ export function IncidentDetailClient() {
 
   const { lastEvent, reconnectCount, send } = useVigilSocket();
   const [watchers, setWatchers] = useState<string[]>([]);
+  const [assignee, setAssignee] = useState<string | null>(null);
 
   // Fetch everything
   useEffect(() => {
@@ -160,6 +161,29 @@ export function IncidentDetailClient() {
         ) {
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setWatchers(lastEvent.watchers as string[]);
+        }
+        return;
+      }
+
+      if (lastEvent.type === "member_role_changed") {
+        const changedUserId = lastEvent.user_id as string;
+        const newRole = lastEvent.new_role as string;
+        if (changedUserId === user?.id) {
+          setRole(newRole);
+        }
+        // Also update the members list (for assign dialog display names)
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.user_id === changedUserId ? { ...m, role: newRole } : m
+          )
+        );
+        return;
+      }
+
+      if (lastEvent.type === "incident_assigned") {
+        const eventIncidentId = lastEvent.incident_id as string;
+        if (eventIncidentId === incidentId) {
+          setAssignee(lastEvent.assigned_to as string);
         }
         return;
       }
@@ -280,6 +304,7 @@ export function IncidentDetailClient() {
         body: { user_id: userId },
       });
       setAssignOpen(false);
+      setAssignee(userId);
     } catch (e) {
       setAssignError(e instanceof ApiError ? e.message : t("common.error"));
     } finally {
@@ -398,6 +423,22 @@ export function IncidentDetailClient() {
               <span className="text-foreground">{displayName(incident.created_by)}</span>
               {" · "}
               {formatDate(incident.created_at)}
+              
+              {assignee && (
+                <div className="text-sm text-muted-foreground">
+                  {t("incidents.detail.assignee")}{" "}
+                  <span className="text-foreground font-medium">
+                    {displayName(assignee)}
+                  </span>
+                </div>
+              )}
+
+              {!assignee && (
+                <div className="text-sm text-muted-foreground">
+                  {t("incidents.detail.assignee")}{" "}
+                  <span className="italic">{t("incidents.detail.noAssignee")}</span>
+                </div>
+              )}
             </div>
 
             {/* Actions (only visible to Responder+) */}

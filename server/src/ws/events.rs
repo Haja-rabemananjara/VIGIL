@@ -1,4 +1,4 @@
-use serde::{ Serialize};
+use serde::{ Serialize, Deserialize };
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Clone)]
@@ -36,5 +36,34 @@ pub enum WsEvent {
         author_id: Uuid,
         content: String,
         at: i64,
+    },
+
+    PresenceUpdate {
+        team_id: Uuid,
+        resource_type: String,
+        resource_id: Uuid,
+        watchers: Vec<Uuid>,
+    },
+
+    MemberRoleChanged{
+        team_id: Uuid,
+        user_id: Uuid,
+        new_role: String,
+        by: Uuid,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum WsClientMessage {
+    Watch {
+        resource_type: String,
+        resource_id: Uuid,
+        team_id: Uuid,
+    },
+    Unwatch {
+        resource_type: String,
+        resource_id: Uuid,
+        team_id: Uuid,
     },
 }

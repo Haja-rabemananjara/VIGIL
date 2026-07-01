@@ -61,18 +61,33 @@ export function AppShell({ children }: AppShellProps) {
               </p>
             ) : (
               teams.map((team) => (
-                <Link
-                  key={team.id}
-                  href={`/teams/${team.id}/incidents`}
-                  className={cn(
-                    "block rounded-md px-3 py-2 text-sm transition-colors",
-                    team.id === activeTeamId
-                      ? "bg-primary/10 font-medium text-primary"
-                      : "hover:bg-muted",
+                <div key={team.id} className="space-y-0.5">
+                  <Link
+                    key={team.id}
+                    href={`/teams/${team.id}/incidents`}
+                    className={cn(
+                      "block rounded-md px-3 py-2 text-sm transition-colors",
+                      team.id === activeTeamId
+                        ? "bg-primary/10 font-medium text-primary"
+                        : "hover:bg-muted",
+                    )}
+                  >
+                    {team.name}
+                  </Link>
+                  {team.id === activeTeamId && (
+                    <Link
+                      href={`/teams/${team.id}/members`}
+                      className={cn(
+                        "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                        pathname?.includes("/members")
+                          ? "font-medium text-primary"
+                          : "text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {t("app.shell.members")}
+                    </Link>
                   )}
-                >
-                  {team.name}
-                </Link>
+                </div>
               ))
             )}
           </nav>

@@ -14,6 +14,7 @@ pub struct MemberView {
 use crate::domain::team::{self, Role, TeamView};
 use crate::error::AppError;
 use crate::repo;
+use crate::ws::{ Broadcaster, WsEvent };
 
 pub async fn create_team(
     pool: &PgPool,
@@ -86,6 +87,7 @@ pub async fn list_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<MemberView
 
 pub async fn change_member_role(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     manager_id: Uuid,
     team_id: Uuid,
     target_user_id: Uuid,
@@ -108,11 +110,19 @@ pub async fn change_member_role(
         return Err(AppError::NotFound("member not found".into()));
     }
 
+    broadcaster.to_team(team_id, WsEvent::MemberRoleChanged {
+        team_id,
+        user_id: target_user_id,
+        new_role: new_role.as_str().to_string(),
+        by: manager_id,
+    }).await;
+
     Ok(())
 }
 
 pub async fn transfer_manager(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     team_id: Uuid,
     current_manager_id: Uuid,
     target_user_id: Uuid,
@@ -153,6 +163,20 @@ pub async fn transfer_manager(
     }
 
     tx.commit().await?;
+
+    broadcaster.to_team(team_id, WsEvent::MemberRoleChanged {
+        team_id,
+        user_id: current_manager_id,
+        new_role: "responder".to_string(),
+        by: current_manager_id,
+    }).await;
+
+    broadcaster.to_team(team_id, WsEvent::MemberRoleChanged {
+        team_id,
+        user_id: target_user_id,
+        new_role: "manager".to_string(),
+        by: current_manager_id,
+    }).await;
 
     Ok(())
 }

@@ -64,6 +64,7 @@ pub async fn change_member_role(
 
     services::teams::change_member_role(
         &state.pool,
+        state.broadcaster,
         manager.0.user_id,
         manager.0.team_id,
         target_user_id,
@@ -86,6 +87,7 @@ pub async fn transfer_manager(
 ) -> Result<StatusCode, AppError> {
     services::teams::transfer_manager(
         &state.pool,
+        state.broadcaster,
         manager.0.team_id,
         manager.0.user_id,
         body.target_user_id,
