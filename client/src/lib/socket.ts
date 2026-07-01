@@ -2,7 +2,6 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:8080";
 
-
 export function wsUrl(token: string): string {
   const base = API_URL.replace(/^http/, "ws");
   return `${base}/ws?token=${token}`;

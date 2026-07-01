@@ -40,7 +40,12 @@ function formatDate(ts: number): string {
   });
 }
 
-const STATUS_OPTIONS: IncidentState[] = ["open", "acknowledged", "escalated", "resolved"];
+const STATUS_OPTIONS: IncidentState[] = [
+  "open",
+  "acknowledged",
+  "escalated",
+  "resolved",
+];
 const SEVERITY_OPTIONS: Severity[] = ["low", "medium", "high", "critical"];
 
 // COMPONENTS
@@ -84,7 +89,7 @@ export function IncidentsClient() {
 
       const data = await api<{ incidents: IncidentRow[] }>(
         `/teams/${teamId}/incidents${query}`,
-        { token }
+        { token },
       );
       setIncidents(data.incidents);
     } catch {
@@ -93,17 +98,17 @@ export function IncidentsClient() {
       setLoading(false);
     }
   }
-  
+
   // Fetch current user's role in this team
   useEffect(() => {
     if (!token || !user) return;
     api<{ user_id: string; display_name: string; role: string }[]>(
       `/teams/${teamId}/members`,
-      { token }
+      { token },
     )
       .then((members) => {
-      const me = members.find((m) => m.user_id === user.id);
-      setRole(me?.role ?? null);
+        const me = members.find((m) => m.user_id === user.id);
+        setRole(me?.role ?? null);
       })
       .catch(() => {});
   }, [token, teamId, user]);
@@ -111,14 +116,14 @@ export function IncidentsClient() {
   // Fetch incidents
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchIncidents(); 
+    fetchIncidents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, teamId, statusFilter, severityFilter]);
 
   // Use memory of active team
   useEffect(() => {
-  if (teamId) saveLastTeam(teamId);
-}, [teamId]);
+    if (teamId) saveLastTeam(teamId);
+  }, [teamId]);
 
   // Re-fetch everything after a reconnection (catch-up)
   useEffect(() => {
@@ -133,51 +138,50 @@ export function IncidentsClient() {
   useEffect(() => {
     if (!lastEvent) return;
 
-  // Only process events for this team
-  if (lastEvent.team_id !== teamId) return;
+    // Only process events for this team
+    if (lastEvent.team_id !== teamId) return;
 
-  switch (lastEvent.type) {
-    case "incident_state_changed": {
-      const eventIncidentId = lastEvent.incident_id as string;
-      const newState = lastEvent.new_state as string;
+    switch (lastEvent.type) {
+      case "incident_state_changed": {
+        const eventIncidentId = lastEvent.incident_id as string;
+        const newState = lastEvent.new_state as string;
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIncidents((prev) => {
-        const exists = prev.some((inc) => inc.id === eventIncidentId);
-        if (exists) {
-          return prev.map((inc) =>
-            inc.id === eventIncidentId
-              ? { ...inc, status: newState as IncidentState }
-              : inc
-          );
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIncidents((prev) => {
+          const exists = prev.some((inc) => inc.id === eventIncidentId);
+          if (exists) {
+            return prev.map((inc) =>
+              inc.id === eventIncidentId
+                ? { ...inc, status: newState as IncidentState }
+                : inc,
+            );
+          }
+          return prev;
+        });
+
+        if (newState === "open") {
+          api<{ incidents: IncidentRow[] }>(`/teams/${teamId}/incidents`, {
+            token: token!,
+          })
+            .then((data) => setIncidents(data.incidents))
+            .catch(() => {});
         }
-        return prev;
-      });
-
-      if (newState === "open") {
-        api<{ incidents: IncidentRow[] }>(
-          `/teams/${teamId}/incidents`,
-          { token: token! }
-        )
-          .then((data) => setIncidents(data.incidents))
-          .catch(() => {});
+        break;
       }
-      break;
-    }
-    case "member_role_changed": {
-      const changedUserId = lastEvent.user_id as string;
-      const newRole = lastEvent.new_role as string;
-      // If MY role changed, update it
-      if (changedUserId === user?.id) {
-        setRole(newRole);
+      case "member_role_changed": {
+        const changedUserId = lastEvent.user_id as string;
+        const newRole = lastEvent.new_role as string;
+        // If MY role changed, update it
+        if (changedUserId === user?.id) {
+          setRole(newRole);
+        }
+        break;
       }
-      break;
+      default:
+        break;
     }
-    default:
-      break;
-  }
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [lastEvent, teamId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastEvent, teamId]);
 
   // CREATE INCIDENT
 
@@ -200,14 +204,11 @@ export function IncidentsClient() {
     setCreateLoading(true);
     setCreateError("");
     try {
-      const incident = await api<IncidentRow>(
-        `/teams/${teamId}/incidents`,
-        {
-          method: "POST",
-          token,
-          body: { title: trimmed, body: createBody, severity: createSeverity },
-        }
-      );
+      const incident = await api<IncidentRow>(`/teams/${teamId}/incidents`, {
+        method: "POST",
+        token,
+        body: { title: trimmed, body: createBody, severity: createSeverity },
+      });
       setIncidents((prev) => [incident, ...prev]);
       handleCreateOpenChange(false);
       // Navigate directly to the new incident
@@ -237,7 +238,9 @@ export function IncidentsClient() {
         {/* Filters */}
         <div className="flex gap-3">
           <div className="flex items-center gap-2">
-            <Label htmlFor="filter-status">{t("incidents.filter.status")}</Label>
+            <Label htmlFor="filter-status">
+              {t("incidents.filter.status")}
+            </Label>
             <select
               id="filter-status"
               value={statusFilter}
@@ -246,12 +249,16 @@ export function IncidentsClient() {
             >
               <option value="">{t("incidents.filter.all")}</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <Label htmlFor="filter-severity">{t("incidents.filter.severity")}</Label>
+            <Label htmlFor="filter-severity">
+              {t("incidents.filter.severity")}
+            </Label>
             <select
               id="filter-severity"
               value={severityFilter}
@@ -260,7 +267,9 @@ export function IncidentsClient() {
             >
               <option value="">{t("incidents.filter.all")}</option>
               {SEVERITY_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
           </div>
@@ -305,16 +314,20 @@ export function IncidentsClient() {
         )}
       </div>
 
-       {/* Create incident dialog */}
+      {/* Create incident dialog */}
       <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("incidents.create.dialogTitle")}</DialogTitle>
-            <DialogDescription>{t("incidents.create.dialogDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("incidents.create.dialogDesc")}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="inc-title">{t("incidents.create.titleLabel")}</Label>
+              <Label htmlFor="inc-title">
+                {t("incidents.create.titleLabel")}
+              </Label>
               <Input
                 id="inc-title"
                 value={createTitle}
@@ -326,7 +339,9 @@ export function IncidentsClient() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inc-body">{t("incidents.create.bodyLabel")}</Label>
+              <Label htmlFor="inc-body">
+                {t("incidents.create.bodyLabel")}
+              </Label>
               <textarea
                 id="inc-body"
                 value={createBody}
@@ -337,7 +352,9 @@ export function IncidentsClient() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="inc-severity">{t("incidents.create.severityLabel")}</Label>
+              <Label htmlFor="inc-severity">
+                {t("incidents.create.severityLabel")}
+              </Label>
               <div className="flex gap-2">
                 {SEVERITY_OPTIONS.map((s) => (
                   <button

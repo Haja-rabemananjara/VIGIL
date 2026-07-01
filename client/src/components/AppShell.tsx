@@ -30,8 +30,9 @@ export function AppShell({ children }: AppShellProps) {
   const { status } = useVigilSocket();
 
   // Active team id read from the URL: /teams/{id}/...
-  const activeTeamId =
-    pathname?.startsWith("/teams/") ? pathname.split("/")[2] : null;
+  const activeTeamId = pathname?.startsWith("/teams/")
+    ? pathname.split("/")[2]
+    : null;
 
   useEffect(() => {
     if (!token) return;

@@ -16,8 +16,8 @@ export type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 /** A single event received from the server via WebSocket */
 export interface WsEvent {
-    type: string;
-    [key: string]: unknown;
+  type: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -89,8 +89,7 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
         try {
           const parsed: WsEvent = JSON.parse(event.data);
           setLastEvent({ ...parsed }); // new reference each time
-        } catch {
-        }
+        } catch {}
       };
 
       ws.onclose = () => {
@@ -127,7 +126,9 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
     }
   }
   return (
-    <VigilSocketContext.Provider value={{ status, lastEvent, reconnectCount, send }}>
+    <VigilSocketContext.Provider
+      value={{ status, lastEvent, reconnectCount, send }}
+    >
       {children}
     </VigilSocketContext.Provider>
   );

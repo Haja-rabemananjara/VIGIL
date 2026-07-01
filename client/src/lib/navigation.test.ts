@@ -36,12 +36,12 @@ describe("postLoginDestination", () => {
   });
 
   it("returns the last visited team if stored", async () => {
-  localStorage.setItem("vigil_last_team", "bbb-222");
-  mockApi.mockResolvedValue([
-    { id: "aaa-111", name: "Alpha", role: "manager", created_at: "" },
-    { id: "bbb-222", name: "Beta", role: "observer", created_at: "" },
-  ]);
-  const dest = await postLoginDestination("fake-token");
-  expect(dest).toBe("/teams/bbb-222/incidents");
-});
+    localStorage.setItem("vigil_last_team", "bbb-222");
+    mockApi.mockResolvedValue([
+      { id: "aaa-111", name: "Alpha", role: "manager", created_at: "" },
+      { id: "bbb-222", name: "Beta", role: "observer", created_at: "" },
+    ]);
+    const dest = await postLoginDestination("fake-token");
+    expect(dest).toBe("/teams/bbb-222/incidents");
+  });
 });

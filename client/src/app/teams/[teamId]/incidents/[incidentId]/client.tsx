@@ -107,7 +107,7 @@ export function IncidentDetailClient() {
       api<Incident>(`/teams/${teamId}/incidents/${incidentId}`, { token }),
       api<{ entries: TimelineEntry[] }>(
         `/teams/${teamId}/incidents/${incidentId}/timeline`,
-        { token }
+        { token },
       ),
       api<Member[]>(`/teams/${teamId}/members`, { token }),
     ])
@@ -134,7 +134,7 @@ export function IncidentDetailClient() {
         api<Incident>(`/teams/${teamId}/incidents/${incidentId}`, { token }),
         api<{ entries: TimelineEntry[] }>(
           `/teams/${teamId}/incidents/${incidentId}/timeline`,
-          { token }
+          { token },
         ),
       ])
         .then(([inc, tl]) => {
@@ -148,60 +148,62 @@ export function IncidentDetailClient() {
 
   // React to real-time events for this incident
   useEffect(() => {
-      if (!lastEvent) return;
+    if (!lastEvent) return;
 
-      const eventIncidentId = lastEvent.incident_id as string | undefined;
+    const eventIncidentId = lastEvent.incident_id as string | undefined;
 
-      // Presence doesn't need the incident to be loaded
-      if (lastEvent.type === "presence_update") {
-        const eventResourceId = lastEvent.resource_id as string;
-        if (
-          lastEvent.resource_type === "incident" &&
-          eventResourceId === incidentId
-        ) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setWatchers(lastEvent.watchers as string[]);
-        }
-        return;
+    // Presence doesn't need the incident to be loaded
+    if (lastEvent.type === "presence_update") {
+      const eventResourceId = lastEvent.resource_id as string;
+      if (
+        lastEvent.resource_type === "incident" &&
+        eventResourceId === incidentId
+      ) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setWatchers(lastEvent.watchers as string[]);
       }
+      return;
+    }
 
-      if (lastEvent.type === "member_role_changed") {
-        const changedUserId = lastEvent.user_id as string;
-        const newRole = lastEvent.new_role as string;
-        if (changedUserId === user?.id) {
-          setRole(newRole);
-        }
-        // Also update the members list (for assign dialog display names)
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.user_id === changedUserId ? { ...m, role: newRole } : m
-          )
-        );
-        return;
+    if (lastEvent.type === "member_role_changed") {
+      const changedUserId = lastEvent.user_id as string;
+      const newRole = lastEvent.new_role as string;
+      if (changedUserId === user?.id) {
+        setRole(newRole);
       }
+      // Also update the members list (for assign dialog display names)
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.user_id === changedUserId ? { ...m, role: newRole } : m,
+        ),
+      );
+      return;
+    }
 
-      if (lastEvent.type === "incident_assigned") {
-        const eventIncidentId = lastEvent.incident_id as string;
-        if (eventIncidentId === incidentId) {
-          setAssignee(lastEvent.assigned_to as string);
-        }
-        return;
+    if (lastEvent.type === "incident_assigned") {
+      const eventIncidentId = lastEvent.incident_id as string;
+      if (eventIncidentId === incidentId) {
+        setAssignee(lastEvent.assigned_to as string);
       }
+      return;
+    }
 
-      // All other events need the incident loaded
-      if (!incident) return;
-      if (eventIncidentId !== incidentId) return;
+    // All other events need the incident loaded
+    if (!incident) return;
+    if (eventIncidentId !== incidentId) return;
 
-      switch (lastEvent.type) {
-        case "incident_state_changed": {
+    switch (lastEvent.type) {
+      case "incident_state_changed": {
         setIncident((prev) =>
-          prev ? { ...prev, status: lastEvent.new_state as IncidentState } : prev
+          prev
+            ? { ...prev, status: lastEvent.new_state as IncidentState }
+            : prev,
         );
         const actor = lastEvent.by as string;
         if (actor !== user?.id && token) {
           api<{ entries: TimelineEntry[] }>(
             `/teams/${teamId}/incidents/${incidentId}/timeline`,
-            { token }
+            { token },
           )
             .then((tl) => setTimeline(tl.entries))
             .catch(() => {});
@@ -212,7 +214,7 @@ export function IncidentDetailClient() {
         setIncident((prev) =>
           prev
             ? { ...prev, severity: lastEvent.new_severity as Severity }
-            : prev
+            : prev,
         );
         break;
       }
@@ -235,7 +237,7 @@ export function IncidentDetailClient() {
       default:
         break;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, incidentId, teamId, token]);
 
   // Presence: tell the server we're watching this incident
@@ -271,13 +273,13 @@ export function IncidentDetailClient() {
           method: "PATCH",
           token,
           body: { status: toStatus },
-        }
+        },
       );
       setIncident(updated);
       // Refresh timeline to show the new system entry
       const tl = await api<{ entries: TimelineEntry[] }>(
         `/teams/${teamId}/incidents/${incidentId}/timeline`,
-        { token }
+        { token },
       );
       setTimeline(tl.entries);
     } catch {
@@ -288,9 +290,9 @@ export function IncidentDetailClient() {
   }
 
   // Display Name on the Incidents (creator and author)
-  function displayName(userId: string) : string {
+  function displayName(userId: string): string {
     const member = members.find((m) => m.user_id === userId);
-    return member?.display_name ?? userId
+    return member?.display_name ?? userId;
   }
 
   // Assign
@@ -320,7 +322,7 @@ export function IncidentDetailClient() {
     try {
       const entry = await api<TimelineEntry>(
         `/teams/${teamId}/incidents/${incidentId}/timeline`,
-        { method: "POST", token, body: { content } }
+        { method: "POST", token, body: { content } },
       );
       setTimeline((prev) => {
         if (prev.some((e) => e.id === entry.id)) return prev;
@@ -336,7 +338,7 @@ export function IncidentDetailClient() {
 
   // Eligible responders for assign dialog
   const eligibleMembers = members.filter(
-    (m) => m.role === "responder" || m.role === "manager"
+    (m) => m.role === "responder" || m.role === "manager",
   );
 
   // Render
@@ -345,8 +347,7 @@ export function IncidentDetailClient() {
     return (
       <>
         <div className="p-6 text-muted-foreground">{t("common.loading")}</div>
-      </>  
-        
+      </>
     );
   }
 
@@ -370,7 +371,7 @@ export function IncidentDetailClient() {
           onClick={() => router.push(`/teams/${teamId}/incidents`)}
           className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-        {t("incidents.detail.backToList")}
+          {t("incidents.detail.backToList")}
         </button>
 
         {/* Watchers */}
@@ -420,10 +421,11 @@ export function IncidentDetailClient() {
 
             <div className="text-sm text-muted-foreground">
               {t("incidents.detail.createdBy")}{" "}
-              <span className="text-foreground">{displayName(incident.created_by)}</span>
+              <span className="text-foreground">
+                {displayName(incident.created_by)}
+              </span>
               {" · "}
               {formatDate(incident.created_at)}
-              
               {assignee && (
                 <div className="text-sm text-muted-foreground">
                   {t("incidents.detail.assignee")}{" "}
@@ -432,11 +434,12 @@ export function IncidentDetailClient() {
                   </span>
                 </div>
               )}
-
               {!assignee && (
                 <div className="text-sm text-muted-foreground">
                   {t("incidents.detail.assignee")}{" "}
-                  <span className="italic">{t("incidents.detail.noAssignee")}</span>
+                  <span className="italic">
+                    {t("incidents.detail.noAssignee")}
+                  </span>
                 </div>
               )}
             </div>
@@ -458,17 +461,16 @@ export function IncidentDetailClient() {
                     </Button>
                   ))}
                 </div>
-                  {/* Assign button (Manager only) */}
-                  {isManager && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setAssignOpen(true)}
-                    >
-                      {t("incidents.detail.assign")}
-                    </Button>
-                  )}
-                
+                {/* Assign button (Manager only) */}
+                {isManager && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAssignOpen(true)}
+                  >
+                    {t("incidents.detail.assign")}
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
@@ -478,7 +480,9 @@ export function IncidentDetailClient() {
         <div className="space-y-3">
           <h2 className="text-lg font-medium">Timeline</h2>
           {timeline.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("timeline.empty")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("timeline.empty")}
+            </p>
           ) : (
             <div className="space-y-2">
               {timeline.map((entry) => (
@@ -542,7 +546,9 @@ export function IncidentDetailClient() {
       {assignOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg space-y-4">
-            <h3 className="font-semibold">{t("incidents.assign.dialogTitle")}</h3>
+            <h3 className="font-semibold">
+              {t("incidents.assign.dialogTitle")}
+            </h3>
             <p className="text-sm text-muted-foreground">
               {t("incidents.assign.dialogDesc")}
             </p>
