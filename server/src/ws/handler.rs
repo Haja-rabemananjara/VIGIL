@@ -1,7 +1,7 @@
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         Query, State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::Response,
 };
@@ -44,8 +44,8 @@ pub async fn ws_handler(
         "#,
         token_hash,
     )
-        .fetch_optional(&state.pool)
-        .await
+    .fetch_optional(&state.pool)
+    .await
     {
         Ok(Some(row)) => row.user_id,
         Ok(None) => {
@@ -68,7 +68,7 @@ pub async fn ws_handler(
 
 async fn handle_socket(mut socket: WebSocket, state: AppState, user_id: uuid::Uuid) {
     let mut rx = state.broadcaster.register(user_id);
-    
+
     let mut watching: HashSet<ResourceKey> = HashSet::new();
 
     let hello = WsEvent::Connected { user_id };
@@ -151,24 +151,27 @@ async fn handle_socket(mut socket: WebSocket, state: AppState, user_id: uuid::Uu
             }
         }
     }
-    
+
     let affected = state.presence.disconnect(user_id);
     for (resource_type, resource_id, watchers) in affected {
-        if resource_type == "incident" {
-            if let Ok(Some(row)) = sqlx::query!(
-                "SELECT team_id FROM incidents WHERE id = $1",
-                resource_id,
-            )
-                .fetch_optional(&state.pool)
-                .await
-            {
-                state.broadcaster.to_team(row.team_id, WsEvent::PresenceUpdate {
-                    team_id: row.team_id,
-                    resource_type: resource_type.clone(),
-                    resource_id,
-                    watchers,
-                }).await;
-            }
+        if resource_type == "incident"
+            && let Ok(Some(row)) =
+                sqlx::query!("SELECT team_id FROM incidents WHERE id = $1", resource_id,)
+                    .fetch_optional(&state.pool)
+                    .await
+        {
+            state
+                .broadcaster
+                .to_team(
+                    row.team_id,
+                    WsEvent::PresenceUpdate {
+                        team_id: row.team_id,
+                        resource_type: resource_type.clone(),
+                        resource_id,
+                        watchers,
+                    },
+                )
+                .await;
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::ws::{ Broadcaster, presence::PresenceTracker};
+use crate::ws::{Broadcaster, presence::PresenceTracker};
 use sqlx::PgPool;
 
 #[derive(Clone)]

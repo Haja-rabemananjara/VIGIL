@@ -1,4 +1,4 @@
-use serde::{ Serialize, Deserialize };
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Clone)]
@@ -13,7 +13,7 @@ pub enum WsEvent {
         incident_id: Uuid,
         new_state: String,
         by: Uuid,
-        },
+    },
 
     IncidentEscalated {
         team_id: Uuid,
@@ -45,12 +45,12 @@ pub enum WsEvent {
         watchers: Vec<Uuid>,
     },
 
-    MemberRoleChanged{
+    MemberRoleChanged {
         team_id: Uuid,
         user_id: Uuid,
         new_role: String,
         by: Uuid,
-    }
+    },
 }
 
 #[derive(Debug, Deserialize)]

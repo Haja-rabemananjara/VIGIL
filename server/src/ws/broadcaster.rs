@@ -39,11 +39,11 @@ impl Broadcaster {
         if let Some(mut entry) = self.inner.connections.get_mut(&user_id) {
             entry.retain(|tx| !tx.is_closed());
         }
-        if let Some(entry) = self.inner.connections.get(&user_id) {
-            if entry.is_empty() {
-                drop(entry);
-                self.inner.connections.remove(&user_id);
-            }
+        if let Some(entry) = self.inner.connections.get(&user_id)
+            && entry.is_empty()
+        {
+            drop(entry);
+            self.inner.connections.remove(&user_id);
         }
     }
 
@@ -70,8 +70,8 @@ impl Broadcaster {
             "#,
             team_id,
         )
-            .fetch_all(&self.inner.pool)
-            .await
+        .fetch_all(&self.inner.pool)
+        .await
         {
             Ok(ids) => ids,
             Err(e) => {
