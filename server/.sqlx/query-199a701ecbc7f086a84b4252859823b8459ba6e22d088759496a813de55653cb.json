@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE team_members\n        SET status = 'active', role = 'observer', joined_at = now()\n        WHERE id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "199a701ecbc7f086a84b4252859823b8459ba6e22d088759496a813de55653cb"
+}

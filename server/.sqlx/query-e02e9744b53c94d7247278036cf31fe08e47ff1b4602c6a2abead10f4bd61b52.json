@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.id AS \"user_id!\",\n               u.display_name AS \"display_name!\",\n               u.email AS \"email!\",\n               tm.role AS \"role!\",\n               tm.joined_at AS \"joined_at!\"\n        FROM team_members tm\n        JOIN users u ON u.id = tm.user_id\n        WHERE tm.team_id = $1\n          AND tm.status = 'active'\n        ORDER BY tm.joined_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "display_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "joined_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e02e9744b53c94d7247278036cf31fe08e47ff1b4602c6a2abead10f4bd61b52"
+}

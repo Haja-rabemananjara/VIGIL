@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT t.id AS \"id!\", t.name AS \"name!\",\n               t.created_at AS \"created_at!\", tm.role AS \"role!\"\n        FROM teams t\n        JOIN team_members tm ON tm.team_id = t.id\n        WHERE t.id = $1\n          AND tm.user_id = $2\n          AND tm.status = 'active'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "role!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2ba5f7e9e266ceaaa8ae9076bbb43be6987620b45fa39557d2bf8aef1ce5035b"
+}

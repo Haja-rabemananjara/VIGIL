@@ -33,7 +33,9 @@ export default function SigninPage() {
     setSubmitting(true);
     try {
       await signin(email, password);
-      router.replace(postLoginDestination());
+      const token = localStorage.getItem("vigil_token") ?? "";
+      const dest = await postLoginDestination(token);
+      router.replace(dest);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError(t("auth.error.invalidCredentials"));

@@ -4,6 +4,7 @@ use server::ws::broadcaster::Broadcaster;
 use sqlx::{Executor, PgPool};
 use tokio::net::TcpListener;
 use uuid::Uuid;
+use server::ws::PresenceTracker;
 
 #[allow(dead_code)]
 pub struct TestApp {
@@ -69,10 +70,13 @@ pub async fn spawn_app() -> TestApp {
         .await
         .expect("Failed to run migrations on test DB");
 
-    let broadcaster = Broadcaster::default();
+    let broadcaster = Broadcaster::new(pool.clone());
+    let presence = PresenceTracker::new();
+
     let state = AppState {
         pool: pool.clone(),
         broadcaster,
+        presence,
     };
 
     let app = routes::router()

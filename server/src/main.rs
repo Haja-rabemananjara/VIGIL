@@ -1,7 +1,7 @@
 use server::config::Config;
 use server::routes;
 use server::state::AppState;
-use server::ws::broadcaster::Broadcaster;
+use server::ws::{ broadcaster::Broadcaster, presence::PresenceTracker };
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -28,8 +28,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Connected to PostgreSQL");
 
-    let broadcaster = Broadcaster::default();
-    let state = AppState { pool, broadcaster };
+    let state = AppState {
+        pool: pool.clone(),
+        broadcaster: Broadcaster::new(pool.clone()),
+        presence: PresenceTracker::new(),
+    };
 
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
