@@ -25,4 +25,12 @@ pub fn routes() -> Router<AppState> {
             "/teams/{team_id}/releases/{release_id}/cancel",
             post(handlers::releases::cancel),
         )
+        .route(
+            "/teams/{team_id}/releases/{release_id}/link",
+            post(handlers::releases::link_incident),
+        )
+        .route(
+            "/teams/{team_id}/releases/{release_id}/unlink",
+            post(handlers::releases::unlink_incident),
+        )
 }

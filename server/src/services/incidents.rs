@@ -233,6 +233,15 @@ pub async fn transition_incident_status(
             .await;
     }
 
+    if to == IncidentStatus::Resolved {
+        crate::services::releases::check_and_unblock_releases_for_incident(
+            pool,
+            broadcaster.clone(),
+            incident_id,
+        )
+        .await?;
+    }
+
     Ok(IncidentResponse::from_row(updated))
 }
 

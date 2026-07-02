@@ -228,3 +228,102 @@ pub async fn validate_step(
     .fetch_one(pool)
     .await
 }
+
+pub async fn create_incident_link(
+    pool: &PgPool,
+    id: Uuid,
+    release_id: Uuid,
+    incident_id: Uuid,
+    linked_by: Uuid,
+) -> sqlx::Result<()> {
+    sqlx::query(
+        r#"
+        INSERT INTO release_incident_links (id, release_id, incident_id, linked_by)
+        VALUES ($1, $2, $3, $4)
+        "#,
+    )
+    .bind(id)
+    .bind(release_id)
+    .bind(incident_id)
+    .bind(linked_by)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn remove_incident_link(
+    pool: &PgPool,
+    release_id: Uuid,
+    incident_id: Uuid,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query(
+        r#"
+        UPDATE release_incident_links
+        SET status = 'removed'
+        WHERE release_id = $1 AND incident_id = $2 AND status = 'active'
+        "#,
+    )
+    .bind(release_id)
+    .bind(incident_id)
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn has_active_link(
+    pool: &PgPool,
+    release_id: Uuid,
+    incident_id: Uuid,
+) -> sqlx::Result<bool> {
+    let row = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*) FROM release_incident_links
+        WHERE release_id = $1 AND incident_id = $2 AND status = 'active'
+        "#,
+    )
+    .bind(release_id)
+    .bind(incident_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row > 0)
+}
+
+pub async fn count_active_unresolved_links(pool: &PgPool, release_id: Uuid) -> sqlx::Result<i64> {
+    let count = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*)
+        FROM release_incident_links ril
+        JOIN incidents i ON i.id = ril.incident_id
+        WHERE ril.release_id = $1
+          AND ril.status = 'active'
+          AND i.status != 'resolved'
+        "#,
+    )
+    .bind(release_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(count)
+}
+
+pub async fn get_blocked_releases_for_incident(
+    pool: &PgPool,
+    incident_id: Uuid,
+) -> sqlx::Result<Vec<ReleaseRow>> {
+    sqlx::query_as::<_, ReleaseRow>(
+        r#"
+        SELECT DISTINCT r.*
+        FROM releases r
+        JOIN release_incident_links ril ON ril.release_id = r.id
+        WHERE ril.incident_id = $1
+          AND ril.status = 'active'
+          AND r.status = 'blocked'
+        "#,
+    )
+    .bind(incident_id)
+    .fetch_all(pool)
+    .await
+}

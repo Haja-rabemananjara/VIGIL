@@ -51,6 +51,12 @@ pub enum WsEvent {
         new_role: String,
         by: Uuid,
     },
+
+    ReleaseStateChanged {
+        team_id: Uuid,
+        release_id: Uuid,
+        new_state: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]

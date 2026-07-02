@@ -8,6 +8,7 @@ use crate::domain::releases::{
 };
 use crate::error::AppError;
 use crate::repo;
+use crate::ws::{Broadcaster, WsEvent};
 use repo::releases::get_release_by_id;
 use sqlx::PgPool;
 
@@ -218,6 +219,12 @@ pub async fn validate_step(
     let current = ReleaseStatus::from_db(&row.status)
         .ok_or_else(|| AppError::Internal("Invalid release status in DB".into()))?;
 
+    if current == ReleaseStatus::Blocked {
+        return Err(AppError::Conflict(
+            "Release is blocked by an active incident — resolve it first".into(),
+        ));
+    }
+
     if current != ReleaseStatus::InProgress {
         return Err(AppError::Validation(format!(
             "Cannot validate steps on a release in '{}' status",
@@ -295,4 +302,169 @@ pub async fn cancel_release(
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
     Ok(ReleaseResponse::from_row(updated, steps))
+}
+
+pub async fn link_incident(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    release_id: Uuid,
+    incident_id: Uuid,
+    team_id: Uuid,
+    linked_by: Uuid,
+) -> Result<ReleaseResponse, AppError> {
+    let release = fetch_release_for_team(pool, release_id, team_id).await?;
+
+    let current = ReleaseStatus::from_db(&release.status)
+        .ok_or_else(|| AppError::Internal("Invalid release status".into()))?;
+
+    if current.is_terminal() {
+        return Err(AppError::Validation(format!(
+            "Cannot link incidents to a '{}' release",
+            current.as_str()
+        )));
+    }
+
+    let incident = repo::incidents::find_incident(pool, incident_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch incident: {e}")))?
+        .ok_or_else(|| AppError::NotFound("Incident not found".into()))?;
+
+    if incident.team_id != team_id {
+        return Err(AppError::NotFound("Incident not found".into()));
+    }
+
+    let already_linked = repo::releases::has_active_link(pool, release_id, incident_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to check link: {e}")))?;
+
+    if already_linked {
+        return Err(AppError::Conflict(
+            "This incident is already linked to this release".into(),
+        ));
+    }
+
+    repo::releases::create_incident_link(pool, Uuid::new_v4(), release_id, incident_id, linked_by)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to create link: {e}")))?;
+
+    let final_row = if current == ReleaseStatus::InProgress && incident.status != "resolved" {
+        let blocked = repo::releases::update_release_status(
+            pool,
+            release_id,
+            ReleaseStatus::Blocked.as_str(),
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to block release: {e}")))?;
+
+        broadcaster
+            .to_team(
+                team_id,
+                WsEvent::ReleaseStateChanged {
+                    team_id,
+                    release_id,
+                    new_state: "blocked".to_string(),
+                },
+            )
+            .await;
+
+        blocked
+    } else {
+        release
+    };
+
+    let steps = repo::releases::get_steps_for_release(pool, release_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
+
+    Ok(ReleaseResponse::from_row(final_row, steps))
+}
+
+pub async fn unlink_incident(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    release_id: Uuid,
+    incident_id: Uuid,
+    team_id: Uuid,
+) -> Result<ReleaseResponse, AppError> {
+    let release = fetch_release_for_team(pool, release_id, team_id).await?;
+
+    let removed = repo::releases::remove_incident_link(pool, release_id, incident_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to remove link: {e}")))?;
+
+    if !removed {
+        return Err(AppError::NotFound(
+            "No active link between this release and incident".into(),
+        ));
+    }
+
+    let current = ReleaseStatus::from_db(&release.status)
+        .ok_or_else(|| AppError::Internal("Invalid release status".into()))?;
+
+    let final_row = if current == ReleaseStatus::Blocked {
+        try_unblock_release(pool, &broadcaster, release_id, team_id).await?
+    } else {
+        release
+    };
+
+    let steps = repo::releases::get_steps_for_release(pool, release_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
+
+    Ok(ReleaseResponse::from_row(final_row, steps))
+}
+
+async fn try_unblock_release(
+    pool: &PgPool,
+    broadcaster: &Broadcaster,
+    release_id: Uuid,
+    team_id: Uuid,
+) -> Result<crate::domain::releases::ReleaseRow, AppError> {
+    let count = repo::releases::count_active_unresolved_links(pool, release_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to count links: {e}")))?;
+
+    if count == 0 {
+        let unblocked = repo::releases::update_release_status(
+            pool,
+            release_id,
+            ReleaseStatus::InProgress.as_str(),
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to unblock release: {e}")))?;
+
+        broadcaster
+            .to_team(
+                team_id,
+                WsEvent::ReleaseStateChanged {
+                    team_id,
+                    release_id,
+                    new_state: "in_progress".to_string(),
+                },
+            )
+            .await;
+
+        Ok(unblocked)
+    } else {
+        get_release_by_id(pool, release_id)
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to fetch release: {e}")))?
+            .ok_or_else(|| AppError::Internal("Release disappeared".into()))
+    }
+}
+
+pub async fn check_and_unblock_releases_for_incident(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    incident_id: Uuid,
+) -> Result<(), AppError> {
+    let blocked_releases = repo::releases::get_blocked_releases_for_incident(pool, incident_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to find linked releases: {e}")))?;
+
+    for release in blocked_releases {
+        try_unblock_release(pool, &broadcaster, release.id, release.team_id).await?;
+    }
+
+    Ok(())
 }

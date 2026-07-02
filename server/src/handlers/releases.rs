@@ -124,3 +124,57 @@ pub async fn cancel(
 
     Ok(Json(release))
 }
+
+#[derive(Deserialize)]
+pub struct LinkIncidentBody {
+    pub incident_id: Uuid,
+}
+
+pub async fn link_incident(
+    State(state): State<AppState>,
+    member: TeamMember,
+    Path((_team_id, release_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<LinkIncidentBody>,
+) -> Result<Json<ReleaseResponse>, AppError> {
+    if member.role.as_str() != "manager" {
+        return Err(AppError::Forbidden(
+            "Only the Manager can link incidents to releases".into(),
+        ));
+    }
+
+    let release = services::releases::link_incident(
+        &state.pool,
+        state.broadcaster,
+        release_id,
+        body.incident_id,
+        member.team_id,
+        member.user_id,
+    )
+    .await?;
+
+    Ok(Json(release))
+}
+
+pub async fn unlink_incident(
+    State(state): State<AppState>,
+    member: TeamMember,
+    Path((_team_id, release_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<LinkIncidentBody>,
+) -> Result<Json<ReleaseResponse>, AppError> {
+    if member.role.as_str() != "manager" {
+        return Err(AppError::Forbidden(
+            "Only the Manager can unlink incidents from releases".into(),
+        ));
+    }
+
+    let release = services::releases::unlink_incident(
+        &state.pool,
+        state.broadcaster,
+        release_id,
+        body.incident_id,
+        member.team_id,
+    )
+    .await?;
+
+    Ok(Json(release))
+}
