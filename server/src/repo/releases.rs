@@ -135,3 +135,96 @@ pub async fn get_steps_for_releases(
     .fetch_all(pool)
     .await
 }
+
+pub async fn update_release_status(
+    pool: &PgPool,
+    release_id: Uuid,
+    new_status: &str,
+) -> sqlx::Result<ReleaseRow> {
+    let row = match new_status {
+        "in_progress" => {
+            sqlx::query_as::<_, ReleaseRow>(
+                r#"
+                UPDATE releases
+                SET status = $2, started_at = now(), updated_at = now()
+                WHERE id = $1
+                RETURNING *
+                "#,
+            )
+            .bind(release_id)
+            .bind(new_status)
+            .fetch_one(pool)
+            .await?
+        }
+        "completed" => {
+            sqlx::query_as::<_, ReleaseRow>(
+                r#"
+                UPDATE releases
+                SET status = $2, completed_at = now(), updated_at = now()
+                WHERE id = $1
+                RETURNING *
+                "#,
+            )
+            .bind(release_id)
+            .bind(new_status)
+            .fetch_one(pool)
+            .await?
+        }
+        "cancelled" => {
+            sqlx::query_as::<_, ReleaseRow>(
+                r#"
+                UPDATE releases
+                SET status = $2, cancelled_at = now(), updated_at = now()
+                WHERE id = $1
+                RETURNING *
+                "#,
+            )
+            .bind(release_id)
+            .bind(new_status)
+            .fetch_one(pool)
+            .await?
+        }
+        _ => {
+            sqlx::query_as::<_, ReleaseRow>(
+                r#"
+                UPDATE releases
+                SET status = $2, updated_at = now()
+                WHERE id = $1
+                RETURNING *
+                "#,
+            )
+            .bind(release_id)
+            .bind(new_status)
+            .fetch_one(pool)
+            .await?
+        }
+    };
+
+    Ok(row)
+}
+
+pub async fn get_step_by_id(pool: &PgPool, step_id: Uuid) -> sqlx::Result<Option<ReleaseStepRow>> {
+    sqlx::query_as::<_, ReleaseStepRow>(r#"SELECT * FROM release_steps WHERE id = $1"#)
+        .bind(step_id)
+        .fetch_optional(pool)
+        .await
+}
+
+pub async fn validate_step(
+    pool: &PgPool,
+    step_id: Uuid,
+    validated_by: Uuid,
+) -> sqlx::Result<ReleaseStepRow> {
+    sqlx::query_as::<_, ReleaseStepRow>(
+        r#"
+        UPDATE release_steps
+        SET validated_by = $2, validated_at = now()
+        WHERE id = $1
+        RETURNING *
+        "#,
+    )
+    .bind(step_id)
+    .bind(validated_by)
+    .fetch_one(pool)
+    .await
+}

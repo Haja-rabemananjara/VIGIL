@@ -33,6 +33,39 @@ impl ReleaseStatus {
             Self::Blocked => "blocked",
         }
     }
+
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Completed | Self::Cancelled)
+    }
+
+    pub fn can_cancel(&self) -> bool {
+        matches!(self, Self::Created | Self::InProgress | Self::Blocked)
+    }
+}
+
+pub fn can_transition(from: &ReleaseStatus, to: &ReleaseStatus) -> bool {
+    matches!(
+        (from, to),
+        (ReleaseStatus::Created, ReleaseStatus::InProgress)
+            | (ReleaseStatus::Created, ReleaseStatus::Cancelled)
+            | (ReleaseStatus::InProgress, ReleaseStatus::Completed)
+            | (ReleaseStatus::InProgress, ReleaseStatus::Cancelled)
+            | (ReleaseStatus::InProgress, ReleaseStatus::Blocked)
+            | (ReleaseStatus::Blocked, ReleaseStatus::InProgress)
+            | (ReleaseStatus::Blocked, ReleaseStatus::Cancelled)
+    )
+}
+
+pub fn can_validate_step(step_position: i32, all_steps: &[ReleaseStepRow]) -> Result<(), String> {
+    for s in all_steps {
+        if s.position < step_position && s.validated_by.is_none() {
+            return Err(format!(
+                "Step '{}' (position {}) must be validated first",
+                s.name, s.position
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
