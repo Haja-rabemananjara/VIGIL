@@ -1,7 +1,7 @@
 use server::config::Config;
 use server::routes;
 use server::state::AppState;
-use server::ws::{ broadcaster::Broadcaster, presence::PresenceTracker };
+use server::ws::{broadcaster::Broadcaster, presence::PresenceTracker};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 

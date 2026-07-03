@@ -1,7 +1,7 @@
-use serde_json::json;
-use uuid::Uuid;
 use futures_util::StreamExt;
+use serde_json::json;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
+use uuid::Uuid;
 
 mod common;
 use common::spawn_app;

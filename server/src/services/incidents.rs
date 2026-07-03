@@ -3,7 +3,7 @@ use crate::{
     domain::incidents::{IncidentSeverity, IncidentStatus},
     error::AppError,
     repo,
-    ws::{Broadcaster, WsEvent}
+    ws::{Broadcaster, WsEvent},
 };
 use domain::team;
 use serde::Serialize;
@@ -86,12 +86,17 @@ pub async fn create_incident(
     )
     .await?;
 
-    broadcaster.to_team(team_id, WsEvent::IncidentStateChanged {
-        team_id,
-        incident_id: id,
-        new_state: "open".to_string(),
-        by: created_by,
-    }).await;
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::IncidentStateChanged {
+                team_id,
+                incident_id: id,
+                new_state: "open".to_string(),
+                by: created_by,
+            },
+        )
+        .await;
 
     Ok(IncidentResponse::from_row(row))
 }
@@ -200,22 +205,41 @@ pub async fn transition_incident_status(
     )
     .await?;
 
-    broadcaster.to_team(team_id, WsEvent::IncidentStateChanged {
-        team_id,
-        incident_id,
-        new_state: new_status.clone(),
-        by: actor_id,
-    }).await;
-
-    if to == IncidentStatus::Escalated {
-        if let Some(ref sev) = new_severity {
-            broadcaster.to_team(team_id, WsEvent::IncidentEscalated {
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::IncidentStateChanged {
                 team_id,
                 incident_id,
-                new_severity: sev.clone(),
+                new_state: new_status.clone(),
                 by: actor_id,
-            }).await;
-        }
+            },
+        )
+        .await;
+
+    if to == IncidentStatus::Escalated
+        && let Some(ref sev) = new_severity
+    {
+        broadcaster
+            .to_team(
+                team_id,
+                WsEvent::IncidentEscalated {
+                    team_id,
+                    incident_id,
+                    new_severity: sev.clone(),
+                    by: actor_id,
+                },
+            )
+            .await;
+    }
+
+    if to == IncidentStatus::Resolved {
+        crate::services::releases::check_and_unblock_releases_for_incident(
+            pool,
+            broadcaster.clone(),
+            incident_id,
+        )
+        .await?;
     }
 
     Ok(IncidentResponse::from_row(updated))
@@ -284,19 +308,27 @@ pub async fn assign_responder(
     )
     .await?;
 
-    broadcaster.to_team(team_id, WsEvent::IncidentAssigned {
-        team_id,
-        incident_id,
-        assigned_to: target_user_id,
-        by: assigned_by
-    }).await;
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::IncidentAssigned {
+                team_id,
+                incident_id,
+                assigned_to: target_user_id,
+                by: assigned_by,
+            },
+        )
+        .await;
 
-    broadcaster.to_user(target_user_id, WsEvent::IncidentAssigned {
-        team_id,
-        incident_id,
-        assigned_to: target_user_id,
-        by: assigned_by,
-    });
+    broadcaster.to_user(
+        target_user_id,
+        WsEvent::IncidentAssigned {
+            team_id,
+            incident_id,
+            assigned_to: target_user_id,
+            by: assigned_by,
+        },
+    );
 
     Ok(())
 }
@@ -362,14 +394,19 @@ pub async fn add_timeline_entry(
         .find(|e| e.id == id)
         .ok_or_else(|| AppError::Internal("entry not found after insert".into()))?;
 
-    broadcaster.to_team(team_id, WsEvent::TimelineEntryAdded {
-        team_id,
-        incident_id,
-        entry_id: id,
-        author_id,
-        content: content.clone(),
-        at: entry.created_at.timestamp(),
-    }).await;
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::TimelineEntryAdded {
+                team_id,
+                incident_id,
+                entry_id: id,
+                author_id,
+                content: content.clone(),
+                at: entry.created_at.timestamp(),
+            },
+        )
+        .await;
 
     Ok(TimelineEntryResponse::from_row(entry))
 }

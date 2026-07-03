@@ -3,11 +3,14 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { type ConnectionStatus } from "@/stores/socket";
 
-const config: Record<ConnectionStatus, { 
+const config: Record<
+  ConnectionStatus,
+  {
     icon: typeof Wifi;
     label: string;
-    className: string
-}> = {
+    className: string;
+  }
+> = {
   connected: {
     icon: Wifi,
     label: t("ws.connected"),

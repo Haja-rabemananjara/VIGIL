@@ -15,6 +15,12 @@ pub struct PresenceTracker {
     inner: Arc<DashMap<ResourceKey, HashMap<Uuid, usize>>>,
 }
 
+impl Default for PresenceTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PresenceTracker {
     pub fn new() -> Self {
         Self {
@@ -23,14 +29,20 @@ impl PresenceTracker {
     }
 
     pub fn watch(&self, user_id: Uuid, resource_type: String, resource_id: Uuid) -> Vec<Uuid> {
-        let key = ResourceKey { resource_type, resource_id };
+        let key = ResourceKey {
+            resource_type,
+            resource_id,
+        };
         let mut entry = self.inner.entry(key).or_default();
         *entry.entry(user_id).or_insert(0) += 1;
         entry.keys().copied().collect()
     }
 
     pub fn unwatch(&self, user_id: Uuid, resource_type: String, resource_id: Uuid) -> Vec<Uuid> {
-        let key = ResourceKey { resource_type, resource_id };
+        let key = ResourceKey {
+            resource_type,
+            resource_id,
+        };
         if let Some(mut entry) = self.inner.get_mut(&key) {
             if let Some(count) = entry.get_mut(&user_id) {
                 *count -= 1;

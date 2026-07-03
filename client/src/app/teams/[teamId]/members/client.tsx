@@ -45,10 +45,12 @@ export function MembersClient() {
 
   // Transfer dialog
   const [transferTarget, setTransferTarget] = useState<Member | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [transferLoading, setTransferLoading] = useState(false);
 
   // Leave dialog
   const [leaveOpen, setLeaveOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [leaveLoading, setLeaveLoading] = useState(false);
 
   // Invite dialog
@@ -82,17 +84,20 @@ export function MembersClient() {
 
   useEffect(() => {
     if (!lastEvent) return;
-    if (lastEvent.type === "member_role_changed" && lastEvent.team_id === teamId) {
-        const changedUserId = lastEvent.user_id as string;
-        const newRole = lastEvent.new_role as string;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMembers((prev) =>
+    if (
+      lastEvent.type === "member_role_changed" &&
+      lastEvent.team_id === teamId
+    ) {
+      const changedUserId = lastEvent.user_id as string;
+      const newRole = lastEvent.new_role as string;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMembers((prev) =>
         prev.map((m) =>
-            m.user_id === changedUserId ? { ...m, role: newRole } : m
-        )
-        );
+          m.user_id === changedUserId ? { ...m, role: newRole } : m,
+        ),
+      );
     }
-    }, [lastEvent, teamId]);
+  }, [lastEvent, teamId]);
 
   // Role change
   async function handleRoleChange(targetUserId: string, newRole: string) {
@@ -105,8 +110,8 @@ export function MembersClient() {
       });
       setMembers((prev) =>
         prev.map((m) =>
-          m.user_id === targetUserId ? { ...m, role: newRole } : m
-        )
+          m.user_id === targetUserId ? { ...m, role: newRole } : m,
+        ),
       );
     } catch (e) {
       setActionError(e instanceof ApiError ? e.message : t("common.error"));
@@ -168,10 +173,10 @@ export function MembersClient() {
   async function handleGenerateCode() {
     setInviteLoading(true);
     try {
-      const res = await api<{ code: string }>(
-        `/teams/${teamId}/invitations`,
-        { method: "POST", token }
-      );
+      const res = await api<{ code: string }>(`/teams/${teamId}/invitations`, {
+        method: "POST",
+        token,
+      });
       setInviteCode(res.code);
     } catch {
       // retry possible
@@ -189,7 +194,9 @@ export function MembersClient() {
 
   // Render
   if (loading) {
-    return <div className="p-6 text-muted-foreground">{t("common.loading")}</div>;
+    return (
+      <div className="p-6 text-muted-foreground">{t("common.loading")}</div>
+    );
   }
 
   if (error) {
@@ -198,166 +205,165 @@ export function MembersClient() {
 
   return (
     <>
-        <div className="space-y-4 p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">{t("members.title")}</h1>
-            <div className="flex gap-2">
-                {isManager && (
-                <Button onClick={() => setInviteOpen(true)}>
-                    {t("members.invite")}
-                </Button>
-                )}
-                <Button
-                variant="outline"
-                onClick={() => setLeaveOpen(true)}
-                >
-                {t("members.leave")}
-                </Button>
-            </div>
-            </div>
-
-            {/* Action error */}
-            {actionError && (
-            <p className="text-sm text-destructive">{actionError}</p>
+      <div className="space-y-4 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">{t("members.title")}</h1>
+          <div className="flex gap-2">
+            {isManager && (
+              <Button onClick={() => setInviteOpen(true)}>
+                {t("members.invite")}
+              </Button>
             )}
-
-            {/* Members list */}
-            <Card>
-            <CardHeader>
-                <CardTitle>{t("members.title")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                {members.map((member) => {
-                const isMe = member.user_id === user?.id;
-                const isMemberManager = member.role === "manager";
-
-                return (
-                    <div
-                    key={member.user_id}
-                    className="flex items-center justify-between rounded-md border px-4 py-3"
-                    >
-                    {/* Left: name + role */}
-                    <div>
-                        <span className="font-medium">
-                        {member.display_name}
-                        {isMe && (
-                            <span className="ml-1 text-sm text-muted-foreground">
-                            {t("members.you")}
-                            </span>
-                        )}
-                        </span>
-                        <span className="ml-2 text-sm text-muted-foreground">
-                        {t(`members.role.${member.role}`)}
-                        </span>
-                    </div>
-
-                    {/* Right: actions (Manager only, not on self, not on other Managers) */}
-                    {isManager && !isMe && !isMemberManager && (
-                        <div className="flex gap-2">
-                        {member.role === "observer" ? (
-                            <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                                handleRoleChange(member.user_id, "responder")
-                            }
-                            >
-                            {t("members.promote")}
-                            </Button>
-                        ) : (
-                            <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                                handleRoleChange(member.user_id, "observer")
-                            }
-                            >
-                            {t("members.demote")}
-                            </Button>
-                        )}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setTransferTarget(member)}
-                        >
-                            {t("members.transfer")}
-                        </Button>
-                        </div>
-                    )}
-                    </div>
-                );
-                })}
-            </CardContent>
-            </Card>
+            <Button variant="outline" onClick={() => setLeaveOpen(true)}>
+              {t("members.leave")}
+            </Button>
+          </div>
         </div>
 
-        {/* Transfer confirm */}
-        <ConfirmDialog
-            open={!!transferTarget}
-            onOpenChange={(open) => {
-            if (!open) setTransferTarget(null);
-            }}
-            title={t("members.transfer.title")}
-            description={t("members.transfer.desc").replace(
-            "{name}",
-            transferTarget?.display_name ?? ""
-            )}
-            confirmLabel={t("members.transfer.confirm")}
-            destructive
-            onConfirm={handleTransfer}
-        />
+        {/* Action error */}
+        {actionError && (
+          <p className="text-sm text-destructive">{actionError}</p>
+        )}
 
-        {/* Leave confirm */}
-        <ConfirmDialog
-            open={leaveOpen}
-            onOpenChange={setLeaveOpen}
-            title={t("members.leave.title")}
-            description={t("members.leave.desc")}
-            confirmLabel={t("members.leave.confirm")}
-            destructive
-            onConfirm={handleLeave}
-        />
+        {/* Members list */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("members.title")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {members.map((member) => {
+              const isMe = member.user_id === user?.id;
+              const isMemberManager = member.role === "manager";
 
-        {/* Invite dialog */}
-        <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
-            <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{t("teams.invite.dialogTitle")}</DialogTitle>
-                <DialogDescription>{t("teams.invite.dialogDesc")}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-                {!inviteCode ? (
-                <Button
-                    onClick={handleGenerateCode}
-                    disabled={inviteLoading}
-                    className="w-full"
+              return (
+                <div
+                  key={member.user_id}
+                  className="flex items-center justify-between rounded-md border px-4 py-3"
                 >
-                    {inviteLoading ? "…" : t("teams.invite.generate")}
-                </Button>
-                ) : (
-                <div className="flex items-center gap-2">
-                    <Input
-                    value={inviteCode}
-                    readOnly
-                    className="font-mono text-lg tracking-widest"
-                    />
-                    <Button variant="outline" onClick={handleCopyCode}>
-                    {copied ? t("teams.invite.copied") : t("teams.invite.copy")}
-                    </Button>
+                  {/* Left: name + role */}
+                  <div>
+                    <span className="font-medium">
+                      {member.display_name}
+                      {isMe && (
+                        <span className="ml-1 text-sm text-muted-foreground">
+                          {t("members.you")}
+                        </span>
+                      )}
+                    </span>
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {t(`members.role.${member.role}`)}
+                    </span>
+                  </div>
+
+                  {/* Right: actions (Manager only, not on self, not on other Managers) */}
+                  {isManager && !isMe && !isMemberManager && (
+                    <div className="flex gap-2">
+                      {member.role === "observer" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleRoleChange(member.user_id, "responder")
+                          }
+                        >
+                          {t("members.promote")}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleRoleChange(member.user_id, "observer")
+                          }
+                        >
+                          {t("members.demote")}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTransferTarget(member)}
+                      >
+                        {t("members.transfer")}
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                )}
-            </div>
-            <DialogFooter>
-                <Button
-                variant="outline"
-                onClick={() => handleInviteOpenChange(false)}
-                >
-                {t("teams.invite.close")}
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transfer confirm */}
+      <ConfirmDialog
+        open={!!transferTarget}
+        onOpenChange={(open) => {
+          if (!open) setTransferTarget(null);
+        }}
+        title={t("members.transfer.title")}
+        description={t("members.transfer.desc").replace(
+          "{name}",
+          transferTarget?.display_name ?? "",
+        )}
+        confirmLabel={t("members.transfer.confirm")}
+        destructive
+        onConfirm={handleTransfer}
+      />
+
+      {/* Leave confirm */}
+      <ConfirmDialog
+        open={leaveOpen}
+        onOpenChange={setLeaveOpen}
+        title={t("members.leave.title")}
+        description={t("members.leave.desc")}
+        confirmLabel={t("members.leave.confirm")}
+        destructive
+        onConfirm={handleLeave}
+      />
+
+      {/* Invite dialog */}
+      <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("teams.invite.dialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("teams.invite.dialogDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!inviteCode ? (
+              <Button
+                onClick={handleGenerateCode}
+                disabled={inviteLoading}
+                className="w-full"
+              >
+                {inviteLoading ? "…" : t("teams.invite.generate")}
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={inviteCode}
+                  readOnly
+                  className="font-mono text-lg tracking-widest"
+                />
+                <Button variant="outline" onClick={handleCopyCode}>
+                  {copied ? t("teams.invite.copied") : t("teams.invite.copy")}
                 </Button>
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => handleInviteOpenChange(false)}
+            >
+              {t("teams.invite.close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

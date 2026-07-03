@@ -7,6 +7,7 @@ const en: Dictionary = {
   "common.retry": "Retry",
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
+  "close": "Close",
 
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",
@@ -40,6 +41,7 @@ const en: Dictionary = {
   "app.shell.noTeamsYet": "No teams yet, create or join one to get started",
   "app.shell.addTeam": "Create or join a team",
   "app.shell.members": "Members",
+  "app.shell.releases": "Releases",
 
   "user.profile": "Profile",
 
@@ -148,8 +150,54 @@ const en: Dictionary = {
   "members.leave.title": "Leave team",
   "members.leave.desc": "Are you sure you want to leave this team? You can rejoin later with a new invitation code.",
   "members.leave.confirm": "Leave",
-
   "members.leave.managerError": "You must transfer the Manager role before leaving.",
+
+  "release.state.created": "Created",
+  "release.state.in_progress": "In Progress",
+  "release.state.completed": "Completed",
+  "release.state.cancelled": "Cancelled",
+  "release.state.blocked": "Blocked",
+
+  "releases.title": "Releases",
+  "releases.new": "New Release",
+  "releases.empty": "No releases yet",
+  "releases.filter.status": "Status",
+  "releases.filter.all": "All",
+
+  "releases.create.dialogTitle": "Create a Release",
+  "releases.create.dialogDesc": "Define the deployment steps in order.",
+  "releases.create.titleLabel": "Title",
+  "releases.create.titlePlaceholder": "e.g. v1.2.0",
+  "releases.create.bodyLabel": "Description",
+  "releases.create.bodyPlaceholder": "Optional description...",
+  "releases.create.stepsLabel": "Steps (sequential)",
+  "releases.create.stepPlaceholder": "Step name",
+  "releases.create.addStep": "+ Add step",
+  "releases.create.cancel": "Cancel",
+  "releases.create.submit": "Create",
+  "releases.create.error.emptyTitle": "Title is required",
+  "releases.create.error.noSteps": "At least one step is required",
+
+  "release.steps.title": "Deployment Steps",
+  "release.step.validate": "Validate",
+  "release.step.validatedAt": "Validated",
+  "release.actions.start": "Start Release",
+  "release.actions.cancel": "Cancel Release",
+  "release.cancel.title": "Cancel this release?",
+  "release.cancel.desc": "This will cancel \"{name}\". This action cannot be undone.",
+  "release.cancel.confirm": "Yes, cancel",
+  "release.blocked.banner": "This release is blocked by an active incident.",
+  "release.info.created": "Created:",
+  "release.info.started": "Started:",
+  "release.info.completed": "Completed:",
+  "release.info.cancelled": "Cancelled:",
+  "release.unlink": "Unlink",
+  "release.actions.link": "Link Incident",
+  "release.linked.title": "Linked Incidents",
+  "release.link.dialogTitle": "Link an Incident",
+  "release.link.dialogDesc": "Select an incident to link to this release.",
+  "release.link.noIncidents": "No incidents available to link.",
+
 };
 
 const dict: Dictionary = en;

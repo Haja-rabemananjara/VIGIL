@@ -1,10 +1,10 @@
 use server::routes;
 use server::state::AppState;
+use server::ws::PresenceTracker;
 use server::ws::broadcaster::Broadcaster;
 use sqlx::{Executor, PgPool};
 use tokio::net::TcpListener;
 use uuid::Uuid;
-use server::ws::PresenceTracker;
 
 #[allow(dead_code)]
 pub struct TestApp {

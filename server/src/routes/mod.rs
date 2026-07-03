@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod incidents;
+pub mod releases;
 pub mod teams;
 pub mod ws;
 
@@ -13,4 +14,5 @@ pub fn router() -> Router<AppState> {
         .merge(teams::routes())
         .merge(incidents::routes())
         .merge(ws::routes())
+        .merge(releases::routes())
 }

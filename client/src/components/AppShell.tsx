@@ -30,8 +30,9 @@ export function AppShell({ children }: AppShellProps) {
   const { status } = useVigilSocket();
 
   // Active team id read from the URL: /teams/{id}/...
-  const activeTeamId =
-    pathname?.startsWith("/teams/") ? pathname.split("/")[2] : null;
+  const activeTeamId = pathname?.startsWith("/teams/")
+    ? pathname.split("/")[2]
+    : null;
 
   useEffect(() => {
     if (!token) return;
@@ -75,17 +76,30 @@ export function AppShell({ children }: AppShellProps) {
                     {team.name}
                   </Link>
                   {team.id === activeTeamId && (
-                    <Link
-                      href={`/teams/${team.id}/members`}
-                      className={cn(
-                        "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
-                        pathname?.includes("/members")
-                          ? "font-medium text-primary"
-                          : "text-muted-foreground hover:bg-muted",
-                      )}
-                    >
-                      {t("app.shell.members")}
-                    </Link>
+                    <>
+                      <Link
+                        href={`/teams/${team.id}/members`}
+                        className={cn(
+                          "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                          pathname?.includes("/members")
+                            ? "font-medium text-primary"
+                            : "text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {t("app.shell.members")}
+                      </Link>
+                      <Link
+                        href={`/teams/${team.id}/releases`}
+                        className={cn(
+                          "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                          pathname?.includes("/releases")
+                            ? "font-medium text-primary"
+                            : "text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {t("app.shell.releases")}
+                      </Link>
+                    </>
                   )}
                 </div>
               ))

@@ -41,7 +41,6 @@ interface InvitationView {
   uses: number;
 }
 
-
 export default function OnboardingPage() {
   const { user, token } = useAuth();
   const router = useRouter();
@@ -64,8 +63,6 @@ export default function OnboardingPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-
-
   // Fetch existing teams on mount.
   useEffect(() => {
     if (!token) return;
@@ -77,7 +74,10 @@ export default function OnboardingPage() {
   // Create team
   function handleCreateOpenChange(next: boolean) {
     setCreateOpen(next);
-    if (!next) { setTeamName(""); setCreateError(""); }
+    if (!next) {
+      setTeamName("");
+      setCreateError("");
+    }
   }
 
   async function handleCreate() {
@@ -90,13 +90,17 @@ export default function OnboardingPage() {
     setCreateError("");
     try {
       const team = await api<TeamView>("/teams", {
-        method: "POST", token, body: { name: trimmed },
+        method: "POST",
+        token,
+        body: { name: trimmed },
       });
       setTeams((prev) => [...prev, team]);
       handleCreateOpenChange(false);
       router.push(`/teams/${team.id}/incidents`);
     } catch (e) {
-      setCreateError(e instanceof ApiError ? e.message : "Something went wrong");
+      setCreateError(
+        e instanceof ApiError ? e.message : "Something went wrong",
+      );
     } finally {
       setCreateLoading(false);
     }
@@ -105,7 +109,10 @@ export default function OnboardingPage() {
   // Join team
   function handleJoinOpenChange(next: boolean) {
     setJoinOpen(next);
-    if (!next) { setJoinCode(""); setJoinError(""); }
+    if (!next) {
+      setJoinCode("");
+      setJoinError("");
+    }
   }
 
   async function handleJoin() {
@@ -117,10 +124,11 @@ export default function OnboardingPage() {
     setJoinLoading(true);
     setJoinError("");
     try {
-      const result = await api<{ team_id: string; team_name: string; role: string }>(
-        "/teams/join",
-        { method: "POST", token, body: { code: trimmed } },
-      );
+      const result = await api<{
+        team_id: string;
+        team_name: string;
+        role: string;
+      }>("/teams/join", { method: "POST", token, body: { code: trimmed } });
       // Add the new team to the local list
       setTeams((prev) => [
         ...prev,
@@ -185,10 +193,10 @@ export default function OnboardingPage() {
   return (
     <RequireAuth>
       <header className="flex h-14 items-center justify-between border-b px-6">
-          <h1 className="text-lg font-semibold">{t("app.name")}</h1>
-          <UserMenu />
+        <h1 className="text-lg font-semibold">{t("app.name")}</h1>
+        <UserMenu />
       </header>
-      <main className="flex min-h-screen items-center justify-center"> 
+      <main className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
             <h1 className="text-2xl font-semibold">
@@ -218,7 +226,9 @@ export default function OnboardingPage() {
                       onClick={() => router.push(`/teams/${team.id}/incidents`)}
                       className="cursor-pointer"
                     >
-                      <span className="font-medium hover:underline">{team.name}</span>
+                      <span className="font-medium hover:underline">
+                        {team.name}
+                      </span>
                       <span className="ml-2 text-sm text-muted-foreground">
                         ({team.role})
                       </span>
@@ -243,9 +253,7 @@ export default function OnboardingPage() {
             <Card>
               <CardHeader>
                 <CardTitle>{t("onboarding.create.title")}</CardTitle>
-                <CardDescription>
-                  {t("onboarding.create.desc")}
-                </CardDescription>
+                <CardDescription>{t("onboarding.create.desc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button className="w-full" onClick={() => setCreateOpen(true)}>
@@ -258,9 +266,7 @@ export default function OnboardingPage() {
             <Card>
               <CardHeader>
                 <CardTitle>{t("onboarding.join.title")}</CardTitle>
-                <CardDescription>
-                  {t("onboarding.join.desc")}
-                </CardDescription>
+                <CardDescription>{t("onboarding.join.desc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button
@@ -281,7 +287,9 @@ export default function OnboardingPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("teams.create.dialogTitle")}</DialogTitle>
-            <DialogDescription>{t("teams.create.dialogDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("teams.create.dialogDesc")}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="team-name">{t("teams.create.nameLabel")}</Label>
@@ -294,10 +302,15 @@ export default function OnboardingPage() {
                 if (e.key === "Enter" && !createLoading) handleCreate();
               }}
             />
-            {createError && <p className="text-sm text-destructive">{createError}</p>}
+            {createError && (
+              <p className="text-sm text-destructive">{createError}</p>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleCreateOpenChange(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleCreateOpenChange(false)}
+            >
               {t("teams.create.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
@@ -325,10 +338,15 @@ export default function OnboardingPage() {
                 if (e.key === "Enter" && !joinLoading) handleJoin();
               }}
             />
-            {joinError && <p className="text-sm text-destructive">{joinError}</p>}
+            {joinError && (
+              <p className="text-sm text-destructive">{joinError}</p>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleJoinOpenChange(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleJoinOpenChange(false)}
+            >
               {t("teams.join.cancel")}
             </Button>
             <Button onClick={handleJoin} disabled={joinLoading}>
@@ -343,16 +361,26 @@ export default function OnboardingPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("teams.invite.dialogTitle")}</DialogTitle>
-            <DialogDescription>{t("teams.invite.dialogDesc")}</DialogDescription>
+            <DialogDescription>
+              {t("teams.invite.dialogDesc")}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {!inviteCode ? (
-              <Button onClick={handleGenerateCode} disabled={inviteLoading} className="w-full">
+              <Button
+                onClick={handleGenerateCode}
+                disabled={inviteLoading}
+                className="w-full"
+              >
                 {inviteLoading ? "…" : t("teams.invite.generate")}
               </Button>
             ) : (
               <div className="flex items-center gap-2">
-                <Input value={inviteCode} readOnly className="font-mono text-lg tracking-widest" />
+                <Input
+                  value={inviteCode}
+                  readOnly
+                  className="font-mono text-lg tracking-widest"
+                />
                 <Button variant="outline" onClick={handleCopyCode}>
                   {copied ? t("teams.invite.copied") : t("teams.invite.copy")}
                 </Button>
@@ -360,7 +388,10 @@ export default function OnboardingPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleInviteOpenChange(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleInviteOpenChange(false)}
+            >
               {t("teams.invite.close")}
             </Button>
           </DialogFooter>
