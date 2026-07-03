@@ -9,6 +9,7 @@ use crate::domain::releases::{
 use crate::error::AppError;
 use crate::repo;
 use crate::ws::{Broadcaster, WsEvent};
+use repo::releases;
 use repo::releases::get_release_by_id;
 use sqlx::PgPool;
 
@@ -66,7 +67,7 @@ pub async fn create_release(
 
     let release_id = Uuid::new_v4();
 
-    let row = repo::releases::create_release(
+    let row = releases::create_release(
         pool,
         release_id,
         team_id,
@@ -78,11 +79,11 @@ pub async fn create_release(
     .await
     .map_err(|e| AppError::Internal(format!("Failed to create release: {e}")))?;
 
-    let steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(row, steps))
+    build_full_response(pool, release_id, row).await
 }
 
 pub async fn list_releases(
@@ -105,7 +106,7 @@ pub async fn list_releases(
         }
     }
 
-    let releases = repo::releases::list_releases(pool, team_id, status_filter.as_deref())
+    let releases = releases::list_releases(pool, team_id, status_filter.as_deref())
         .await
         .map_err(|e| AppError::Internal(format!("Failed to list releases: {e}")))?;
 
@@ -114,7 +115,7 @@ pub async fn list_releases(
     }
 
     let release_ids: Vec<Uuid> = releases.iter().map(|r| r.id).collect();
-    let all_steps = repo::releases::get_steps_for_releases(pool, &release_ids)
+    let all_steps = releases::get_steps_for_releases(pool, &release_ids)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
@@ -154,11 +155,11 @@ pub async fn get_release(
         return Err(AppError::NotFound("Release not found".into()));
     }
 
-    let steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(row, steps))
+    build_full_response(pool, release_id, row).await
 }
 
 async fn fetch_release_for_team(
@@ -178,6 +179,32 @@ async fn fetch_release_for_team(
     Ok(row)
 }
 
+async fn build_full_response(
+    pool: &PgPool,
+    release_id: Uuid,
+    row: crate::domain::releases::ReleaseRow,
+) -> Result<ReleaseResponse, AppError> {
+    let steps = releases::get_steps_for_release(pool, release_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
+
+    let linked_rows = releases::get_linked_incidents(pool, release_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch linked incidents: {e}")))?;
+
+    let linked = linked_rows
+        .into_iter()
+        .map(|r| crate::domain::releases::LinkedIncidentInfo {
+            id: r.id,
+            title: r.title,
+            status: r.status,
+            severity: r.severity,
+        })
+        .collect();
+
+    Ok(ReleaseResponse::from_row(row, steps, linked))
+}
+
 pub async fn start_release(
     pool: &PgPool,
     release_id: Uuid,
@@ -195,16 +222,15 @@ pub async fn start_release(
         )));
     }
 
-    let updated =
-        repo::releases::update_release_status(pool, release_id, ReleaseStatus::InProgress.as_str())
-            .await
-            .map_err(|e| AppError::Internal(format!("Failed to update release: {e}")))?;
+    releases::update_release_status(pool, release_id, ReleaseStatus::InProgress.as_str())
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to update release: {e}")))?;
 
-    let steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(updated, steps))
+    build_full_response(pool, release_id, row).await
 }
 
 pub async fn validate_step(
@@ -232,7 +258,7 @@ pub async fn validate_step(
         )));
     }
 
-    let step = repo::releases::get_step_by_id(pool, step_id)
+    let step = releases::get_step_by_id(pool, step_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch step: {e}")))?
         .ok_or_else(|| AppError::NotFound("Step not found".into()))?;
@@ -245,13 +271,13 @@ pub async fn validate_step(
         return Err(AppError::Conflict("Step already validated".into()));
     }
 
-    let all_steps = repo::releases::get_steps_for_release(pool, release_id)
+    let all_steps = releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
     can_validate_step(step.position, &all_steps).map_err(AppError::Validation)?;
 
-    repo::releases::validate_step(pool, step_id, validated_by)
+    releases::validate_step(pool, step_id, validated_by)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to validate step: {e}")))?;
 
@@ -261,18 +287,18 @@ pub async fn validate_step(
         .count();
 
     let final_row = if unvalidated_count == 1 {
-        repo::releases::update_release_status(pool, release_id, ReleaseStatus::Completed.as_str())
+        releases::update_release_status(pool, release_id, ReleaseStatus::Completed.as_str())
             .await
             .map_err(|e| AppError::Internal(format!("Failed to complete release: {e}")))?
     } else {
         row
     };
 
-    let updated_steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(final_row, updated_steps))
+    build_full_response(pool, release_id, final_row).await
 }
 
 pub async fn cancel_release(
@@ -293,15 +319,15 @@ pub async fn cancel_release(
     }
 
     let updated =
-        repo::releases::update_release_status(pool, release_id, ReleaseStatus::Cancelled.as_str())
+        releases::update_release_status(pool, release_id, ReleaseStatus::Cancelled.as_str())
             .await
             .map_err(|e| AppError::Internal(format!("Failed to cancel release: {e}")))?;
 
-    let steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(updated, steps))
+    build_full_response(pool, release_id, updated).await
 }
 
 pub async fn link_incident(
@@ -333,7 +359,7 @@ pub async fn link_incident(
         return Err(AppError::NotFound("Incident not found".into()));
     }
 
-    let already_linked = repo::releases::has_active_link(pool, release_id, incident_id)
+    let already_linked = releases::has_active_link(pool, release_id, incident_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to check link: {e}")))?;
 
@@ -343,18 +369,15 @@ pub async fn link_incident(
         ));
     }
 
-    repo::releases::create_incident_link(pool, Uuid::new_v4(), release_id, incident_id, linked_by)
+    releases::create_incident_link(pool, Uuid::new_v4(), release_id, incident_id, linked_by)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to create link: {e}")))?;
 
     let final_row = if current == ReleaseStatus::InProgress && incident.status != "resolved" {
-        let blocked = repo::releases::update_release_status(
-            pool,
-            release_id,
-            ReleaseStatus::Blocked.as_str(),
-        )
-        .await
-        .map_err(|e| AppError::Internal(format!("Failed to block release: {e}")))?;
+        let blocked =
+            releases::update_release_status(pool, release_id, ReleaseStatus::Blocked.as_str())
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to block release: {e}")))?;
 
         broadcaster
             .to_team(
@@ -372,11 +395,11 @@ pub async fn link_incident(
         release
     };
 
-    let steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(final_row, steps))
+    build_full_response(pool, release_id, final_row).await
 }
 
 pub async fn unlink_incident(
@@ -388,7 +411,7 @@ pub async fn unlink_incident(
 ) -> Result<ReleaseResponse, AppError> {
     let release = fetch_release_for_team(pool, release_id, team_id).await?;
 
-    let removed = repo::releases::remove_incident_link(pool, release_id, incident_id)
+    let removed = releases::remove_incident_link(pool, release_id, incident_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to remove link: {e}")))?;
 
@@ -407,11 +430,11 @@ pub async fn unlink_incident(
         release
     };
 
-    let steps = repo::releases::get_steps_for_release(pool, release_id)
+    releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
-    Ok(ReleaseResponse::from_row(final_row, steps))
+    build_full_response(pool, release_id, final_row).await
 }
 
 async fn try_unblock_release(
@@ -420,18 +443,15 @@ async fn try_unblock_release(
     release_id: Uuid,
     team_id: Uuid,
 ) -> Result<crate::domain::releases::ReleaseRow, AppError> {
-    let count = repo::releases::count_active_unresolved_links(pool, release_id)
+    let count = releases::count_active_unresolved_links(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to count links: {e}")))?;
 
     if count == 0 {
-        let unblocked = repo::releases::update_release_status(
-            pool,
-            release_id,
-            ReleaseStatus::InProgress.as_str(),
-        )
-        .await
-        .map_err(|e| AppError::Internal(format!("Failed to unblock release: {e}")))?;
+        let unblocked =
+            releases::update_release_status(pool, release_id, ReleaseStatus::InProgress.as_str())
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to unblock release: {e}")))?;
 
         broadcaster
             .to_team(
@@ -458,7 +478,7 @@ pub async fn check_and_unblock_releases_for_incident(
     broadcaster: Broadcaster,
     incident_id: Uuid,
 ) -> Result<(), AppError> {
-    let blocked_releases = repo::releases::get_blocked_releases_for_incident(pool, incident_id)
+    let blocked_releases = releases::get_blocked_releases_for_incident(pool, incident_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to find linked releases: {e}")))?;
 

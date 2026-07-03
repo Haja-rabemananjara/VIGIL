@@ -7,6 +7,7 @@ const en: Dictionary = {
   "common.retry": "Retry",
   "common.cancel": "Cancel",
   "common.confirm": "Confirm",
+  "close": "Close",
 
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",
@@ -190,6 +191,13 @@ const en: Dictionary = {
   "release.info.started": "Started:",
   "release.info.completed": "Completed:",
   "release.info.cancelled": "Cancelled:",
+  "release.unlink": "Unlink",
+  "release.actions.link": "Link Incident",
+  "release.linked.title": "Linked Incidents",
+  "release.link.dialogTitle": "Link an Incident",
+  "release.link.dialogDesc": "Select an incident to link to this release.",
+  "release.link.noIncidents": "No incidents available to link.",
+
 };
 
 const dict: Dictionary = en;

@@ -18,6 +18,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVigilSocket } from "@/stores/socket";
 import { ShieldAlert } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { StateBadge, type IncidentState } from "@/components/StateBadge";
+import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
+import { Link2, Unlink } from "lucide-react";
 
 interface ReleaseDetail {
   id: string;
@@ -33,6 +44,21 @@ interface ReleaseDetail {
   cancelled_at: number | null;
   steps: ReleaseStep[];
   progress: { completed: number; total: number };
+  linked_incidents: LinkedIncident[];
+}
+
+interface IncidentRow {
+  id: string;
+  title: string;
+  status: IncidentState;
+  severity: Severity;
+}
+
+interface LinkedIncident {
+  id: string;
+  title: string;
+  status: string;
+  severity: string;
 }
 
 export function ReleaseDetailClient() {
@@ -53,6 +79,12 @@ export function ReleaseDetailClient() {
   const [starting, setStarting] = useState(false);
   const [validating, setValidating] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+
+    // Link incident dialog
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [teamIncidents, setTeamIncidents] = useState<IncidentRow[]>([]);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [unlinkLoading, setUnlinkLoading] = useState<string | null>(null);
 
   const { lastEvent, reconnectCount } = useVigilSocket();
 
@@ -167,6 +199,58 @@ export function ReleaseDetailClient() {
     }
   }
 
+   // Link/Unlink
+  async function openLinkDialog() {
+    setLinkOpen(true);
+    try {
+      const data = await api<{ incidents: IncidentRow[] }>(
+        `/teams/${teamId}/incidents`,
+        { token },
+      );
+      // Filter out already-linked incidents
+      const linkedIds = new Set(
+        release?.linked_incidents?.map((li: LinkedIncident) => li.id) ?? [],
+      );
+      setTeamIncidents(
+        data.incidents.filter((inc) => !linkedIds.has(inc.id)),
+      );
+    } catch {
+      /* keep dialog open with empty list */
+    }
+  }
+
+  async function handleLinkIncident(incidentId: string) {
+    setLinkLoading(true);
+    try {
+      const data = await api<ReleaseDetail>(
+        `/teams/${teamId}/releases/${releaseId}/link`,
+        { method: "POST", token, body: { incident_id: incidentId } },
+      );
+      setRelease(data);
+      setLinkOpen(false);
+    } catch (e) {
+      setActionError(e instanceof ApiError ? e.message : t("common.error"));
+    } finally {
+      setLinkLoading(false);
+    }
+  }
+
+  async function handleUnlinkIncident(incidentId: string) {
+    setUnlinkLoading(incidentId);
+    setActionError("");
+    try {
+      const data = await api<ReleaseDetail>(
+        `/teams/${teamId}/releases/${releaseId}/unlink`,
+        { method: "POST", token, body: { incident_id: incidentId } },
+      );
+      setRelease(data);
+    } catch (e) {
+      setActionError(e instanceof ApiError ? e.message : t("common.error"));
+    } finally {
+      setUnlinkLoading(null);
+    }
+  }
+
   // Render
   if (loading) {
     return (
@@ -212,12 +296,78 @@ export function ReleaseDetailClient() {
 
         {/* Blocked banner */}
         {release.status === "blocked" && (
-          <div className="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/5 px-4 py-3">
-            <ShieldAlert className="h-5 w-5 text-destructive" />
-            <p className="text-sm font-medium text-destructive">
-              {t("release.blocked.banner")}
-            </p>
+          <div className="rounded-lg border border-destructive/50 bg-destructive/5 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              <p className="text-sm font-medium text-destructive">
+                {t("release.blocked.banner")}
+              </p>
+            </div>
+            {release.linked_incidents?.length > 0 && (
+              <div className="mt-2 space-y-1 pl-8">
+                {release.linked_incidents
+                  .filter((li: LinkedIncident) => li.status !== "resolved")
+                  .map((li: LinkedIncident) => (
+                    <button
+                      key={li.id}
+                      onClick={() =>
+                        router.push(`/teams/${teamId}/incidents/${li.id}`)
+                      }
+                      className="text-sm text-destructive underline hover:no-underline"
+                    >
+                      {li.title}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Linked incidents */}
+        {release.linked_incidents?.length > 0 && release.status !== "blocked" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Link2 className="h-4 w-4" />
+                {t("release.linked.title")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {release.linked_incidents.map((li: LinkedIncident) => (
+                <div
+                  key={li.id}
+                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                >
+                  <button
+                    onClick={() =>
+                      router.push(`/teams/${teamId}/incidents/${li.id}`)
+                    }
+                    className="text-sm font-medium hover:underline"
+                  >
+                    {li.title}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <StateBadge state={li.status as IncidentState} />
+                    <SeverityBadge severity={li.severity as Severity} />
+                    {isManager && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUnlinkIncident(li.id)}
+                        disabled={unlinkLoading === li.id}
+                        className="relative group"
+                      >
+                        <Unlink className="h-3.5 w-3.5" />
+                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 scale-0 rounded bg-gray-800 px-2 py-1 text-xs text-white transition-all group-hover:scale-100 z-10">
+                          {t("release.unlink")}
+                        </span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
         {/* Action error */}
@@ -235,6 +385,12 @@ export function ReleaseDetailClient() {
           {isManager && !isTerminal && (
             <Button variant="destructive" onClick={() => setCancelOpen(true)}>
               {t("release.actions.cancel")}
+            </Button>
+          )}
+          {isManager && !isTerminal && (
+            <Button variant="outline" onClick={openLinkDialog}>
+              <Link2 className="mr-2 h-4 w-4" />
+              {t("release.actions.link")}
             </Button>
           )}
         </div>
@@ -296,6 +452,47 @@ export function ReleaseDetailClient() {
         destructive
         onConfirm={handleCancel}
       />
+
+      {/* Link incident dialog */}
+      <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("release.link.dialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("release.link.dialogDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 space-y-1 overflow-auto">
+            {teamIncidents.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                {t("release.link.noIncidents")}
+              </p>
+            ) : (
+              teamIncidents.map((inc) => (
+                <button
+                  key={inc.id}
+                  onClick={() => handleLinkIncident(inc.id)}
+                  disabled={linkLoading}
+                  className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left transition-colors hover:bg-muted/50 disabled:opacity-50"
+                >
+                  <span className="text-sm font-medium truncate">
+                    {inc.title}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <StateBadge state={inc.status} />
+                    <SeverityBadge severity={inc.severity} />
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkOpen(false)}>
+              {t("close")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

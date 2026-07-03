@@ -109,6 +109,7 @@ pub struct ReleaseResponse {
     pub cancelled_at: Option<i64>,
     pub steps: Vec<ReleaseStepResponse>,
     pub progress: ReleaseProgress,
+    pub linked_incidents: Vec<LinkedIncidentInfo>,
 }
 
 #[derive(Debug, Serialize)]
@@ -126,8 +127,20 @@ pub struct ReleaseProgress {
     pub total: usize,
 }
 
+#[derive(Debug, Serialize)]
+pub struct LinkedIncidentInfo {
+    pub id: Uuid,
+    pub title: String,
+    pub status: String,
+    pub severity: String,
+}
+
 impl ReleaseResponse {
-    pub fn from_row(row: ReleaseRow, step_rows: Vec<ReleaseStepRow>) -> Self {
+    pub fn from_row(
+        row: ReleaseRow,
+        step_rows: Vec<ReleaseStepRow>,
+        linked_incidents: Vec<LinkedIncidentInfo>,
+    ) -> Self {
         let status = ReleaseStatus::from_db(&row.status).unwrap_or(ReleaseStatus::Created);
 
         let steps: Vec<ReleaseStepResponse> = step_rows
@@ -160,6 +173,7 @@ impl ReleaseResponse {
             cancelled_at: row.cancelled_at.map(|dt| dt.timestamp()),
             steps,
             progress,
+            linked_incidents,
         }
     }
 }

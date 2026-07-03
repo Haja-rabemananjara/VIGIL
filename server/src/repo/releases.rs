@@ -327,3 +327,29 @@ pub async fn get_blocked_releases_for_incident(
     .fetch_all(pool)
     .await
 }
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct LinkedIncidentRow {
+    pub id: Uuid,
+    pub title: String,
+    pub status: String,
+    pub severity: String,
+}
+
+pub async fn get_linked_incidents(
+    pool: &PgPool,
+    release_id: Uuid,
+) -> sqlx::Result<Vec<LinkedIncidentRow>> {
+    sqlx::query_as::<_, LinkedIncidentRow>(
+        r#"
+        SELECT i.id, i.title, i.status, i.severity
+        FROM incidents i
+        JOIN release_incident_links ril ON ril.incident_id = i.id
+        WHERE ril.release_id = $1 AND ril.status = 'active'
+        ORDER BY ril.linked_at DESC
+        "#,
+    )
+    .bind(release_id)
+    .fetch_all(pool)
+    .await
+}
