@@ -125,13 +125,29 @@ export function ReleasesClient() {
     if (lastEvent.type === "release_state_changed") {
       const eventId = lastEvent.release_id as string;
       const newState = lastEvent.new_state as string;
+
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setReleases((prev) =>
-        prev.map((r) =>
-          r.id === eventId ? { ...r, status: newState as ReleaseState } : r,
-        ),
-      );
+      setReleases((prev) => {
+        const exists = prev.some((r) => r.id === eventId);
+        if (exists) {
+          return prev.map((r) =>
+            r.id === eventId ? { ...r, status: newState as ReleaseState } : r,
+          );
+        }
+        return prev;
+      });
+
+      // New release created: fetch full data (same pattern as incidents)
+      if (newState === "created") {
+        api<ReleaseRow[]>(
+          `/teams/${teamId}/releases`,
+          { token: token! },
+        )
+          .then((data) => setReleases(data))
+          .catch(() => {});
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, teamId]);
 
   // Create dialog handlers

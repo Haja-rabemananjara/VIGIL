@@ -146,10 +146,20 @@ export function ReleaseDetailClient() {
       lastEvent.release_id === releaseId
     ) {
       // Re-fetch to get full updated state
+
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRelease();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    if (
+      (lastEvent.type === "release_state_changed" ||
+       lastEvent.type === "release_step_validated") &&
+      lastEvent.release_id === releaseId
+    ) {
+      fetchRelease();
+    }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, teamId, releaseId]);
 
   // Actions

@@ -36,6 +36,7 @@ pub async fn create(
 
     let release = services::releases::create_release(
         &state.pool,
+        state.broadcaster.clone(),
         member.team_id,
         member.user_id,
         payload.title,
@@ -79,8 +80,13 @@ pub async fn start(
         ));
     }
 
-    let release =
-        services::releases::start_release(&state.pool, release_id, member.team_id).await?;
+    let release = services::releases::start_release(
+        &state.pool,
+        state.broadcaster.clone(),
+        release_id,
+        member.team_id,
+    )
+    .await?;
 
     Ok(Json(release))
 }
@@ -98,6 +104,7 @@ pub async fn validate_step(
 
     let release = services::releases::validate_step(
         &state.pool,
+        state.broadcaster.clone(),
         release_id,
         step_id,
         member.team_id,
@@ -119,8 +126,13 @@ pub async fn cancel(
         ));
     }
 
-    let release =
-        services::releases::cancel_release(&state.pool, release_id, member.team_id).await?;
+    let release = services::releases::cancel_release(
+        &state.pool,
+        state.broadcaster.clone(),
+        release_id,
+        member.team_id,
+    )
+    .await?;
 
     Ok(Json(release))
 }

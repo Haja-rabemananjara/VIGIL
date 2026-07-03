@@ -57,6 +57,14 @@ pub enum WsEvent {
         release_id: Uuid,
         new_state: String,
     },
+
+    ReleaseStepValidated {
+        team_id: Uuid,
+        release_id: Uuid,
+        step_id: Uuid,
+        step_name: String,
+        by: Uuid,
+    },
 }
 
 #[derive(Debug, Deserialize)]

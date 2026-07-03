@@ -15,6 +15,7 @@ use sqlx::PgPool;
 
 pub async fn create_release(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     team_id: Uuid,
     created_by: Uuid,
     title: String,
@@ -82,6 +83,17 @@ pub async fn create_release(
     releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
+
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseStateChanged {
+                team_id,
+                release_id,
+                new_state: "created".to_string(),
+            },
+        )
+        .await;
 
     build_full_response(pool, release_id, row).await
 }
@@ -207,6 +219,7 @@ async fn build_full_response(
 
 pub async fn start_release(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     release_id: Uuid,
     team_id: Uuid,
 ) -> Result<ReleaseResponse, AppError> {
@@ -222,7 +235,7 @@ pub async fn start_release(
         )));
     }
 
-    releases::update_release_status(pool, release_id, ReleaseStatus::InProgress.as_str())
+    let row = releases::update_release_status(pool, release_id, ReleaseStatus::InProgress.as_str())
         .await
         .map_err(|e| AppError::Internal(format!("Failed to update release: {e}")))?;
 
@@ -230,11 +243,23 @@ pub async fn start_release(
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseStateChanged {
+                team_id,
+                release_id,
+                new_state: "in_progress".to_string(),
+            },
+        )
+        .await;
+
     build_full_response(pool, release_id, row).await
 }
 
 pub async fn validate_step(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     release_id: Uuid,
     step_id: Uuid,
     team_id: Uuid,
@@ -281,6 +306,19 @@ pub async fn validate_step(
         .await
         .map_err(|e| AppError::Internal(format!("Failed to validate step: {e}")))?;
 
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseStepValidated {
+                team_id,
+                release_id,
+                step_id,
+                step_name: step.name.clone(),
+                by: validated_by,
+            },
+        )
+        .await;
+
     let unvalidated_count = all_steps
         .iter()
         .filter(|s| s.validated_by.is_none())
@@ -294,6 +332,17 @@ pub async fn validate_step(
         row
     };
 
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseStateChanged {
+                team_id,
+                release_id,
+                new_state: "completed".to_string(),
+            },
+        )
+        .await;
+
     releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
@@ -303,6 +352,7 @@ pub async fn validate_step(
 
 pub async fn cancel_release(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     release_id: Uuid,
     team_id: Uuid,
 ) -> Result<ReleaseResponse, AppError> {
@@ -326,6 +376,17 @@ pub async fn cancel_release(
     releases::get_steps_for_release(pool, release_id)
         .await
         .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
+
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseStateChanged {
+                team_id,
+                release_id,
+                new_state: "cancelled".to_string(),
+            },
+        )
+        .await;
 
     build_full_response(pool, release_id, updated).await
 }
