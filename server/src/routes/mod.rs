@@ -2,6 +2,7 @@ pub mod auth;
 pub mod incidents;
 pub mod releases;
 pub mod teams;
+pub mod webhooks;
 pub mod ws;
 
 use crate::state::AppState;
@@ -15,4 +16,5 @@ pub fn router() -> Router<AppState> {
         .merge(incidents::routes())
         .merge(ws::routes())
         .merge(releases::routes())
+        .merge(webhooks::routes())
 }

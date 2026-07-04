@@ -77,6 +77,7 @@ pub async fn spawn_app() -> TestApp {
         pool: pool.clone(),
         broadcaster,
         presence,
+        webhook_secret: "test-webhook-secret".to_string(),
     };
 
     let app = routes::router()

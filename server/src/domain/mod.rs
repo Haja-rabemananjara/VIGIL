@@ -4,3 +4,4 @@ pub mod invitation;
 pub mod releases;
 pub mod team;
 pub mod user;
+pub mod webhooks;

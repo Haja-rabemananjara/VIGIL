@@ -6,4 +6,5 @@ pub struct AppState {
     pub pool: PgPool,
     pub broadcaster: Broadcaster,
     pub presence: PresenceTracker,
+    pub webhook_secret: String,
 }

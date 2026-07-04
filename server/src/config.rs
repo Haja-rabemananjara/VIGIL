@@ -2,6 +2,7 @@ pub struct Config {
     pub database_url: String,
     pub server_host: String,
     pub server_port: u16,
+    pub webhook_secret: String,
 }
 
 impl Config {
@@ -15,10 +16,14 @@ impl Config {
             .parse::<u16>()
             .map_err(|_| "SERVER_PORT must be a valid port number")?;
 
+        let webhook_secret =
+            std::env::var("WEBHOOK_SECRET").unwrap_or_else(|_| "dev-webhook-secret".to_string());
+
         Ok(Self {
             database_url,
             server_host,
             server_port,
+            webhook_secret,
         })
     }
 }
