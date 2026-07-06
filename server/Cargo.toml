@@ -45,6 +45,7 @@ hex = "0.4.3"
 async-trait = "0.1.89"
 dashmap = "6.2.1"
 hmac = "0.12"
+aes-gcm = "0.10"
 
 [dev-dependencies]
 futures-util = "0.3.32"

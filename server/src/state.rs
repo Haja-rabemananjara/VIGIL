@@ -1,3 +1,4 @@
+use crate::crypto::KEY_LEN;
 use crate::ws::{Broadcaster, presence::PresenceTracker};
 use sqlx::PgPool;
 
@@ -7,4 +8,5 @@ pub struct AppState {
     pub broadcaster: Broadcaster,
     pub presence: PresenceTracker,
     pub webhook_secret: String,
+    pub master_key: [u8; KEY_LEN],
 }

@@ -1,4 +1,5 @@
 pub mod config;
+pub mod crypto;
 pub mod domain;
 pub mod error;
 pub mod extractors;

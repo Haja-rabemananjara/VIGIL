@@ -78,6 +78,7 @@ pub async fn spawn_app() -> TestApp {
         broadcaster,
         presence,
         webhook_secret: "test-webhook-secret".to_string(),
+        master_key: [0x42; 32],
     };
 
     let app = routes::router()

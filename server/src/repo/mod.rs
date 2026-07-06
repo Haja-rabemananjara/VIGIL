@@ -2,6 +2,7 @@ pub mod incidents;
 pub mod invitations;
 pub mod releases;
 pub mod rules;
+pub mod service_connections;
 pub mod session;
 pub mod teams;
 pub mod user;

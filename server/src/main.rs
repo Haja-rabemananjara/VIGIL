@@ -33,6 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         broadcaster: Broadcaster::new(pool.clone()),
         presence: PresenceTracker::new(),
         webhook_secret: config.webhook_secret,
+        master_key: config.master_key,
     };
 
     let cors = CorsLayer::new()

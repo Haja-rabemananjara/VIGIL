@@ -1,8 +1,11 @@
+use crate::crypto::{self, KEY_LEN};
+
 pub struct Config {
     pub database_url: String,
     pub server_host: String,
     pub server_port: u16,
     pub webhook_secret: String,
+    pub master_key: [u8; KEY_LEN],
 }
 
 impl Config {
@@ -19,11 +22,16 @@ impl Config {
         let webhook_secret =
             std::env::var("WEBHOOK_SECRET").unwrap_or_else(|_| "dev-webhook-secret".to_string());
 
+        let master_key_hex = std::env::var("MASTER_KEY")
+            .map_err(|_| "MASTER_KEY must be set (64 hex char = 32 bytes")?;
+        let master_key = crypto::parse_key_from_hex(&master_key_hex)?;
+
         Ok(Self {
             database_url,
             server_host,
             server_port,
             webhook_secret,
+            master_key,
         })
     }
 }
