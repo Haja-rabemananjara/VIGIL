@@ -1,6 +1,7 @@
 pub mod incidents;
 pub mod invitations;
 pub mod releases;
+pub mod rules;
 pub mod session;
 pub mod teams;
 pub mod user;
