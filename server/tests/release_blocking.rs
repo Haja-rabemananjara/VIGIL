@@ -96,7 +96,6 @@ async fn create_incident(address: &str, token: &str, team_id: Uuid, title: &str)
 
 async fn resolve_incident(address: &str, token: &str, team_id: Uuid, incident_id: &str) {
     let client = reqwest::Client::new();
-    // open → acknowledged
     client
         .patch(format!(
             "{address}/teams/{team_id}/incidents/{incident_id}/status"

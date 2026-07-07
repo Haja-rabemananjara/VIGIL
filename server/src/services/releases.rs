@@ -272,7 +272,7 @@ pub async fn validate_step(
 
     if current == ReleaseStatus::Blocked {
         return Err(AppError::Conflict(
-            "Release is blocked by an active incident - resolve it first".into(),
+            "Release is blocked by an active incident. Resolve it first".into(),
         ));
     }
 

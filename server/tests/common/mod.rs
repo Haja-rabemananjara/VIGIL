@@ -32,7 +32,7 @@ impl TestApp {
                     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{}'",
                     self.db_name
                 )
-                    .as_str(),
+                .as_str(),
             )
             .await
             .unwrap();
@@ -53,13 +53,12 @@ async fn ensure_template_exists() {
 
     let maintenance_pool = PgPool::connect(&maintenance_url()).await.unwrap();
 
-    let exists: (bool,) = sqlx::query_as(
-        "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)",
-    )
-        .bind(TEMPLATE_DB_NAME)
-        .fetch_one(&maintenance_pool)
-        .await
-        .unwrap();
+    let exists: (bool,) =
+        sqlx::query_as("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)")
+            .bind(TEMPLATE_DB_NAME)
+            .fetch_one(&maintenance_pool)
+            .await
+            .unwrap();
 
     if exists.0 {
         *initialized = true;
@@ -71,7 +70,10 @@ async fn ensure_template_exists() {
         .await
         .unwrap();
 
-    let template_url = format!("postgres://vigil:vigil_dev@localhost:5432/{}", TEMPLATE_DB_NAME);
+    let template_url = format!(
+        "postgres://vigil:vigil_dev@localhost:5432/{}",
+        TEMPLATE_DB_NAME
+    );
     let template_pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(1)
         .connect(&template_url)
@@ -107,7 +109,7 @@ pub async fn spawn_app() -> TestApp {
                 "CREATE DATABASE \"{}\" TEMPLATE \"{}\"",
                 db_name, TEMPLATE_DB_NAME
             )
-                .as_str(),
+            .as_str(),
         )
         .await
         .unwrap();
@@ -125,6 +127,15 @@ pub async fn spawn_app() -> TestApp {
     let registry = server::hooks::ReactionRegistry::builder()
         .register(std::sync::Arc::new(
             server::hooks::reactions::VigilCreateIncident::new(),
+        ))
+        .register(std::sync::Arc::new(
+            server::hooks::reactions::VigilEscalateIncident::new(),
+        ))
+        .register(std::sync::Arc::new(
+            server::hooks::reactions::VigilBlockRelease::new(),
+        ))
+        .register(std::sync::Arc::new(
+            server::hooks::reactions::VigilValidateReleaseStep::new(),
         ))
         .build();
 

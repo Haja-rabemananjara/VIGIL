@@ -8,7 +8,9 @@ use tracing_subscriber::EnvFilter;
 
 use axum::http::{HeaderValue, Method};
 use server::hooks::ReactionRegistry;
-use server::hooks::reactions::VigilCreateIncident;
+use server::hooks::reactions::{
+    VigilBlockRelease, VigilCreateIncident, VigilEscalateIncident, VigilValidateReleaseStep,
+};
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -33,6 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let registry = ReactionRegistry::builder()
         .register(Arc::new(VigilCreateIncident::new()))
+        .register(Arc::new(VigilEscalateIncident::new()))
+        .register(Arc::new(VigilBlockRelease::new()))
+        .register(Arc::new(VigilValidateReleaseStep::new()))
         .build();
 
     let state = AppState {
