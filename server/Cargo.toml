@@ -42,7 +42,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dotenvy = "0.15"
 time = "0.3.49"
 hex = "0.4.3"
-async-trait = "0.1.89"
+async-trait = "0.1"
 dashmap = "6.2.1"
 hmac = "0.12"
 aes-gcm = "0.10"

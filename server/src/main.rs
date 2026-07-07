@@ -2,10 +2,13 @@ use server::config::Config;
 use server::routes;
 use server::state::AppState;
 use server::ws::{broadcaster::Broadcaster, presence::PresenceTracker};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 use axum::http::{HeaderValue, Method};
+use server::hooks::ReactionRegistry;
+use server::hooks::reactions::VigilCreateIncident;
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -28,12 +31,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Connected to PostgreSQL");
 
+    let registry = ReactionRegistry::builder()
+        .register(Arc::new(VigilCreateIncident::new()))
+        .build();
+
     let state = AppState {
         pool: pool.clone(),
         broadcaster: Broadcaster::new(pool.clone()),
         presence: PresenceTracker::new(),
         webhook_secret: config.webhook_secret,
         master_key: config.master_key,
+        registry,
     };
 
     let cors = CorsLayer::new()

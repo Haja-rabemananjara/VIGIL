@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::domain::rules::{CreateRuleInput, Rule, UpdateRuleInput};
 use crate::error::AppError;
+use crate::hooks::ReactionRegistry;
 use crate::repo::{
     self,
     rules::{NewRule, RulePatch},
@@ -19,19 +20,9 @@ fn known_trigger(service: &str, event: &str) -> bool {
     )
 }
 
-fn known_reaction(reaction_type: &str) -> bool {
-    matches!(
-        reaction_type,
-        "vigil_create_incident"
-            | "vigil_escalate_incident"
-            | "vigil_block_release"
-            | "vigil_validate_release_step"
-            | "discord_message"
-    )
-}
-
 pub async fn create_rule(
     pool: &PgPool,
+    registry: &ReactionRegistry,
     team_id: Uuid,
     actor_id: Uuid,
     input: CreateRuleInput,
@@ -49,7 +40,7 @@ pub async fn create_rule(
         )));
     }
 
-    if !known_reaction(&input.reaction.reaction_type) {
+    if !registry.contains(&input.reaction.reaction_type) {
         return Err(AppError::Validation(format!(
             "Unknown reaction: {}",
             input.reaction.reaction_type
@@ -99,6 +90,7 @@ pub async fn get_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<Rul
 
 pub async fn update_rule(
     pool: &PgPool,
+    registry: &ReactionRegistry,
     team_id: Uuid,
     rule_id: Uuid,
     input: UpdateRuleInput,
@@ -112,7 +104,7 @@ pub async fn update_rule(
         )));
     }
     if let Some(reaction) = &input.reaction
-        && !known_reaction(&reaction.reaction_type)
+        && !registry.contains(&reaction.reaction_type)
     {
         return Err(AppError::Validation(format!(
             "Unknown reaction: {}",

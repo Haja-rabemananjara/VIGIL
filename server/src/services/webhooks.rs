@@ -4,7 +4,9 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::error::AppError;
+use crate::hooks::ReactionRegistry;
 use crate::repo::{self, webhooks::NewDelivery};
+use crate::ws::Broadcaster;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -65,15 +67,30 @@ pub async fn persist_delivery(
 
 pub async fn process_delivery(
     pool: &PgPool,
+    broadcaster: &Broadcaster,
+    registry: &ReactionRegistry,
     delivery_id: Uuid,
-    _service: &str,
-    _event_type: &str,
-    _payload: &serde_json::Value,
+    service: &str,
+    event_type: &str,
+    payload: &serde_json::Value,
 ) {
     tracing::info!(
         delivery_id = %delivery_id,
-        "Processing webhook delivery (placeholder — VGL-073 will add rule matching)"
+        service = %service,
+        event = %event_type,
+        "Processing webhook delivery"
     );
+
+    crate::hooks::engine::evaluate(
+        pool,
+        broadcaster,
+        registry,
+        service,
+        event_type,
+        payload,
+        delivery_id,
+    )
+    .await;
 
     if let Err(e) = repo::webhooks::mark_processed(pool, delivery_id).await {
         tracing::error!(error = %e, "Failed to mark delivery as processed");

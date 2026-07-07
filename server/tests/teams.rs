@@ -111,7 +111,7 @@ async fn create_team_with_blank_name_returns_422() {
     let res = client
         .post(format!("{}/teams", app.address))
         .bearer_auth(&token)
-        .json(&json!({ "name": "   " })) // whitespace only
+        .json(&json!({ "name": "   " }))
         .send()
         .await
         .unwrap();

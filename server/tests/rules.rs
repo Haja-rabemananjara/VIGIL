@@ -142,7 +142,7 @@ async fn non_member_cannot_create_rule_returns_404() {
     let client = reqwest::Client::new();
     let res = client
         .post(format!("{}/teams/{team_id}/rules", app.address))
-        .bearer_auth(&charlie) // Not a member — should get 404, not 403
+        .bearer_auth(&charlie)
         .json(&valid_rule_payload())
         .send()
         .await

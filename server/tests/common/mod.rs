@@ -73,12 +73,19 @@ pub async fn spawn_app() -> TestApp {
     let broadcaster = Broadcaster::new(pool.clone());
     let presence = PresenceTracker::new();
 
+    let registry = server::hooks::ReactionRegistry::builder()
+        .register(std::sync::Arc::new(
+            server::hooks::reactions::VigilCreateIncident::new(),
+        ))
+        .build();
+
     let state = AppState {
         pool: pool.clone(),
         broadcaster,
         presence,
         webhook_secret: "test-webhook-secret".to_string(),
         master_key: [0x42; 32],
+        registry,
     };
 
     let app = routes::router()

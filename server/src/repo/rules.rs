@@ -165,3 +165,33 @@ pub async fn delete_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<
 
     Ok(result.rows_affected() > 0)
 }
+
+pub async fn list_matching_rules(
+    pool: &PgPool,
+    trigger_service: &str,
+    trigger_event: &str,
+) -> Result<Vec<Rule>, sqlx::Error> {
+    let rows = sqlx::query_as!(
+        Rule,
+        r#"
+        SELECT
+            id, team_id, name, enabled,
+            trigger_service, trigger_event,
+            trigger_filters as "trigger_filters: serde_json::Value",
+            reaction_type,
+            reaction_payload as "reaction_payload: serde_json::Value",
+            created_by, created_at, updated_at
+        FROM rules
+        WHERE trigger_service = $1
+          AND trigger_event = $2
+          AND enabled = true
+        ORDER BY created_at ASC
+        "#,
+        trigger_service,
+        trigger_event,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}

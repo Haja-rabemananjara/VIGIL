@@ -43,11 +43,15 @@ pub async fn receive_github(
     .await?;
 
     let pool = state.pool.clone();
+    let broadcaster = state.broadcaster.clone();
+    let registry = state.registry.clone();
     let event_type_owned = event_type.to_string();
     let payload_clone = payload.clone();
     tokio::spawn(async move {
         services::webhooks::process_delivery(
             &pool,
+            &broadcaster,
+            &registry,
             delivery_id,
             "github",
             &event_type_owned,
