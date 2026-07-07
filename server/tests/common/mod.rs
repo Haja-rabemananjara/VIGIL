@@ -3,8 +3,14 @@ use server::state::AppState;
 use server::ws::PresenceTracker;
 use server::ws::broadcaster::Broadcaster;
 use sqlx::{Executor, PgPool};
+use std::sync::OnceLock;
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 use uuid::Uuid;
+
+const TEMPLATE_DB_NAME: &str = "vigil_test_template";
+
+static TEMPLATE_INIT: OnceLock<Mutex<bool>> = OnceLock::new();
 
 #[allow(dead_code)]
 pub struct TestApp {
@@ -18,26 +24,68 @@ pub struct TestApp {
 impl TestApp {
     pub async fn cleanup(self) {
         self.pool.close().await;
-
         let maintenance_url = maintenance_url();
         let maintenance_pool = PgPool::connect(&maintenance_url).await.unwrap();
-
         maintenance_pool
             .execute(
                 format!(
                     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{}'",
                     self.db_name
                 )
-                .as_str(),
+                    .as_str(),
             )
             .await
             .unwrap();
-
         maintenance_pool
             .execute(format!("DROP DATABASE IF EXISTS \"{}\"", self.db_name).as_str())
             .await
             .unwrap();
     }
+}
+
+async fn ensure_template_exists() {
+    let flag = TEMPLATE_INIT.get_or_init(|| Mutex::new(false));
+    let mut initialized = flag.lock().await;
+
+    if *initialized {
+        return;
+    }
+
+    let maintenance_pool = PgPool::connect(&maintenance_url()).await.unwrap();
+
+    let exists: (bool,) = sqlx::query_as(
+        "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)",
+    )
+        .bind(TEMPLATE_DB_NAME)
+        .fetch_one(&maintenance_pool)
+        .await
+        .unwrap();
+
+    if exists.0 {
+        *initialized = true;
+        return;
+    }
+
+    maintenance_pool
+        .execute(format!("CREATE DATABASE \"{}\"", TEMPLATE_DB_NAME).as_str())
+        .await
+        .unwrap();
+
+    let template_url = format!("postgres://vigil:vigil_dev@localhost:5432/{}", TEMPLATE_DB_NAME);
+    let template_pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(1)
+        .connect(&template_url)
+        .await
+        .unwrap();
+
+    sqlx::migrate!("./migrations")
+        .run(&template_pool)
+        .await
+        .expect("Failed to run migrations on template DB");
+
+    template_pool.close().await;
+
+    *initialized = true;
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -49,14 +97,21 @@ pub async fn spawn_app() -> TestApp {
         .with_test_writer()
         .try_init();
 
-    let db_name = format!("vigil_test_{}", Uuid::new_v4().simple());
+    ensure_template_exists().await;
 
-    let maintenance_url = maintenance_url();
-    let maintenance_pool = PgPool::connect(&maintenance_url).await.unwrap();
+    let db_name = format!("vigil_test_{}", Uuid::new_v4().simple());
+    let maintenance_pool = PgPool::connect(&maintenance_url()).await.unwrap();
     maintenance_pool
-        .execute(format!("CREATE DATABASE \"{}\"", db_name).as_str())
+        .execute(
+            format!(
+                "CREATE DATABASE \"{}\" TEMPLATE \"{}\"",
+                db_name, TEMPLATE_DB_NAME
+            )
+                .as_str(),
+        )
         .await
         .unwrap();
+    maintenance_pool.close().await;
 
     let db_url = format!("postgres://vigil:vigil_dev@localhost:5432/{}", db_name);
     let pool = sqlx::postgres::PgPoolOptions::new()
@@ -65,14 +120,8 @@ pub async fn spawn_app() -> TestApp {
         .await
         .unwrap();
 
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .expect("Failed to run migrations on test DB");
-
     let broadcaster = Broadcaster::new(pool.clone());
     let presence = PresenceTracker::new();
-
     let registry = server::hooks::ReactionRegistry::builder()
         .register(std::sync::Arc::new(
             server::hooks::reactions::VigilCreateIncident::new(),
@@ -94,7 +143,6 @@ pub async fn spawn_app() -> TestApp {
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
-
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
     });
