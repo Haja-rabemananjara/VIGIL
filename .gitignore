@@ -1,5 +1,6 @@
 # Rust
 server/target/
+server/.cargo
 
 # Node / Next.js
 client/node_modules/
