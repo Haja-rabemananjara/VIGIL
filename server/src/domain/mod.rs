@@ -2,5 +2,8 @@ pub mod auth;
 pub mod incidents;
 pub mod invitation;
 pub mod releases;
+pub mod rules;
+pub mod service_connections;
 pub mod team;
 pub mod user;
+pub mod webhooks;

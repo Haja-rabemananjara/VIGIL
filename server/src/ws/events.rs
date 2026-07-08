@@ -65,6 +65,19 @@ pub enum WsEvent {
         step_name: String,
         by: Uuid,
     },
+    RuleTriggered {
+        team_id: Uuid,
+        rule_id: Uuid,
+        rule_name: String,
+        reaction_type: String,
+    },
+    RuleFailed {
+        team_id: Uuid,
+        rule_id: Uuid,
+        rule_name: String,
+        reaction_type: String,
+        error: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
