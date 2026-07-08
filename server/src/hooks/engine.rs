@@ -1,7 +1,4 @@
-use serde_json::Value;
-use sqlx::PgPool;
-use uuid::Uuid;
-
+use crate::crypto::KEY_LEN;
 use crate::domain::rules::Rule;
 use crate::hooks::context::ReactionContext;
 use crate::hooks::registry::ReactionRegistry;
@@ -9,23 +6,32 @@ use crate::hooks::{matcher, templating};
 use crate::repo;
 use crate::ws::broadcaster::Broadcaster;
 use crate::ws::events::WsEvent;
+use serde_json::Value;
+use sqlx::PgPool;
+use uuid::Uuid;
+
+pub struct EngineContext<'a> {
+    pub pool: &'a PgPool,
+    pub broadcaster: &'a Broadcaster,
+    pub registry: &'a ReactionRegistry,
+    pub http_client: &'a reqwest::Client,
+    pub master_key: &'a [u8; KEY_LEN],
+}
 
 pub async fn evaluate(
-    pool: &PgPool,
-    broadcaster: &Broadcaster,
-    registry: &ReactionRegistry,
+    ctx: &EngineContext<'_>,
     service: &str,
     event: &str,
     payload: &Value,
     delivery_id: Uuid,
 ) {
-    let rules = match repo::rules::list_matching_rules(pool, service, event).await {
+    let rules = match repo::rules::list_matching_rules(ctx.pool, service, event).await {
         Ok(rules) => rules,
         Err(err) => {
             tracing::error!(
                 delivery_id = %delivery_id,
                 error = %err,
-                "Failed to load matching rules - aborting evaluation"
+                "Failed to load matching rules. Aborting evaluation"
             );
             return;
         }
@@ -50,17 +56,11 @@ pub async fn evaluate(
     );
 
     for rule in rules {
-        evaluate_one(pool, broadcaster, registry, &rule, payload).await;
+        evaluate_one(ctx, &rule, payload).await;
     }
 }
 
-async fn evaluate_one(
-    pool: &PgPool,
-    broadcaster: &Broadcaster,
-    registry: &ReactionRegistry,
-    rule: &Rule,
-    payload: &Value,
-) {
+async fn evaluate_one(ctx: &EngineContext<'_>, rule: &Rule, payload: &Value) {
     if !matcher::matches(payload, &rule.trigger_filters) {
         tracing::debug!(
             rule_id = %rule.id,
@@ -70,7 +70,7 @@ async fn evaluate_one(
         return;
     }
 
-    let Some(executor) = registry.get(&rule.reaction_type) else {
+    let Some(executor) = ctx.registry.get(&rule.reaction_type) else {
         let error = format!("Reaction '{}' is not registered", rule.reaction_type);
         tracing::warn!(
             rule_id = %rule.id,
@@ -78,23 +78,25 @@ async fn evaluate_one(
             reaction_type = %rule.reaction_type,
             "{error}"
         );
-        broadcast_failed(broadcaster, rule, &error).await;
+        broadcast_failed(ctx.broadcaster, rule, &error).await;
         return;
     };
 
     let rendered_payload = templating::render(&rule.reaction_payload, payload);
 
-    let ctx = ReactionContext {
-        pool,
-        broadcaster,
+    let reaction_ctx = ReactionContext {
+        pool: ctx.pool,
+        broadcaster: ctx.broadcaster,
         team_id: rule.team_id,
         rule_id: rule.id,
         rule_name: &rule.name,
         rule_created_by: rule.created_by,
         payload: &rendered_payload,
+        http_client: ctx.http_client,
+        master_key: ctx.master_key,
     };
 
-    match executor.execute(&ctx).await {
+    match executor.execute(&reaction_ctx).await {
         Ok(()) => {
             tracing::info!(
                 rule_id = %rule.id,
@@ -102,7 +104,7 @@ async fn evaluate_one(
                 reaction_type = %rule.reaction_type,
                 "Rule executed successfully"
             );
-            broadcast_triggered(broadcaster, rule).await;
+            broadcast_triggered(ctx.broadcaster, rule).await;
         }
         Err(err) => {
             let error = err.to_string();
@@ -113,7 +115,7 @@ async fn evaluate_one(
                 error = %error,
                 "Rule execution failed"
             );
-            broadcast_failed(broadcaster, rule, &error).await;
+            broadcast_failed(ctx.broadcaster, rule, &error).await;
         }
     }
 }

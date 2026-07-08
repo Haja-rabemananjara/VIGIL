@@ -137,7 +137,15 @@ pub async fn spawn_app() -> TestApp {
         .register(std::sync::Arc::new(
             server::hooks::reactions::VigilValidateReleaseStep::new(),
         ))
+        .register(std::sync::Arc::new(
+            server::hooks::reactions::DiscordMessage::new(),
+        ))
         .build();
+
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap();
 
     let state = AppState {
         pool: pool.clone(),
@@ -146,6 +154,7 @@ pub async fn spawn_app() -> TestApp {
         webhook_secret: "test-webhook-secret".to_string(),
         master_key: [0x42; 32],
         registry,
+        http_client,
     };
 
     let app = routes::router()

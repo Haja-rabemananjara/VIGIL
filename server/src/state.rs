@@ -11,4 +11,5 @@ pub struct AppState {
     pub webhook_secret: String,
     pub master_key: [u8; KEY_LEN],
     pub registry: ReactionRegistry,
+    pub http_client: reqwest::Client,
 }

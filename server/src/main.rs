@@ -9,7 +9,8 @@ use tracing_subscriber::EnvFilter;
 use axum::http::{HeaderValue, Method};
 use server::hooks::ReactionRegistry;
 use server::hooks::reactions::{
-    VigilBlockRelease, VigilCreateIncident, VigilEscalateIncident, VigilValidateReleaseStep,
+    DiscordMessage, VigilBlockRelease, VigilCreateIncident, VigilEscalateIncident,
+    VigilValidateReleaseStep,
 };
 use tower_http::cors::CorsLayer;
 
@@ -38,7 +39,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register(Arc::new(VigilEscalateIncident::new()))
         .register(Arc::new(VigilBlockRelease::new()))
         .register(Arc::new(VigilValidateReleaseStep::new()))
+        .register(Arc::new(DiscordMessage::new()))
         .build();
+
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .expect("Failed to build HTTP client");
 
     let state = AppState {
         pool: pool.clone(),
@@ -47,6 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         webhook_secret: config.webhook_secret,
         master_key: config.master_key,
         registry,
+        http_client,
     };
 
     let cors = CorsLayer::new()
