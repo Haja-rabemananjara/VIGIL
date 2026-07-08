@@ -2,16 +2,17 @@ use server::config::Config;
 use server::routes;
 use server::state::AppState;
 use server::ws::{broadcaster::Broadcaster, presence::PresenceTracker};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 use axum::http::{HeaderValue, Method};
-use server::hooks::ReactionRegistry;
 use server::hooks::reactions::{
     DiscordMessage, VigilBlockRelease, VigilCreateIncident, VigilEscalateIncident,
     VigilValidateReleaseStep,
 };
+use server::hooks::{ActionCatalog, ReactionRegistry};
 use tower_http::cors::CorsLayer;
 
 #[tokio::main]
@@ -47,6 +48,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()
         .expect("Failed to build HTTP client");
 
+    let action_catalog = ActionCatalog::builder()
+        .register(
+            "github",
+            "workflow_run",
+            "A CI workflow run has completed (success or failure)",
+        )
+        .register("github", "push", "New commits have been pushed to a branch")
+        .register(
+            "github",
+            "pull_request",
+            "A pull request has been opened, updated or closed",
+        )
+        .build();
+
     let state = AppState {
         pool: pool.clone(),
         broadcaster: Broadcaster::new(pool.clone()),
@@ -55,10 +70,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         master_key: config.master_key,
         registry,
         http_client,
+        action_catalog,
+        kickoff_token: config.kickoff_token,
     };
 
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>()?)
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([
             axum::http::header::CONTENT_TYPE,
@@ -74,7 +91,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(&addr).await?;
     tracing::info!("VIGIL server listening on {addr}");
 
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
 
     Ok(())
 }

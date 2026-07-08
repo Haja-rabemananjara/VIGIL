@@ -1,3 +1,4 @@
+pub mod about;
 pub mod auth;
 pub mod incidents;
 pub mod releases;
@@ -21,4 +22,5 @@ pub fn router() -> Router<AppState> {
         .merge(rules::routes())
         .merge(webhooks::routes())
         .merge(service_connections::routes())
+        .merge(about::routes())
 }

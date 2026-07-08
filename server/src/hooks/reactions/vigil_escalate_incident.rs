@@ -33,6 +33,10 @@ impl ReactionExecutor for VigilEscalateIncident {
         "vigil_escalate_incident"
     }
 
+    fn service_name(&self) -> &'static str {
+        "vigil"
+    }
+
     fn description(&self) -> &'static str {
         "Escalate a VIGIL incident, optionally raising its severity"
     }

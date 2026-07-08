@@ -32,6 +32,10 @@ impl ReactionExecutor for VigilBlockRelease {
         "vigil_block_release"
     }
 
+    fn service_name(&self) -> &'static str {
+        "vigil"
+    }
+
     fn description(&self) -> &'static str {
         "Block a VIGIL release by linking an active incident to it"
     }

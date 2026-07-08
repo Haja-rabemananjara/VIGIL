@@ -33,6 +33,10 @@ impl ReactionExecutor for VigilCreateIncident {
         "vigil_create_incident"
     }
 
+    fn service_name(&self) -> &'static str {
+        "vigil"
+    }
+
     fn description(&self) -> &'static str {
         "Create a VIGIL incident with configurable title, severity, and body"
     }

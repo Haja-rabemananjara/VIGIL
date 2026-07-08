@@ -34,6 +34,10 @@ impl ReactionExecutor for DiscordMessage {
         "discord_message"
     }
 
+    fn service_name(&self) -> &'static str {
+        "discord"
+    }
+
     fn description(&self) -> &'static str {
         "Send a message to a Discord channel via webhook"
     }

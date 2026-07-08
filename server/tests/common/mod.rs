@@ -147,6 +147,18 @@ pub async fn spawn_app() -> TestApp {
         .build()
         .unwrap();
 
+    let action_catalog = server::hooks::ActionCatalog::builder()
+        .register("github", "workflow_run", "A CI workflow run has completed")
+        .register("github", "push", "New commits pushed to a branch")
+        .register(
+            "github",
+            "pull_request",
+            "A pull request has been opened/updated/closed",
+        )
+        .build();
+
+    let kickoff_token = server::config::compute_kickoff_token("test_first", "test_login");
+
     let state = AppState {
         pool: pool.clone(),
         broadcaster,
@@ -155,6 +167,8 @@ pub async fn spawn_app() -> TestApp {
         master_key: [0x42; 32],
         registry,
         http_client,
+        action_catalog,
+        kickoff_token,
     };
 
     let app = routes::router()
@@ -164,7 +178,12 @@ pub async fn spawn_app() -> TestApp {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .await
+        .unwrap();
     });
 
     let client = reqwest::Client::builder()

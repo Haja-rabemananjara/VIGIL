@@ -32,6 +32,10 @@ impl ReactionExecutor for VigilValidateReleaseStep {
         "vigil_validate_release_step"
     }
 
+    fn service_name(&self) -> &'static str {
+        "vigil"
+    }
+
     fn description(&self) -> &'static str {
         "Validate a specific step of a VIGIL release (moves the release forward)"
     }

@@ -9,9 +9,8 @@ use crate::hooks::context::ReactionContext;
 #[async_trait]
 pub trait ReactionExecutor: Send + Sync {
     fn kind(&self) -> &'static str;
-
+    fn service_name(&self) -> &'static str;
     fn description(&self) -> &'static str;
-
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError>;
 }
 
@@ -79,9 +78,15 @@ mod tests {
         fn kind(&self) -> &'static str {
             "dummy"
         }
+
+        fn service_name(&self) -> &'static str {
+            "test"
+        }
+
         fn description(&self) -> &'static str {
             "Test-only reaction that increments a counter"
         }
+
         async fn execute(&self, _ctx: &ReactionContext<'_>) -> Result<(), AppError> {
             self.calls.fetch_add(1, Ordering::SeqCst);
             Ok(())
@@ -120,6 +125,9 @@ mod tests {
             fn kind(&self) -> &'static str {
                 "same"
             }
+            fn service_name(&self) -> &'static str {
+                "test"
+            }
             fn description(&self) -> &'static str {
                 "first"
             }
@@ -132,6 +140,9 @@ mod tests {
         impl ReactionExecutor for B {
             fn kind(&self) -> &'static str {
                 "same"
+            }
+            fn service_name(&self) -> &'static str {
+                "test"
             }
             fn description(&self) -> &'static str {
                 "second"
@@ -160,6 +171,9 @@ mod tests {
             fn kind(&self) -> &'static str {
                 "a"
             }
+            fn service_name(&self) -> &'static str {
+                "test"
+            }
             fn description(&self) -> &'static str {
                 ""
             }
@@ -172,6 +186,9 @@ mod tests {
         impl ReactionExecutor for B {
             fn kind(&self) -> &'static str {
                 "b"
+            }
+            fn service_name(&self) -> &'static str {
+                "test"
             }
             fn description(&self) -> &'static str {
                 ""
