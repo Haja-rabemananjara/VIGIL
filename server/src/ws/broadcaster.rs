@@ -79,6 +79,7 @@ impl Broadcaster {
                 return;
             }
         };
+        tracing::info!("to_team: team={} found {} members", team_id, user_ids.len());
         for user_id in user_ids {
             self.to_user(user_id, event.clone());
         }

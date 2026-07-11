@@ -98,9 +98,8 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
         } catch {}
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = () => {
         if (!mountedRef.current) return;
-        console.error("[VigilSocket] WebSocket closed - code:", event.code, "reason:", event.reason, "wasClean:", event.wasClean);
         setStatus("disconnected");
         wsRef.current = null;
 
@@ -109,10 +108,7 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
         timerRef.current = setTimeout(connect, delay);
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      ws.onerror = (event) => {
-        console.error("[VigilSocket] WebSocket error - readyState:", ws.readyState);
-        console.error("[VigilSocket] WebSocket URL:", url);
+      ws.onerror = () => {
         ws.close();
       };
     }
