@@ -151,10 +151,22 @@ export function ReleaseDetailClient() {
 
     if (
       (lastEvent.type === "release_state_changed" ||
-       lastEvent.type === "release_step_validated") &&
+      lastEvent.type === "release_step_validated") &&
       lastEvent.release_id === releaseId
     ) {
       fetchRelease();
+    }
+
+    if (
+      lastEvent.type === "release_incident_linked" ||
+      lastEvent.type === "release_incident_unlinked"
+    ) {
+      const affectedReleaseId = lastEvent.release_id as string;
+      if (affectedReleaseId === releaseId) {
+        api<ReleaseDetail>(`/teams/${teamId}/releases/${releaseId}`, { token: token! })
+          .then(setRelease)
+          .catch(() => {});
+      }
     }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

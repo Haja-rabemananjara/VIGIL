@@ -148,6 +148,24 @@ export function ReleasesClient() {
           .catch(() => {});
       }
     }
+
+    if (
+      lastEvent.type === "release_incident_linked" ||
+      lastEvent.type === "release_incident_unlinked"
+    ) {
+      const affectedReleaseId = lastEvent.release_id as string;
+      // Refetch la release concernée pour récupérer sa liste d'incidents à jour
+      api<ReleaseRow>(
+        `/teams/${teamId}/releases/${affectedReleaseId}`,
+        { token: token! },
+      )
+        .then((updated) => {
+          setReleases((prev) =>
+            prev.map((r) => (r.id === affectedReleaseId ? updated : r)),
+          );
+        })
+        .catch(() => {});
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, teamId]);
 
