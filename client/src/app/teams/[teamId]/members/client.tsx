@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useVigilSocket } from "@/stores/socket";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 interface Member {
   user_id: string;
@@ -29,7 +30,7 @@ interface Member {
 
 // COMPONENTS
 export function MembersClient() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 

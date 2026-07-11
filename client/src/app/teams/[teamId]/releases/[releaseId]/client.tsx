@@ -29,6 +29,7 @@ import {
 import { StateBadge, type IncidentState } from "@/components/StateBadge";
 import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
 import { Link2, Unlink } from "lucide-react";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 interface ReleaseDetail {
   id: string;
@@ -62,10 +63,7 @@ interface LinkedIncident {
 }
 
 export function ReleaseDetailClient() {
-  const { teamId, releaseId } = useParams<{
-    teamId: string;
-    releaseId: string;
-  }>();
+  const { teamId, releaseId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 

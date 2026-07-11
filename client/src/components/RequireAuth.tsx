@@ -10,10 +10,12 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    console.log("[RequireAuth] effect fired", { isLoading, hasUser: !!user });
     if (!isLoading && !user) {
       router.replace("/signin");
     }
-  }, [isLoading, user, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user]);
 
   if (isLoading || !user) {
     return (

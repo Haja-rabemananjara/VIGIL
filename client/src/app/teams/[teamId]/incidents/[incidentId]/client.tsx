@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -10,6 +10,7 @@ import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVigilSocket } from "@/stores/socket";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 interface Incident {
   id: string;
@@ -68,10 +69,7 @@ const TRANSITION_LABELS: Record<IncidentState, string> = {
 // COMPONENTS
 
 export function IncidentDetailClient() {
-  const { teamId, incidentId } = useParams<{
-    teamId: string;
-    incidentId: string;
-  }>();
+  const { teamId, incidentId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 
