@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
