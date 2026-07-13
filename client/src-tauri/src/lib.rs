@@ -1,5 +1,10 @@
 use std::thread;
 use tiny_http::{Header, Response, Server};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    Manager, WindowEvent,
+};
 
 fn is_uuid_like(segment: &str) -> bool {
     let parts: Vec<&str> = segment.split('-').collect();
@@ -49,6 +54,7 @@ pub fn run() {
                 )?;
             }
 
+            // --- Local HTTP server (routing SPA) ---
             let handle = app.handle().clone();
             thread::spawn(move || {
                 let server = Server::http(("127.0.0.1", PORT))
@@ -66,27 +72,61 @@ pub fn run() {
                             .unwrap();
                             Response::from_data(asset.bytes).with_header(header)
                         }
-                        None => {
-
-                            match resolver.get("index.html".to_string()) {
-                                Some(asset) => Response::from_data(asset.bytes).with_header(
-                                    Header::from_bytes(&b"Content-Type"[..], &b"text/html"[..])
-                                        .unwrap(),
-                                ),
-                                None => Response::from_data(Vec::new()),
-                            }
-                        }
+                        None => match resolver.get("index.html".to_string()) {
+                            Some(asset) => Response::from_data(asset.bytes).with_header(
+                                Header::from_bytes(&b"Content-Type"[..], &b"text/html"[..])
+                                    .unwrap(),
+                            ),
+                            None => Response::from_data(Vec::new()),
+                        },
                     };
                     let _ = request.respond(response);
                 }
             });
 
+            // --- Tray icon with Open menu / Quit ---
+            let open_item = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+
+            TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("VIGIL")
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .build(app)?;
+
+            // --- Main window ---
             let url = format!("http://localhost:{PORT}").parse().unwrap();
-            tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::External(url))
-                .title("VIGIL")
-                .inner_size(1400.0, 900.0)
-                .min_inner_size(1024.0, 700.0)
-                .build()?;
+            let window = tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::External(url),
+            )
+            .title("VIGIL")
+            .inner_size(1400.0, 900.0)
+            .min_inner_size(1024.0, 700.0)
+            .build()?;
+
+            // --- Closing interception => cache  ---
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window_clone.hide();
+                }
+            });
 
             Ok(())
         })
