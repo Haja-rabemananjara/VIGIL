@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "8080"
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      MASTER_KEY_HEX: ${MASTER_KEY_HEX}
+      STUDENT_FIRSTNAME: ${STUDENT_FIRSTNAME}
+      STUDENT_LOGIN: ${STUDENT_LOGIN}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    volumes:
+      - appimage_data:/usr/share/nginx/html/downloads:ro
+    depends_on:
+      server:
+        condition: service_started
+      client_desktop:
+        condition: service_completed_successfully
+
+  client_desktop:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.desktop
+    volumes:
+      - appimage_data:/output
+
+volumes:
+  pgdata:
+  appimage_data:
