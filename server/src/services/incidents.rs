@@ -25,6 +25,7 @@ pub struct IncidentResponse {
     pub acknowledged_at: Option<i64>,
     pub escalated_at: Option<i64>,
     pub resolved_at: Option<i64>,
+    pub assignee_id: Option<Uuid>,
 }
 
 impl IncidentResponse {
@@ -42,6 +43,7 @@ impl IncidentResponse {
             acknowledged_at: row.acknowledged_at.map(|t| t.timestamp()),
             escalated_at: row.escalated_at.map(|t| t.timestamp()),
             resolved_at: row.resolved_at.map(|t| t.timestamp()),
+            assignee_id: row.assignee_id,
         }
     }
 }

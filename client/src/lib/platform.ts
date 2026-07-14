@@ -1,35 +1,32 @@
-
-
 /**
  * Detects whether we are running inside the Tauri desktop shell.
  * Tauri injects `window.__TAURI__` at app startup.
  */
 export function isDesktop(): boolean {
   if (typeof window === "undefined") return false;
-  return "__TAURI__" in window;
+  return "__TAURI_INTERNALS__" in window || "__TAURI__" in window;
 }
 
 /**
  * Trigger a notification visible to the user.
- *
- * Web: uses the browser Notification API (asks permission once).
- * Desktop : will use @tauri-apps/api/notification.
  */
 export async function notify(title: string, body: string): Promise<void> {
+  console.log("[notify] called", { title });
   if (typeof window === "undefined") return;
 
-  // Web fallback: ask permission then notify
+  // web
   if (!("Notification" in window)) {
-    console.warn("Notifications not supported in this browser");
+    console.log("[notify] Notification API absente");
     return;
   }
-
+  console.log("[notify] permission:", Notification.permission);
   if (Notification.permission === "default") {
-    await Notification.requestPermission();
+    const p = await Notification.requestPermission();
+    console.log("[notify] after request:", p);
   }
-
   if (Notification.permission === "granted") {
     new Notification(title, { body });
+    console.log("[notify] sent via browser API");
   }
 }
 

@@ -1,10 +1,11 @@
+use std::process::Command;
 use std::thread;
-use tiny_http::{Header, Response, Server};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, WindowEvent,
+    Listener, Manager, WindowEvent,
 };
+use tiny_http::{Header, Response, Server};
 
 fn is_uuid_like(segment: &str) -> bool {
     let parts: Vec<&str> = segment.split('-').collect();
@@ -45,6 +46,7 @@ const PORT: u16 = 9527;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(move |app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -57,8 +59,8 @@ pub fn run() {
             // --- Local HTTP server (routing SPA) ---
             let handle = app.handle().clone();
             thread::spawn(move || {
-                let server = Server::http(("127.0.0.1", PORT))
-                    .expect("failed to start local server");
+                let server =
+                    Server::http(("127.0.0.1", PORT)).expect("failed to start local server");
                 let resolver = handle.asset_resolver();
 
                 for request in server.incoming_requests() {
@@ -109,15 +111,12 @@ pub fn run() {
 
             // --- Main window ---
             let url = format!("http://localhost:{PORT}").parse().unwrap();
-            let window = tauri::WebviewWindowBuilder::new(
-                app,
-                "main",
-                tauri::WebviewUrl::External(url),
-            )
-            .title("VIGIL")
-            .inner_size(1400.0, 900.0)
-            .min_inner_size(1024.0, 700.0)
-            .build()?;
+            let window =
+                tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::External(url))
+                    .title("VIGIL")
+                    .inner_size(1400.0, 900.0)
+                    .min_inner_size(1024.0, 700.0)
+                    .build()?;
 
             // --- Closing interception => cache  ---
             let window_clone = window.clone();
@@ -125,6 +124,28 @@ pub fn run() {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window_clone.hide();
+                }
+            });
+
+            // --- Native notifications via notify-send ---
+            app.listen("notify-request", |event| {
+                #[derive(serde::Deserialize)]
+                struct NotifyPayload {
+                    title: String,
+                    body: String,
+                }
+                if let Ok(p) = serde_json::from_str::<NotifyPayload>(event.payload()) {
+                    thread::spawn(move || {
+                        let _ = Command::new("notify-send")
+                            .args([
+                                "--app-name=VIGIL",
+                                "--urgency=normal",
+                                "--expire-time=5000",
+                                &p.title,
+                                &p.body,
+                            ])
+                            .output();
+                    });
                 }
             });
 

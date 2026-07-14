@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO incidents (id, team_id, title, body, severity, status, created_by, created_at, updated_at)\n        VALUES ($1, $2, $3, $4, $5, 'open', $6, now(), now())\n        RETURNING\n            id,\n            team_id,\n            title,\n            body,\n            severity,\n            status,\n            created_by,\n            created_at,\n            updated_at,\n            acknowledged_at,\n            escalated_at,\n            resolved_at\n        ",
+  "query": "\n        SELECT\n            i.id,\n            i.team_id,\n            i.title,\n            i.body,\n            i.severity,\n            i.status,\n            i.created_by,\n            i.created_at,\n            i.updated_at,\n            i.acknowledged_at,\n            i.escalated_at,\n            i.resolved_at,\n            ia.user_id AS \"assignee_id?\"\n        FROM incidents i\n        LEFT JOIN incident_assignments ia\n            ON ia.incident_id = i.id AND ia.status = 'active'\n        WHERE i.id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -62,15 +62,15 @@
         "ordinal": 11,
         "name": "resolved_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "assignee_id?",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
-        "Text",
-        "Text",
-        "Text",
         "Uuid"
       ]
     },
@@ -86,8 +86,9 @@
       false,
       true,
       true,
-      true
+      true,
+      false
     ]
   },
-  "hash": "5d08903465ddb44bcbc6b6e46d821706088a7e342d550391e55f20b7a346ba59"
+  "hash": "c54dc4ed4519be5c0db0de56323c138d3157b6d57ae445dddb4bb29ad69a0bb7"
 }

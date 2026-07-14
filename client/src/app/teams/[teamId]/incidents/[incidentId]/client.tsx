@@ -23,6 +23,7 @@ interface Incident {
   acknowledged_at: number | null;
   escalated_at: number | null;
   resolved_at: number | null;
+  assignee_id: string | null;
 }
 
 interface TimelineEntry {
@@ -111,6 +112,7 @@ export function IncidentDetailClient() {
     ])
       .then(([inc, tl, mem]) => {
         setIncident(inc);
+        setAssignee(inc.assignee_id);
         setTimeline(tl.entries);
         setMembers(mem);
         const me = mem.find((m) => m.user_id === user.id);
@@ -137,6 +139,7 @@ export function IncidentDetailClient() {
       ])
         .then(([inc, tl]) => {
           setIncident(inc);
+          setAssignee(inc.assignee_id);
           setTimeline(tl.entries);
         })
         .catch(() => {});
