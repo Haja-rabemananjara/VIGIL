@@ -40,6 +40,13 @@ impl ReactionExecutor for VigilBlockRelease {
         "Block a VIGIL release by linking an active incident to it"
     }
 
+    fn payload_example(&self) -> &'static str {
+        r#"{
+  "release_id": "00000000-0000-0000-0000-000000000000",
+  "incident_id": "00000000-0000-0000-0000-000000000000"
+}"#
+    }
+
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError> {
         let payload: BlockReleasePayload =
             serde_json::from_value(ctx.payload.clone()).map_err(|e| {

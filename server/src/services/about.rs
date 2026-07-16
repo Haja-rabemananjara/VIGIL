@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use serde::Serialize;
-
+use crate::domain::service_connections::ServiceName;
 use crate::hooks::{ActionCatalog, ReactionRegistry};
+use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct AboutResponse {
@@ -26,6 +26,7 @@ pub struct ServerInfo {
 #[derive(Debug, Serialize)]
 pub struct ServiceCatalog {
     pub name: String,
+    pub connectable: bool,
     pub actions: Vec<CatalogEntry>,
     pub reactions: Vec<CatalogEntry>,
 }
@@ -34,6 +35,8 @@ pub struct ServiceCatalog {
 pub struct CatalogEntry {
     pub name: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload_example: Option<String>,
 }
 
 pub fn build_response(
@@ -60,34 +63,37 @@ fn group_by_service(catalog: &ActionCatalog, registry: &ReactionRegistry) -> Vec
     for action in catalog.all() {
         services
             .entry(action.service.clone())
-            .or_insert_with(|| ServiceCatalog {
-                name: action.service.clone(),
-                actions: Vec::new(),
-                reactions: Vec::new(),
-            })
+            .or_insert_with(|| new_service(&action.service))
             .actions
             .push(CatalogEntry {
                 name: action.event.clone(),
                 description: action.description.clone(),
+                payload_example: None,
             });
     }
 
     for reaction in registry.all() {
         services
             .entry(reaction.service_name().to_string())
-            .or_insert_with(|| ServiceCatalog {
-                name: reaction.service_name().to_string(),
-                actions: Vec::new(),
-                reactions: Vec::new(),
-            })
+            .or_insert_with(|| new_service(reaction.service_name()))
             .reactions
             .push(CatalogEntry {
                 name: reaction.kind().to_string(),
                 description: reaction.description().to_string(),
+                payload_example: Some(reaction.payload_example().to_string()),
             });
     }
 
     services.into_values().collect()
+}
+
+fn new_service(name: &str) -> ServiceCatalog {
+    ServiceCatalog {
+        name: name.to_string(),
+        connectable: ServiceName::from_db(name).is_some(),
+        actions: Vec::new(),
+        reactions: Vec::new(),
+    }
 }
 
 fn current_unix_time() -> i64 {
@@ -150,5 +156,21 @@ mod tests {
         );
 
         assert!(response.server.current_time > 0);
+    }
+
+    #[test]
+    fn connectable_reflects_service_name_enum() {
+        let catalog = ActionCatalog::builder()
+            .register("github", "workflow_run", "CI finished")
+            .build();
+        let registry = ReactionRegistry::builder().build();
+
+        let response = build_response(
+            "127.0.0.1".to_string(),
+            &catalog,
+            &registry,
+            "t".to_string(),
+        );
+        assert!(response.server.services[0].connectable);
     }
 }

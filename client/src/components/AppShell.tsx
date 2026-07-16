@@ -102,6 +102,17 @@ export function AppShell({ children }: AppShellProps) {
                       >
                         {t("app.shell.releases")}
                       </Link>
+                      <Link
+                        href={`/teams/${team.id}/rules`}
+                        className={cn(
+                          "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                          pathname?.includes("/rules")
+                            ? "font-medium text-primary"
+                            : "text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {t("app.shell.rules")}
+                      </Link>
                     </>
                   )}
                 </div>

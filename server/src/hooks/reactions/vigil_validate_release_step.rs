@@ -40,6 +40,13 @@ impl ReactionExecutor for VigilValidateReleaseStep {
         "Validate a specific step of a VIGIL release (moves the release forward)"
     }
 
+    fn payload_example(&self) -> &'static str {
+        r#"{
+    "release_id": "00000000-0000-0000-0000-000000000000",
+    "step_id": "00000000-0000-0000-0000-000000000000"
+ }"#
+    }
+
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError> {
         let payload: ValidateStepPayload =
             serde_json::from_value(ctx.payload.clone()).map_err(|e| {
