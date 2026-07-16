@@ -204,6 +204,160 @@ cargo clippy
 
 ---
 
+## Desktop application
+
+The desktop client is a Tauri v2 application targeting **Linux/AppImage**
+(Ubuntu 24.04 tested). It exposes exactly the same features as the web
+client, plus tray icon and OS notifications.
+
+### Standalone by construction
+
+The AppImage is standalone: no Node runtime, no external server needed
+at launch. The static Next.js export (`out/`) is embedded in the binary
+and served internally by an embedded HTTP server (`tiny_http`) on
+`http://localhost:9527`.
+
+Rationale: Next.js static export produces one HTML per dynamic route
+(`/teams/placeholder`, not `/teams/<uuid>`). A naive file server would
+return 404 on real UUIDs. The embedded server rewrites any UUID-like
+path segment to `placeholder` while preserving the real URL, so
+client-side routing reads the actual identifier via a small
+`useRouteParams()` hook (`client/src/lib/useRouteParams.ts`) rather
+than `useParams()` (which would be frozen to `placeholder` in the RSC
+payload at build time).
+
+### Tray icon and background lifecycle
+
+Closing the window does **not** terminate the app. The window is
+hidden, the WebSocket stays connected, and the app remains
+represented by a tray icon (top-right on GNOME). The tray menu
+exposes `Open` (restore window) and `Quit` (real exit).
+
+Requires the `AppIndicator and KStatusNotifierItem` GNOME extension
+(preinstalled on Ubuntu 24.04).
+
+### Native OS notifications
+
+Three triggers, all fired from a single central hook
+(`client/src/lib/useNotifications.ts`) reacting to WebSocket events:
+
+- Incident assigned to the current user (`incident_assigned`)
+- Incident escalated to critical (`incident_escalated`)
+- Release blocked by a linked incident (`release_state_changed`)
+
+Notifications are dispatched through the browser `Notification` API
+from within the WebKitGTK webview. This works uniformly on web and
+desktop through the `notify()` abstraction in
+`client/src/lib/platform.ts`.
+
+**Known limitation.** On GNOME 46+, notifications emitted from a
+webview (whether via the Tauri notification plugin, a custom Rust
+command calling `notify-send`, or the browser API) may not display
+even though the API returns success. This is a documented environment
+bug (see tauri-apps/tauri#14095 and
+tauri-apps/plugins-workspace#2566), independent of application code,
+verified by logs showing `permission: granted` and successful emission
+on every trigger. On GNOME versions prior to 46 or on non-GNOME
+desktops, notifications display correctly.
+
+### Building the AppImage
+
+```bash
+cd client
+npx tauri build --bundles appimage
+```
+
+Output: `client/src-tauri/target/release/bundle/appimage/*.AppImage`.
+
+### Installing and running
+
+Requires `libfuse2t64` on the host to mount the AppImage:
+
+```bash
+sudo apt install libfuse2t64
+chmod +x vigil-desktop_*.AppImage
+./vigil-desktop_*.AppImage
+```
+
+To pin VIGIL to the GNOME menu, create
+`~/.local/share/applications/com.vigil.desktop.desktop`:
+
+```
+[Desktop Entry]
+Type=Application
+Name=VIGIL
+Exec=/absolute/path/to/vigil-desktop.AppImage
+Icon=vigil-desktop
+Terminal=false
+Categories=Development;
+StartupWMClass=VIGIL
+```
+
+---
+
+## Running with Docker
+
+The full stack runs via Docker Compose with four services:
+
+| Service          | Role                                      | Port |
+|------------------|-------------------------------------------|------|
+| `db`             | PostgreSQL 16                             | -    |
+| `server`         | Rust/Axum API + WebSocket                 | 8080 |
+| `client_web`     | Nginx serving the Next.js static export   | 8081 |
+| `client_desktop` | Builds the AppImage into a shared volume  | -    |
+
+`client_web` depends on `client_desktop` completing successfully; the
+built AppImage is exposed for download at
+`http://localhost:8081/client.AppImage`.
+
+Two compose files are provided:
+
+- `docker-compose.dev.yml`: db + adminer only, for local development
+  with `cargo run` and `npm run dev` on the host.
+- `docker-compose.yml`: the full production-like stack.
+
+### Launch the full stack
+
+Copy `.env.example` to `.env` and fill in the sensitive values. The
+`MASTER_KEY_HEX` must be 64 hex characters, generated with:
+
+```bash
+openssl rand -hex 32
+```
+
+Then:
+
+```bash
+docker compose up --build
+```
+
+First build takes several minutes (Rust compilation + Next build +
+AppImage bundling). Subsequent builds use the Docker layer cache.
+
+- Web client: `http://localhost:8081`
+- API: `http://localhost:8080`
+- Desktop binary: `http://localhost:8081/client.AppImage`
+
+### Development compose
+
+For hot-reload development, only launch the database:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+Then run the server and client locally:
+
+```bash
+cd server && cargo run
+cd client && npm run dev
+```
+
+Adminer is exposed on `http://localhost:8888`.
+
+---
+
+
 ## REST API
 
 > This section grows with each ticket. Current state below; see the backlog for the full planned surface.
@@ -285,14 +439,15 @@ Full specification - connection handshake, envelope format, delivery modes, reco
 
 ## Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | - |
-| `SERVER_HOST` | Bind address | `0.0.0.0` |
-| `SERVER_PORT` | Bind port | `8080` |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Used by `docker-compose.dev.yml` to provision the dev database | `vigil` / `vigil_dev` / `vigil` |
-| `SESSION_DURATION_DAYS` | Session token lifetime | `30` |
-| `MASTER_KEY` | AES-256-GCM key for encrypting service tokens | - |
+| Variable            | Required | Description                                              |
+|---------------------|----------|----------------------------------------------------------|
+| `DATABASE_URL`      | yes      | PostgreSQL connection string                             |
+| `SERVER_HOST`       | no       | Default `0.0.0.0`                                        |
+| `SERVER_PORT`       | no       | Default `8080`                                           |
+| `WEBHOOK_SECRET`    | no       | HMAC secret for `POST /webhooks/*` (default: dev secret) |
+| `MASTER_KEY_HEX`    | yes      | 64 hex chars (32 bytes) for AES-256-GCM token encryption |
+| `STUDENT_FIRSTNAME` | yes      | Used to derive the `/about.json` kickoff token           |
+| `STUDENT_LOGIN`     | yes      | Used to derive the `/about.json` kickoff token           |
 
 ---
 
