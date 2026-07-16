@@ -583,7 +583,7 @@ export function IncidentDetailClient() {
                   setAssignError("");
                 }}
               >
-                {t("incidents.assign.cancel")}
+                {t("action.cancel")}
               </Button>
             </div>
           </div>

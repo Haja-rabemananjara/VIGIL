@@ -370,10 +370,10 @@ export function ReleasesClient() {
               variant="outline"
               onClick={() => handleCreateOpenChange(false)}
             >
-              {t("releases.create.cancel")}
+              {t("action.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading ? "…" : t("releases.create.submit")}
+              {createLoading ? "…" : t("action.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

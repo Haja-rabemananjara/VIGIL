@@ -44,7 +44,7 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>
-            {cancelLabel ?? t("common.cancel")}
+            {cancelLabel ?? t("action.cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
@@ -54,7 +54,7 @@ export function ConfirmDialog({
                 : undefined
             }
           >
-            {confirmLabel ?? t("common.confirm")}
+            {confirmLabel ?? t("action.confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

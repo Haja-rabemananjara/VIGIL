@@ -4,10 +4,12 @@ const en: Dictionary = {
   "app.name": "VIGIL",
   "common.loading": "Loading...",
   "common.error": "Something went wrong",
-  "common.retry": "Retry",
-  "common.cancel": "Cancel",
-  "common.confirm": "Confirm",
-  "close": "Close",
+  "action.cancel": "Cancel",
+  "action.close": "Close",
+  "action.confirm": "Confirm",
+  "action.copied": "Copied!",
+  "action.copy": "Copy",
+  "action.create": "Create",
 
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",
@@ -60,8 +62,6 @@ const en: Dictionary = {
   "teams.create.dialogDesc": "Give your team a name to get started.",
   "teams.create.nameLabel": "Team name",
   "teams.create.namePlaceholder": "e.g. Team front",
-  "teams.create.submit": "Create",
-  "teams.create.cancel": "Cancel",
   "teams.create.error.empty": "Team name is required",
 
   "teams.join.dialogTitle": "Join a team",
@@ -69,16 +69,12 @@ const en: Dictionary = {
   "teams.join.codeLabel": "Invitation code",
   "teams.join.codePlaceholder": "e.g. A7X9K2MP",
   "teams.join.submit": "Join",
-  "teams.join.cancel": "Cancel",
   "teams.join.error.empty": "Invitation code is required",
   "teams.join.success": "You joined the team!",
 
   "teams.invite.dialogTitle": "Invite to team",
   "teams.invite.dialogDesc": "Share this code with people you want to invite.",
   "teams.invite.generate": "Generate code",
-  "teams.invite.copy": "Copy",
-  "teams.invite.copied": "Copied!",
-  "teams.invite.close": "Close",
   "teams.invite.button": "Invite",
 
   "incidents.title": "Incidents",
@@ -109,8 +105,6 @@ const en: Dictionary = {
   "incidents.create.bodyLabel": "Description",
   "incidents.create.bodyPlaceholder": "What is happening?",
   "incidents.create.severityLabel": "Severity",
-  "incidents.create.submit": "Create",
-  "incidents.create.cancel": "Cancel",
   "incidents.create.error.emptyTitle": "Title is required",
 
   "timeline.empty": "No entries yet.",
@@ -122,7 +116,6 @@ const en: Dictionary = {
   "incidents.assign.dialogTitle": "Assign responder",
   "incidents.assign.dialogDesc": "Select a team member to assign to this incident.",
   "incidents.assign.submit": "Assign",
-  "incidents.assign.cancel": "Cancel",
   "incidents.assign.noEligible": "No eligible responders in this team.",
 
   "ws.connected": "Connected",
@@ -173,8 +166,6 @@ const en: Dictionary = {
   "releases.create.stepsLabel": "Steps (sequential)",
   "releases.create.stepPlaceholder": "Step name",
   "releases.create.addStep": "+ Add step",
-  "releases.create.cancel": "Cancel",
-  "releases.create.submit": "Create",
   "releases.create.error.emptyTitle": "Title is required",
   "releases.create.error.noSteps": "At least one step is required",
 

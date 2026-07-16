@@ -508,7 +508,7 @@ export function ReleaseDetailClient() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkOpen(false)}>
-              {t("close")}
+              {t("action.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

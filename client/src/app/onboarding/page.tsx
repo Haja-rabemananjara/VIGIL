@@ -311,10 +311,10 @@ export default function OnboardingPage() {
               variant="outline"
               onClick={() => handleCreateOpenChange(false)}
             >
-              {t("teams.create.cancel")}
+              {t("action.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading ? "…" : t("teams.create.submit")}
+              {createLoading ? "…" : t("action.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -347,7 +347,7 @@ export default function OnboardingPage() {
               variant="outline"
               onClick={() => handleJoinOpenChange(false)}
             >
-              {t("teams.join.cancel")}
+              {t("action.cancel")}
             </Button>
             <Button onClick={handleJoin} disabled={joinLoading}>
               {joinLoading ? "…" : t("teams.join.submit")}
@@ -382,7 +382,7 @@ export default function OnboardingPage() {
                   className="font-mono text-lg tracking-widest"
                 />
                 <Button variant="outline" onClick={handleCopyCode}>
-                  {copied ? t("teams.invite.copied") : t("teams.invite.copy")}
+                  {copied ? t("action.copied") : t("action.copy")}
                 </Button>
               </div>
             )}
@@ -392,7 +392,7 @@ export default function OnboardingPage() {
               variant="outline"
               onClick={() => handleInviteOpenChange(false)}
             >
-              {t("teams.invite.close")}
+              {t("action.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -350,7 +350,7 @@ export function MembersClient() {
                   className="font-mono text-lg tracking-widest"
                 />
                 <Button variant="outline" onClick={handleCopyCode}>
-                  {copied ? t("teams.invite.copied") : t("teams.invite.copy")}
+                  {copied ? t("action.copied") : t("action.copy")}
                 </Button>
               </div>
             )}
@@ -360,7 +360,7 @@ export function MembersClient() {
               variant="outline"
               onClick={() => handleInviteOpenChange(false)}
             >
-              {t("teams.invite.close")}
+              {t("action.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

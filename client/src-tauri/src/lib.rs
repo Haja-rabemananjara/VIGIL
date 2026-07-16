@@ -56,7 +56,7 @@ pub fn run() {
                 )?;
             }
 
-            // --- Local HTTP server (routing SPA) ---
+            // --- Local HTTP server ---
             let handle = app.handle().clone();
             thread::spawn(move || {
                 let server =

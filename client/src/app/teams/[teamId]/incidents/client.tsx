@@ -385,10 +385,10 @@ export function IncidentsClient() {
               variant="outline"
               onClick={() => handleCreateOpenChange(false)}
             >
-              {t("incidents.create.cancel")}
+              {t("action.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading ? "…" : t("incidents.create.submit")}
+              {createLoading ? "…" : t("action.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
