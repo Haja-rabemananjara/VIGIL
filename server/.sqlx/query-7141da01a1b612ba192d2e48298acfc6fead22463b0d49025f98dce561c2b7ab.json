@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO timeline_entries\n            (id, incident_id, author_id, kind, content, created_at)\n        VALUES ($1, $2, $3, 'message', $4, now())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7141da01a1b612ba192d2e48298acfc6fead22463b0d49025f98dce561c2b7ab"
+}

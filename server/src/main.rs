@@ -35,6 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Connected to PostgreSQL");
 
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    tracing::info!("Migrations applied");
+
     let registry = ReactionRegistry::builder()
         .register(Arc::new(VigilCreateIncident::new()))
         .register(Arc::new(VigilEscalateIncident::new()))
@@ -75,7 +78,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:3000".parse::<HeaderValue>()?)
+        .allow_origin([
+            "http://localhost:3000".parse::<HeaderValue>().unwrap(),
+            "http://localhost:3001".parse::<HeaderValue>().unwrap(),
+            "tauri://localhost".parse::<HeaderValue>().unwrap(),
+            "http://localhost:9527".parse::<HeaderValue>().unwrap(),
+            "http://localhost:8081".parse::<HeaderValue>().unwrap(),
+        ])
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
         .allow_headers([
             axum::http::header::CONTENT_TYPE,

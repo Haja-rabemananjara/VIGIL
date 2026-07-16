@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVigilSocket } from "@/stores/socket";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 interface ReleaseRow {
   id: string;
@@ -51,7 +52,7 @@ function formatDate(ts: number): string {
 }
 
 export function ReleasesClient() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 
@@ -146,6 +147,24 @@ export function ReleasesClient() {
           .then((data) => setReleases(data))
           .catch(() => {});
       }
+    }
+
+    if (
+      lastEvent.type === "release_incident_linked" ||
+      lastEvent.type === "release_incident_unlinked"
+    ) {
+      const affectedReleaseId = lastEvent.release_id as string;
+      // Refetch la release concernée pour récupérer sa liste d'incidents à jour
+      api<ReleaseRow>(
+        `/teams/${teamId}/releases/${affectedReleaseId}`,
+        { token: token! },
+      )
+        .then((updated) => {
+          setReleases((prev) =>
+            prev.map((r) => (r.id === affectedReleaseId ? updated : r)),
+          );
+        })
+        .catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, teamId]);
@@ -351,10 +370,10 @@ export function ReleasesClient() {
               variant="outline"
               onClick={() => handleCreateOpenChange(false)}
             >
-              {t("releases.create.cancel")}
+              {t("action.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading ? "…" : t("releases.create.submit")}
+              {createLoading ? "…" : t("action.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

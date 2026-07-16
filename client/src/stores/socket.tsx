@@ -68,6 +68,12 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
     function connect() {
       if (!mountedRef.current) return;
 
+      if (attemptRef.current >= 10) {
+        console.warn("[VigilSocket] Max reconnection attempts reached, giving up");
+        setStatus("disconnected");
+        return;
+      }
+
       setStatus("connecting");
 
       const url = wsUrl(token!);
@@ -76,10 +82,10 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
 
       ws.onopen = () => {
         if (!mountedRef.current) return;
+        const wasReconnect = attemptRef.current > 0;
         attemptRef.current = 0;
         setStatus("connected");
-
-        if (reconnectCount > 0 || attemptRef.current > 0) {
+        if (wasReconnect) {
           setReconnectCount((prev) => prev + 1);
         }
       };
@@ -88,7 +94,7 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
         if (!mountedRef.current) return;
         try {
           const parsed: WsEvent = JSON.parse(event.data);
-          setLastEvent({ ...parsed }); // new reference each time
+          setLastEvent({ ...parsed });
         } catch {}
       };
 
@@ -117,7 +123,6 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
         wsRef.current.close();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   function send(message: Record<string, unknown>) {

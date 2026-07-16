@@ -59,8 +59,8 @@ async fn connect_service_returns_connection_metadata() {
     let body: serde_json::Value = res.json().await.unwrap();
     assert_eq!(body["service"], "github");
     assert!(Uuid::parse_str(body["id"].as_str().unwrap()).is_ok());
-    assert!(body["created_at"].as_str().is_some());
-    assert!(body["updated_at"].as_str().is_some());
+    assert!(body["created_at"].as_i64().is_some());
+    assert!(body["updated_at"].as_i64().is_some());
 }
 
 #[tokio::test]

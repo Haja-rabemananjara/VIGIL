@@ -20,6 +20,12 @@ impl ActionCatalog {
     pub fn all(&self) -> &[ActionMetadata] {
         &self.actions
     }
+
+    pub fn contains(&self, service: &str, event: &str) -> bool {
+        self.actions
+            .iter()
+            .any(|a| a.service == service && a.event == event)
+    }
 }
 
 pub struct ActionCatalogBuilder {
@@ -81,5 +87,16 @@ mod tests {
 
         let events: Vec<&str> = catalog.all().iter().map(|a| a.event.as_str()).collect();
         assert_eq!(events, vec!["one", "two", "three"]);
+    }
+
+    #[test]
+    fn contains_matches_registered_pairs_only() {
+        let catalog = ActionCatalog::builder()
+            .register("github", "workflow_run", "CI finished")
+            .build();
+
+        assert!(catalog.contains("github", "workflow_run"));
+        assert!(!catalog.contains("github", "push"));
+        assert!(!catalog.contains("gitlab", "workflow_run"));
     }
 }

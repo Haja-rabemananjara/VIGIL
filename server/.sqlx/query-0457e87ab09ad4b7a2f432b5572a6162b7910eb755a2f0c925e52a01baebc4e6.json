@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE incident_assignments\n        SET status        = 'replaced',\n            unassigned_at = now()\n        WHERE incident_id = $1\n          AND status      = 'active'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0457e87ab09ad4b7a2f432b5572a6162b7910eb755a2f0c925e52a01baebc4e6"
+}

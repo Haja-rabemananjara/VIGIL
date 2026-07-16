@@ -10,7 +10,8 @@ import { useAuth } from "@/stores/auth";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useVigilSocket } from "@/stores/socket";
-import { ConnectionIndicator } from "./ConnectionIndicator";
+import { ConnectionIndicator } from "./ConnectionIndicator"
+import { useNotifications } from "@/lib/useNotifications";
 
 interface AppShellProps {
   children: ReactNode;
@@ -25,6 +26,8 @@ interface TeamView {
 
 export function AppShell({ children }: AppShellProps) {
   const { token } = useAuth();
+  useNotifications();
+
   const pathname = usePathname();
   const [teams, setTeams] = useState<TeamView[]>([]);
   const { status } = useVigilSocket();
@@ -38,7 +41,7 @@ export function AppShell({ children }: AppShellProps) {
     if (!token) return;
     api<TeamView[]>("/teams", { token })
       .then(setTeams)
-      .catch(() => {});
+      .catch(() => { });
   }, [token]);
 
   return (
@@ -98,6 +101,17 @@ export function AppShell({ children }: AppShellProps) {
                         )}
                       >
                         {t("app.shell.releases")}
+                      </Link>
+                      <Link
+                        href={`/teams/${team.id}/rules`}
+                        className={cn(
+                          "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                          pathname?.includes("/rules")
+                            ? "font-medium text-primary"
+                            : "text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {t("app.shell.rules")}
                       </Link>
                     </>
                   )}

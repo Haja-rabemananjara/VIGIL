@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            team_id,\n            title,\n            body,\n            severity,\n            status,\n            created_by,\n            created_at,\n            updated_at,\n            acknowledged_at,\n            escalated_at,\n            resolved_at\n        FROM incidents\n        WHERE id = $1\n        ",
+  "query": "\n        UPDATE incidents\n        SET\n            status          = $2,\n            severity        = COALESCE($3, severity),\n            acknowledged_at = CASE WHEN $2 = 'acknowledged' THEN now() ELSE acknowledged_at END,\n            escalated_at    = CASE WHEN $2 = 'escalated'    THEN now() ELSE escalated_at    END,\n            resolved_at     = CASE WHEN $2 = 'resolved'     THEN now() ELSE resolved_at     END,\n            updated_at      = now()\n        WHERE id = $1\n        RETURNING\n            id, team_id, title, body, severity, status, created_by,\n            created_at, updated_at, acknowledged_at, escalated_at, resolved_at,\n            (SELECT user_id FROM incident_assignments\n             WHERE incident_id = incidents.id AND status = 'active'\n             LIMIT 1) AS \"assignee_id?\"\n        ",
   "describe": {
     "columns": [
       {
@@ -62,11 +62,18 @@
         "ordinal": 11,
         "name": "resolved_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "assignee_id?",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Text"
       ]
     },
     "nullable": [
@@ -81,8 +88,9 @@
       false,
       true,
       true,
-      true
+      true,
+      null
     ]
   },
-  "hash": "14654ba1a7de101f79a8bcc0fcdbae24e7a3f479cff6e1e435971eb6ff56d8a7"
+  "hash": "d7e9652a93145486fc7c1849a0f397197db6e83e57422cbd0fec43862c71bf9d"
 }

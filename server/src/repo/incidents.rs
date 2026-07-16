@@ -17,6 +17,7 @@ pub struct IncidentRow {
     pub acknowledged_at: Option<DateTime<Utc>>,
     pub escalated_at: Option<DateTime<Utc>>,
     pub resolved_at: Option<DateTime<Utc>>,
+    pub assignee_id: Option<Uuid>,
 }
 
 pub async fn create_incident(
@@ -45,7 +46,10 @@ pub async fn create_incident(
             updated_at,
             acknowledged_at,
             escalated_at,
-            resolved_at
+            resolved_at,
+            (SELECT user_id FROM incident_assignments
+             WHERE incident_id = incidents.id AND status = 'active'
+             LIMIT 1) AS "assignee_id?"
         "#,
         id,
         team_id,
@@ -70,23 +74,26 @@ pub async fn list_incidents(
         IncidentRow,
         r#"
         SELECT
-            id,
-            team_id,
-            title,
-            body,
-            severity,
-            status,
-            created_by,
-            created_at,
-            updated_at,
-            acknowledged_at,
-            escalated_at,
-            resolved_at
-        FROM incidents
-        WHERE team_id = $1
-          AND ($2::text IS NULL OR status = $2)
-          AND ($3::text IS NULL OR severity = $3)
-        ORDER BY created_at DESC
+            i.id,
+            i.team_id,
+            i.title,
+            i.body,
+            i.severity,
+            i.status,
+            i.created_by,
+            i.created_at,
+            i.updated_at,
+            i.acknowledged_at,
+            i.escalated_at,
+            i.resolved_at,
+            ia.user_id AS "assignee_id?"
+        FROM incidents i
+        LEFT JOIN incident_assignments ia
+            ON ia.incident_id = i.id AND ia.status = 'active'
+        WHERE i.team_id = $1
+          AND ($2::text IS NULL OR i.status = $2)
+          AND ($3::text IS NULL OR i.severity = $3)
+        ORDER BY i.created_at DESC
         "#,
         team_id,
         status_filter,
@@ -106,20 +113,23 @@ pub async fn find_incident(
         IncidentRow,
         r#"
         SELECT
-            id,
-            team_id,
-            title,
-            body,
-            severity,
-            status,
-            created_by,
-            created_at,
-            updated_at,
-            acknowledged_at,
-            escalated_at,
-            resolved_at
-        FROM incidents
-        WHERE id = $1
+            i.id,
+            i.team_id,
+            i.title,
+            i.body,
+            i.severity,
+            i.status,
+            i.created_by,
+            i.created_at,
+            i.updated_at,
+            i.acknowledged_at,
+            i.escalated_at,
+            i.resolved_at,
+            ia.user_id AS "assignee_id?"
+        FROM incidents i
+        LEFT JOIN incident_assignments ia
+            ON ia.incident_id = i.id AND ia.status = 'active'
+        WHERE i.id = $1
         "#,
         incident_id,
     )
@@ -149,7 +159,10 @@ pub async fn update_incident_status(
         WHERE id = $1
         RETURNING
             id, team_id, title, body, severity, status, created_by,
-            created_at, updated_at, acknowledged_at, escalated_at, resolved_at
+            created_at, updated_at, acknowledged_at, escalated_at, resolved_at,
+            (SELECT user_id FROM incident_assignments
+             WHERE incident_id = incidents.id AND status = 'active'
+             LIMIT 1) AS "assignee_id?"
         "#,
         incident_id,
         new_status,
@@ -175,7 +188,10 @@ pub async fn update_incident_severity(
         WHERE id = $1
         RETURNING
             id, team_id, title, body, severity, status, created_by,
-            created_at, updated_at, acknowledged_at, escalated_at, resolved_at
+            created_at, updated_at, acknowledged_at, escalated_at, resolved_at,
+            (SELECT user_id FROM incident_assignments
+             WHERE incident_id = incidents.id AND status = 'active'
+             LIMIT 1) AS "assignee_id?"
         "#,
         incident_id,
         new_severity,

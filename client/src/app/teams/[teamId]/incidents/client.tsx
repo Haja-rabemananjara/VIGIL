@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveLastTeam } from "@/lib/navigation";
 import { useVigilSocket } from "@/stores/socket";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 interface IncidentRow {
   id: string;
@@ -50,7 +51,7 @@ const SEVERITY_OPTIONS: Severity[] = ["low", "medium", "high", "critical"];
 
 // COMPONENTS
 export function IncidentsClient() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 
@@ -384,10 +385,10 @@ export function IncidentsClient() {
               variant="outline"
               onClick={() => handleCreateOpenChange(false)}
             >
-              {t("incidents.create.cancel")}
+              {t("action.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading ? "…" : t("incidents.create.submit")}
+              {createLoading ? "…" : t("action.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

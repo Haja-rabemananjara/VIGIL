@@ -1,18 +1,4 @@
-/**
- * HTTP client targeting the VIGIL Rust server.
- *
- * Responsibilities:
- *   - Inject the Authorization header for authenticated requests.
- *   - Parse the server's uniform error shape {error: {code, message}}.
- *   - Throw typed errors so callers can react (401 => redirect to signin,
- *     409 => show "email taken", etc).
- *
- * The server URL is read from NEXT_PUBLIC_API_URL, with a sane dev default.
- */
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:8080";
+import { getApiUrl } from "./platform";
 
 /** Shape of the server's error responses (cf. Rust AppError::IntoResponse). */
 export interface ApiErrorBody {
@@ -56,7 +42,7 @@ export async function api<T>(
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(`${getApiUrl()}${path}`, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,

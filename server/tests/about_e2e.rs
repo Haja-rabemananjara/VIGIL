@@ -119,3 +119,60 @@ async fn about_is_public_no_auth_required() {
 
     assert_eq!(res.status(), 200);
 }
+
+#[tokio::test]
+async fn about_marks_third_parties_connectable_and_vigil_not() {
+    let app = spawn_app().await;
+
+    let res = reqwest::Client::new()
+        .get(format!("{}/about.json", app.address))
+        .send()
+        .await
+        .unwrap();
+    let body: serde_json::Value = res.json().await.unwrap();
+    let services = body["server"]["services"].as_array().unwrap();
+
+    let github = services.iter().find(|s| s["name"] == "github").unwrap();
+    let discord = services.iter().find(|s| s["name"] == "discord").unwrap();
+    let vigil = services.iter().find(|s| s["name"] == "vigil").unwrap();
+
+    assert_eq!(github["connectable"], true);
+    assert_eq!(discord["connectable"], true);
+    assert_eq!(vigil["connectable"], false);
+}
+
+#[tokio::test]
+async fn every_reaction_exposes_a_valid_json_payload_example() {
+    let app = spawn_app().await;
+
+    let res = reqwest::Client::new()
+        .get(format!("{}/about.json", app.address))
+        .send()
+        .await
+        .unwrap();
+    let body: serde_json::Value = res.json().await.unwrap();
+    let services = body["server"]["services"].as_array().unwrap();
+
+    let mut checked = 0;
+    for service in services {
+        for reaction in service["reactions"].as_array().unwrap() {
+            let example = reaction["payload_example"]
+                .as_str()
+                .unwrap_or_else(|| panic!("{} has no payload_example", reaction["name"]));
+
+            serde_json::from_str::<serde_json::Value>(example).unwrap_or_else(|e| {
+                panic!(
+                    "{} payload_example is not valid JSON: {e}",
+                    reaction["name"]
+                )
+            });
+            checked += 1;
+        }
+    }
+
+    assert_eq!(checked, 5, "expected 5 registered reactions");
+    let github = services.iter().find(|s| s["name"] == "github").unwrap();
+    for action in github["actions"].as_array().unwrap() {
+        assert!(action["payload_example"].is_null());
+    }
+}

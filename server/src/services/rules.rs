@@ -4,24 +4,15 @@ use uuid::Uuid;
 
 use crate::domain::rules::{CreateRuleInput, Rule, UpdateRuleInput};
 use crate::error::AppError;
-use crate::hooks::ReactionRegistry;
+use crate::hooks::{ActionCatalog, ReactionRegistry};
 use crate::repo::{
     self,
     rules::{NewRule, RulePatch},
 };
 
-fn known_trigger(service: &str, event: &str) -> bool {
-    matches!(
-        (service, event),
-        ("github", "workflow_run")
-            | ("github", "push")
-            | ("github", "pull_request")
-            | ("timer", "cron")
-    )
-}
-
 pub async fn create_rule(
     pool: &PgPool,
+    catalog: &ActionCatalog,
     registry: &ReactionRegistry,
     team_id: Uuid,
     actor_id: Uuid,
@@ -33,17 +24,17 @@ pub async fn create_rule(
         ));
     }
 
-    if !known_trigger(&input.trigger.service, &input.trigger.event) {
-        return Err(AppError::Validation(format!(
-            "Unknown trigger: {}.{}",
-            input.trigger.service, input.trigger.event
-        )));
-    }
-
     if !registry.contains(&input.reaction.reaction_type) {
         return Err(AppError::Validation(format!(
             "Unknown reaction: {}",
             input.reaction.reaction_type
+        )));
+    }
+
+    if !catalog.contains(&input.trigger.service, &input.trigger.event) {
+        return Err(AppError::Validation(format!(
+            "Unknown trigger: {}.{}",
+            input.trigger.service, input.trigger.event
         )));
     }
 
@@ -90,19 +81,21 @@ pub async fn get_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<Rul
 
 pub async fn update_rule(
     pool: &PgPool,
+    catalog: &ActionCatalog,
     registry: &ReactionRegistry,
     team_id: Uuid,
     rule_id: Uuid,
     input: UpdateRuleInput,
 ) -> Result<Rule, AppError> {
     if let Some(trigger) = &input.trigger
-        && !known_trigger(&trigger.service, &trigger.event)
+        && !catalog.contains(&trigger.service, &trigger.event)
     {
         return Err(AppError::Validation(format!(
             "Unknown trigger: {}.{}",
             trigger.service, trigger.event
         )));
     }
+
     if let Some(reaction) = &input.reaction
         && !registry.contains(&reaction.reaction_type)
     {

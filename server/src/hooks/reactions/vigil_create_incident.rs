@@ -41,6 +41,14 @@ impl ReactionExecutor for VigilCreateIncident {
         "Create a VIGIL incident with configurable title, severity, and body"
     }
 
+    fn payload_example(&self) -> &'static str {
+        r#"{
+  "title": "CI broken on {{repository.name}}",
+  "severity": "high",
+  "body": "Workflow {{workflow_run.name}} failed"
+}"#
+    }
+
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError> {
         let payload: IncidentPayload =
             serde_json::from_value(ctx.payload.clone()).map_err(|e| {

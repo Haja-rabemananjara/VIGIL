@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            id,\n            team_id,\n            title,\n            body,\n            severity,\n            status,\n            created_by,\n            created_at,\n            updated_at,\n            acknowledged_at,\n            escalated_at,\n            resolved_at\n        FROM incidents\n        WHERE team_id = $1\n          AND ($2::text IS NULL OR status = $2)\n          AND ($3::text IS NULL OR severity = $3)\n        ORDER BY created_at DESC\n        ",
+  "query": "\n        UPDATE incidents\n        SET severity   = $2,\n            updated_at = now()\n        WHERE id = $1\n        RETURNING\n            id, team_id, title, body, severity, status, created_by,\n            created_at, updated_at, acknowledged_at, escalated_at, resolved_at,\n            (SELECT user_id FROM incident_assignments\n             WHERE incident_id = incidents.id AND status = 'active'\n             LIMIT 1) AS \"assignee_id?\"\n        ",
   "describe": {
     "columns": [
       {
@@ -62,12 +62,16 @@
         "ordinal": 11,
         "name": "resolved_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "assignee_id?",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Text",
         "Text"
       ]
     },
@@ -83,8 +87,9 @@
       false,
       true,
       true,
-      true
+      true,
+      null
     ]
   },
-  "hash": "a75ed0e6041af13efedd0d4377efece85391a91afcd770220d3fe351dd4c46c4"
+  "hash": "fbf6d84583a360705ce23cee608f44fef357d89b290b21935f490d085c1f7fde"
 }
