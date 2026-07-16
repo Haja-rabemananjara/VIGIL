@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, Plug, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/stores/auth";
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { t } from "@/lib/i18n";
+import Link from "next/link";
 
 export function UserMenu() {
   const { user, signout } = useAuth();
@@ -47,6 +48,12 @@ export function UserMenu() {
         <DropdownMenuItem disabled>
           <UserIcon className="mr-2 h-4 w-4" aria-hidden="true" />
           <span>{t("user.profile")}</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/services">
+            <Plug className="mr-2 h-4 w-4" aria-hidden="true" />
+            <span>{t("user.services")}</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signout()}>

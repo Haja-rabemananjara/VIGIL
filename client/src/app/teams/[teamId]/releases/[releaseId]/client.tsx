@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -29,6 +29,7 @@ import {
 import { StateBadge, type IncidentState } from "@/components/StateBadge";
 import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
 import { Link2, Unlink } from "lucide-react";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 interface ReleaseDetail {
   id: string;
@@ -62,10 +63,7 @@ interface LinkedIncident {
 }
 
 export function ReleaseDetailClient() {
-  const { teamId, releaseId } = useParams<{
-    teamId: string;
-    releaseId: string;
-  }>();
+  const { teamId, releaseId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 
@@ -153,10 +151,22 @@ export function ReleaseDetailClient() {
 
     if (
       (lastEvent.type === "release_state_changed" ||
-       lastEvent.type === "release_step_validated") &&
+      lastEvent.type === "release_step_validated") &&
       lastEvent.release_id === releaseId
     ) {
       fetchRelease();
+    }
+
+    if (
+      lastEvent.type === "release_incident_linked" ||
+      lastEvent.type === "release_incident_unlinked"
+    ) {
+      const affectedReleaseId = lastEvent.release_id as string;
+      if (affectedReleaseId === releaseId) {
+        api<ReleaseDetail>(`/teams/${teamId}/releases/${releaseId}`, { token: token! })
+          .then(setRelease)
+          .catch(() => {});
+      }
     }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -498,7 +508,7 @@ export function ReleaseDetailClient() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkOpen(false)}>
-              {t("close")}
+              {t("action.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

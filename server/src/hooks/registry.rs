@@ -11,6 +11,7 @@ pub trait ReactionExecutor: Send + Sync {
     fn kind(&self) -> &'static str;
     fn service_name(&self) -> &'static str;
     fn description(&self) -> &'static str;
+    fn payload_example(&self) -> &'static str;
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError>;
 }
 
@@ -78,13 +79,14 @@ mod tests {
         fn kind(&self) -> &'static str {
             "dummy"
         }
-
         fn service_name(&self) -> &'static str {
             "test"
         }
-
         fn description(&self) -> &'static str {
             "Test-only reaction that increments a counter"
+        }
+        fn payload_example(&self) -> &'static str {
+            "{}"
         }
 
         async fn execute(&self, _ctx: &ReactionContext<'_>) -> Result<(), AppError> {
@@ -131,6 +133,9 @@ mod tests {
             fn description(&self) -> &'static str {
                 "first"
             }
+            fn payload_example(&self) -> &'static str {
+                "{}"
+            }
             async fn execute(&self, _: &ReactionContext<'_>) -> Result<(), AppError> {
                 Ok(())
             }
@@ -146,6 +151,9 @@ mod tests {
             }
             fn description(&self) -> &'static str {
                 "second"
+            }
+            fn payload_example(&self) -> &'static str {
+                "{}"
             }
             async fn execute(&self, _: &ReactionContext<'_>) -> Result<(), AppError> {
                 Ok(())
@@ -177,6 +185,9 @@ mod tests {
             fn description(&self) -> &'static str {
                 ""
             }
+            fn payload_example(&self) -> &'static str {
+                "{}"
+            }
             async fn execute(&self, _: &ReactionContext<'_>) -> Result<(), AppError> {
                 Ok(())
             }
@@ -192,6 +203,9 @@ mod tests {
             }
             fn description(&self) -> &'static str {
                 ""
+            }
+            fn payload_example(&self) -> &'static str {
+                "{}"
             }
             async fn execute(&self, _: &ReactionContext<'_>) -> Result<(), AppError> {
                 Ok(())

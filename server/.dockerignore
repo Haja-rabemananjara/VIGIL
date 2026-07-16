@@ -1,0 +1,12 @@
+target/
+.env
+.git/
+.gitignore
+node_modules/
+dist/
+
+*.md
+.idea/
+.vscode/
+**/*.rs.bk
+**/.DS_Store

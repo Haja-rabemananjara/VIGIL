@@ -434,6 +434,17 @@ pub async fn link_incident(
         .await
         .map_err(|e| AppError::Internal(format!("Failed to create link: {e}")))?;
 
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseIncidentLinked {
+                team_id,
+                release_id,
+                incident_id,
+            },
+        )
+        .await;
+
     let final_row = if current == ReleaseStatus::InProgress && incident.status != "resolved" {
         let blocked =
             releases::update_release_status(pool, release_id, ReleaseStatus::Blocked.as_str())
@@ -481,6 +492,17 @@ pub async fn unlink_incident(
             "No active link between this release and incident".into(),
         ));
     }
+
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::ReleaseIncidentUnlinked {
+                team_id,
+                release_id,
+                incident_id,
+            },
+        )
+        .await;
 
     let current = ReleaseStatus::from_db(&release.status)
         .ok_or_else(|| AppError::Internal("Invalid release status".into()))?;

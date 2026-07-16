@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useRouteParams } from "@/lib/useRouteParams";
 
 export function TeamClient() {
-  const { teamId } = useParams<{ teamId: string }>();
+  const { teamId } = useRouteParams();
   const router = useRouter();
 
   useEffect(() => {

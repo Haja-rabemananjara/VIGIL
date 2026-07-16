@@ -41,6 +41,13 @@ impl ReactionExecutor for VigilEscalateIncident {
         "Escalate a VIGIL incident, optionally raising its severity"
     }
 
+    fn payload_example(&self) -> &'static str {
+        r#"{
+  "incident_id": "00000000-0000-0000-0000-000000000000",
+  "severity": "critical"
+}"#
+    }
+
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError> {
         let payload: EscalatePayload =
             serde_json::from_value(ctx.payload.clone()).map_err(|e| {

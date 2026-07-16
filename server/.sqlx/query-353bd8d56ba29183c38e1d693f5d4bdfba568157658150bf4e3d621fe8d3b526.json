@@ -1,0 +1,97 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO rules (\n            id, team_id, name, enabled,\n            trigger_service, trigger_event, trigger_filters,\n            reaction_type, reaction_payload, created_by\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n        RETURNING\n            id, team_id, name, enabled,\n            trigger_service, trigger_event,\n            trigger_filters as \"trigger_filters: serde_json::Value\",\n            reaction_type,\n            reaction_payload as \"reaction_payload: serde_json::Value\",\n            created_by, created_at, updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "trigger_service",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "trigger_event",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "trigger_filters: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "reaction_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "reaction_payload: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "353bd8d56ba29183c38e1d693f5d4bdfba568157658150bf4e3d621fe8d3b526"
+}

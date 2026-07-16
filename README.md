@@ -214,7 +214,7 @@ cargo clippy
 |--------|------|------|-------------|
 | GET | `/health` | none | Liveness check - returns `{ status, version }` |
 
-### Planned 
+### Planned
 
 | Method | Path | Auth |
 |--------|------|------|
@@ -324,7 +324,7 @@ Body: { "email": string, "password": string, "display_name": string }
 
 201 Created  => { id, email, display_name, language, created_at }
 422 Unprocessable => email too short / password < 8 / display_name null
-409 Conflict      => email already exists 
+409 Conflict      => email already exists
 
 WS : none.
 
@@ -334,7 +334,7 @@ POST /auth/signin
 Body: { "email": string, "password": string }
 
 200 OK    => { "token": "hex string", "user": { id, email, display_name, language, created_at } }
-401       => "invalid credentials" 
+401       => "invalid credentials"
 
 WS : none.
 
@@ -372,5 +372,4 @@ Header: Authorization: Bearer <token>
 ---
 
 ## License
-
 Author: Hajatiana Rabemananjara.

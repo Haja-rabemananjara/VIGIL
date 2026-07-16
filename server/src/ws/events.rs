@@ -58,6 +58,18 @@ pub enum WsEvent {
         new_state: String,
     },
 
+    ReleaseIncidentLinked {
+        team_id: Uuid,
+        release_id: Uuid,
+        incident_id: Uuid,
+    },
+
+    ReleaseIncidentUnlinked {
+        team_id: Uuid,
+        release_id: Uuid,
+        incident_id: Uuid,
+    },
+
     ReleaseStepValidated {
         team_id: Uuid,
         release_id: Uuid,
@@ -65,6 +77,7 @@ pub enum WsEvent {
         step_name: String,
         by: Uuid,
     },
+
     RuleTriggered {
         team_id: Uuid,
         rule_id: Uuid,

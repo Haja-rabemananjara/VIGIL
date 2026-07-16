@@ -33,8 +33,8 @@ impl ServiceName {
 pub struct ServiceConnection {
     pub id: Uuid,
     pub service: ServiceName,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 #[derive(Debug)]

@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO service_connections (id, user_id, service, encrypted_token)\n        VALUES ($1, $2, $3, $4)\n        ON CONFLICT (user_id, service) DO UPDATE\n            SET encrypted_token = EXCLUDED.encrypted_token,\n                updated_at = now()\n        RETURNING id, service, created_at, updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "service",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f179e4d6fd050da1c084cf037ad06a2b1c05a34b65cb41bda991459b555e69d9"
+}

@@ -42,6 +42,13 @@ impl ReactionExecutor for DiscordMessage {
         "Send a message to a Discord channel via webhook"
     }
 
+    fn payload_example(&self) -> &'static str {
+        r#"{
+    "content": "CI broken on {{repository.name}}",
+    "username": "VIGIL"
+}"#
+    }
+
     async fn execute(&self, ctx: &ReactionContext<'_>) -> Result<(), AppError> {
         let payload: DiscordPayload = serde_json::from_value(ctx.payload.clone())
             .map_err(|e| AppError::Validation(format!("Invalid discord_message payload: {e}")))?;
