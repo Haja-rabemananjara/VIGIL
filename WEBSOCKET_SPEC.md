@@ -429,17 +429,17 @@ A rule successfully executed its reaction.
 {
   "type": "rule_triggered",
   "team_id": "uuid",
+  "rule_id": "uuid",
   "rule_name": "CI failure => Incident",
-  "result": "incident_created",
-  "incident_id": "uuid"
+  "reaction_type": "vigil_create_incident"
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `rule_id` | UUID | The rule that fired |
 | `rule_name` | string | Human-readable name of the rule |
-| `result` | string | What the reaction produced (e.g. `incident_created`, `release_blocked`) |
-| `incident_id` | UUID or null | If the reaction created an incident, its ID; null otherwise |
+| `reaction_type` | string | The reaction kind that was executed (e.g. `vigil_create_incident`, `discord_message`) |
 
 **Trigger:** The hook engine successfully executes a rule's reaction.
 **Delivery:** team
@@ -454,17 +454,21 @@ A rule's reaction failed to execute.
 {
   "type": "rule_failed",
   "team_id": "uuid",
+  "rule_id": "uuid",
   "rule_name": "CI failure => Incident",
-  "error": "service_unavailable"
+  "reaction_type": "discord_message",
+  "error": "Discord returned HTTP 401"
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `rule_id` | UUID | The rule that fired |
 | `rule_name` | string | Human-readable name of the rule |
-| `error` | string | Error description |
+| `reaction_type` | string | The reaction kind that failed |
+| `error` | string | Error description (e.g. HTTP status, missing connection, invalid payload) |
 
-**Trigger:** The hook engine fails to execute a rule's reaction.
+**Trigger:** The hook engine fails to execute a rule's reaction. The failure is isolated: other rules matching the same webhook continue to run.
 **Delivery:** team
 
 ---
