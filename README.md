@@ -360,7 +360,7 @@ Adminer is exposed on `http://localhost:8888`.
 
 ## REST API
 
-> This section grows with each ticket. Current state below; see the backlog for the full planned surface.
+> This section grows with each ticket. 
 
 ### Implemented
 
@@ -396,27 +396,27 @@ All error responses share a uniform shape, regardless of endpoint:
 
 ## Database Schema
 
-Full commented DDL lives in [`server/migrations/001_initial_schema.sql`](./server/migrations/001_initial_schema.sql); the DBML diagram lives in [`docs/`](./docs/). Nineteen tables, grouped into seven functional blocks:
+Full commented DDL lives in [`server/migrations/20260616162323_initial_schema.sql`](./server/migrations/20260616162323_initial_schema.sql); the DBML diagram lives in [`docs/`](./docs/). Nineteen tables, grouped into seven functional blocks:
 
-**Core identity** - `users`, `sessions`, `teams`, `team_members`
+**Core identity** : `users`, `sessions`, `teams`, `team_members`
 The authentication and workspace root. `team_members` carries the 3-role system (`observer`/`responder`/`manager`) with a partial unique index guaranteeing exactly one active Manager per team.
 
-**Membership lifecycle** - `invitations`, `team_bans`
+**Membership lifecycle** : `invitations`, `team_bans`
 Closes the loop on how someone enters or is barred from a team. `invitations.code` is globally unique (resolved without a `team_id` at join time); `team_bans` uses a partial unique index per `(team_id, user_id)` so a lifted ban can later be re-applied without a schema conflict.
 
-**Incidents** - `incidents`, `incident_assignments`, `timeline_entries`, `timeline_reactions`
+**Incidents** : `incidents`, `incident_assignments`, `timeline_entries`, `timeline_reactions`
 `incidents` holds current state (status + severity as independent axes); `timeline_entries` is the append-only event log of what happened. `incident_assignments` and `timeline_reactions` each enforce their own invariant via a partial/composite unique index (one active assignee; one reaction per user/entry/emoji).
 
-**Releases** - `releases`, `release_steps`, `release_incident_links`
+**Releases** : `releases`, `release_steps`, `release_incident_links`
 Mirrors the incidents block structurally (state + transition timestamps), but models a planned, sequential process instead of a reactive one. `release_incident_links` is the N-N table whose presence drives the automatic `blocked` state.
 
-**Social** - `private_messages`
-Strictly bilateral, never grouped. No `team_id` - access is checked at send time via a shared-team query, not stored as a property of the message.
+**Social** : `private_messages`
+Strictly bilateral, never grouped. No `team_id` : access is checked at send time via a shared-team query, not stored as a property of the message.
 
-**Automation** - `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`
+**Automation** : `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`
 The Action => REAction pipeline. `service_connections` stores AES-256-GCM–encrypted tokens (reversible, unlike session hashing, because the server must reuse them to call external APIs). `rules` separates filterable columns (service/event) from free-form JSONB (filters/payload templates). `webhook_deliveries` and `rule_executions` are append-only logs of what arrived and what happened.
 
-**Audit** - `audit_log`
+**Audit** : `audit_log`
 A decoupled observer: no foreign keys to any other table, so it survives deletions elsewhere and never blocks them. Append-only by design - moderation and configuration changes never rewrite history.
 
 ### Conventions applied throughout
@@ -429,7 +429,213 @@ A decoupled observer: no foreign keys to any other table, so it survives deletio
 
 ---
 
+## Rule Engine
 
+VIGIL turns external events into VIGIL actions through a rule engine built on two extension seams: a **catalog of Actions** (what services can send us) and a **registry of Reactions** (what we can do in response).
+A rule wires one Action to one Reaction, optionally filtered and templated.
+
+### Pipeline
+
+External service VIGIL server
+───────────────── ────────────
+GitHub CI fails ┌─ HMAC-SHA256 (constant time)
+│ │ invalid => 401
+│ POST /webhooks/github │
+└───────────────────────────────────►┤ persist raw payload
+│ (webhook_deliveries, replayable)
+│
+│ respond 202 immediately
+│ ┌───────────────────┐
+│ │ tokio::spawn │
+│ │ │
+│ │ load enabled rules │
+│ │ matching event │
+│ │ │ │
+│ │ ▼ │
+│ │ matcher │
+│ │ (dot-notation, │
+│ │ AND, strict eq) │
+│ │ │ │
+│ │ ▼ │
+│ │ templating │
+│ │ ({{path.to.field}}) │
+│ │ │ │
+│ │ ▼ │
+│ │ Reaction.execute() │
+│ │ (via dyn trait) │
+│ │ │ │
+│ │ ▼ │
+│ │ log to │
+│ │ rule_executions │
+│ │ + broadcast │
+│ │ rule_triggered │
+│ │ or rule_failed │
+│ └───────────────────┘
+└────
+
+The webhook receiver responds `202 Accepted` before the engine runs, so a slow reaction (Discord API, blocked release) never delays GitHub. A failure in one rule never affects the others: each is executed in isolation and reported as `rule_failed` on the WS channel.
+
+### Catalog vs registry
+
+| | ActionCatalog | ReactionRegistry |
+|---|---|---|
+| What it holds | Metadata (service, event, description) | Types implementing `ReactionExecutor` |
+| Where declared | `main.rs` builder | `main.rs` builder |
+| Exposed via | `/about.json` (actions[]) | `/about.json` (reactions[]) |
+| Runtime role | Filter incoming webhooks | Dispatch reactions by kind |
+
+**Asymmetry rationale.** Reactions have runtime behavior (`execute()`), so a trait + `Arc<dyn ReactionExecutor>` earns its complexity. Actions are declarative. They describe events a service can send us; the matching and dispatching happens against fields inside the payload, not against the metadata.
+Building a symmetric `ActionExecutor` trait would be complexity without a purpose. Both extension points still cost a single line in `main.rs` for a new entry.
+
+### Filters
+
+Filters are dot-notation paths matched against the incoming payload:
+
+```json
+{
+  "workflow_run.conclusion": "failure",
+  "repository.full_name": "hajatiana/vigil"
+}
+```
+
+- All paths must match (implicit AND)
+- Comparison is strict equality on JSON values (string, number, bool)
+- Missing paths never match
+- `{}` matches everything. This is the safe default in the rule form
+
+### Templating
+
+Reaction payloads may embed `{{path.to.field}}` placeholders resolved
+against the webhook payload:
+
+```json
+{
+  "title": "CI broken on {{repository.name}}",
+  "body":  "Workflow {{workflow_run.name}} failed"
+}
+```
+
+**Unresolved placeholders are left literal.** If the template says `{{workflow.name}}` but the payload only has `workflow_run.name`, the output contains the literal string `{{workflow.name}}` rather than an empty string.
+This is deliberate: it surfaces the mistake at the first run instead of producing silently degraded messages.
+
+### Registered reactions
+
+| Kind | Service | Effect |
+|---|---|---|
+| `vigil_create_incident` | vigil | Creates an incident on the rule's team |
+| `vigil_escalate_incident` | vigil | Transitions an existing incident to `escalated` |
+| `vigil_block_release` | vigil | Links an incident to a release, triggering the auto-block |
+| `vigil_validate_release_step` | vigil | Advances a release step |
+| `discord_message` | discord | Posts a message to a Discord webhook URL |
+
+Reactions triggered by a rule are attributed in the audit log to
+`rule.created_by`, not to a system user. This keeps the actor chain
+honest — every action in VIGIL is traceable to a real user.
+
+### Registered actions
+
+Currently: `github/workflow_run`, `github/push`, `github/pull_request`.
+Only `workflow_run` is wired end-to-end in the demo scenario; `push` and
+`pull_request` are registered in the catalog so rules can target them,
+but they carry no VIGIL-specific processing beyond generic dispatch.
+
+### Service connections
+
+Third-party services are connected per-user via
+`POST /me/services/{service}` with a token or webhook URL body. Tokens
+are encrypted at rest with AES-256-GCM (see `MASTER_KEY_HEX`) and
+decrypted just-in-time inside a reaction (`DiscordMessage` reads the
+rule creator's Discord webhook URL). They are never logged, never
+returned in a response.
+
+Connectable services are the intersection of what the DB `CHECK`
+constraint allows and what the front discovers via `/about.json`
+(`server.services[].connectable`). VIGIL itself appears in the catalog
+(it exposes reactions) but is marked `connectable: false` — it's the
+application, not a third party.
+
+**Known limitation.** GitHub tokens are stored encrypted but not yet
+consumed at runtime: the webhook receiver authenticates GitHub payloads
+via a global `WEBHOOK_SECRET` (HMAC), not via per-user tokens. Reading
+the token would require a reaction that calls the GitHub API on the
+user's behalf (e.g. `github_create_issue`). This is on the extended
+scope backlog.
+
+---
+
+## `/about.json`
+
+Public discovery endpoint. Serves the catalog of Actions and Reactions so that clients build their UI without hard-coding any service name, event, or reaction kind.
+
+**GET /about.json** (no authentification)
+
+Response:
+
+```json
+{
+  "client": {
+    "host": "10.0.0.1"
+  },
+  "server": {
+    "current_time": 1718000000,
+    "token": "3f2a9b...e4c1",
+    "services": [
+      {
+        "name": "github",
+        "connectable": true,
+        "actions": [
+          {
+            "name": "workflow_run",
+            "description": "A CI workflow run has completed (success or failure)"
+          }
+        ],
+        "reactions": []
+      },
+      {
+        "name": "vigil",
+        "connectable": false,
+        "actions": [],
+        "reactions": [
+          {
+            "name": "vigil_create_incident",
+            "description": "Create a VIGIL incident with configurable title, severity, and body",
+            "payload_example": "{\n  \"title\": \"CI broken on {{repository.name}}\",\n  \"severity\": \"high\"\n}"
+          }
+        ]
+      },
+      {
+        "name": "discord",
+        "connectable": true,
+        "actions": [],
+        "reactions": [
+          {
+            "name": "discord_message",
+            "description": "Post a message to a Discord channel via webhook",
+            "payload_example": "{\n  \"content\": \"CI broken on {{repository.name}}\",\n  \"username\": \"VIGIL\"\n}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Fields
+
+- **`client.host`** : the requesting client's IP, read from the TCP layer via Axum's `ConnectInfo<SocketAddr>`.
+- **`server.current_time`** : Unix seconds, computed on each request.
+- **`server.token`** : SHA-256 of `STUDENT_FIRSTNAME + STUDENT_LOGIN + "VIGIL2026"`, computed once at startup. This is the kickoff token required by the subject.
+- **`server.services[].connectable`** : whether a user can attach a personal token or webhook URL to this service. Derived from the enum  that mirrors the DB `CHECK` constraint on `service_connections.service`, so this field and the connection endpoints share a single source of truth.
+- **`server.services[].actions[]`** : events the service can send us. Sourced from the `ActionCatalog` built at startup.
+- **`server.services[].reactions[]`** : what we can do in response. Sourced from the `ReactionRegistry` by iterating registered executors and grouping by their `service_name()`.
+- **`payload_example`** : present on reactions only. Ships a well-formed example of the JSON payload a reaction expects, used by the rule form to prefill the payload textarea. Adding a new reaction automatically enriches this endpoint. No manual JSON update.
+
+### What this makes possible
+
+The rule form in the web client is built entirely from this endpoint: service selects, event selects, reaction selects, prefilled payload textareas. The client contains no hard-coded service or reaction name.
+Adding a new reaction on the backend adds it to the form on the next page load, with its description and example.
+
+---
 
 ## WebSocket Events
 
