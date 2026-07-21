@@ -357,40 +357,146 @@ Adminer is exposed on `http://localhost:8888`.
 
 ---
 
-
 ## REST API
 
-> This section grows with each ticket. 
-
-### Implemented
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/health` | none | Liveness check - returns `{ status, version }` |
-
-### Planned
-
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/auth/signup` | none |
-| POST | `/auth/signin` | none |
-| GET | `/me` | session |
-| POST | `/auth/signout` | session |
-
-All error responses share a uniform shape, regardless of endpoint:
+All endpoints are documented below by functional domain. Error responses share a uniform shape regardless of endpoint:
 
 ```json
-{ "error": { "code": "VALIDATION_ERROR", "message": "Password must be at least 8 characters" } }
+{ "error": { "code": "VALIDATION_ERROR", "message": "..." } }
 ```
 
 | HTTP Status | `code` | Meaning |
 |-------------|--------|---------|
 | 401 | `UNAUTHORIZED` | Missing or invalid session token |
 | 403 | `FORBIDDEN` | Authenticated but not permitted |
-| 404 | `NOT_FOUND` | Resource doesn't exist (or access is hidden as not-found) |
-| 409 | `CONFLICT` | Unique constraint violation (e.g. duplicate email) |
+| 404 | `NOT_FOUND` | Resource doesn't exist (or hidden as not-found) |
+| 409 | `CONFLICT` | Unique constraint violation |
 | 422 | `VALIDATION_ERROR` | Input failed validation |
-| 500 | `INTERNAL_ERROR` | Unexpected server error (details logged server-side only) |
+| 500 | `INTERNAL_ERROR` | Unexpected server error |
+
+### Health
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | none | `{ "status": "ok", "version": "0.1.0" }` |
+
+### Authentication
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/signup` | none | Create account. Body: `{ email, password, display_name }`. Returns user (201). Errors: 422 (validation), 409 (email taken) |
+| POST | `/auth/signin` | none | Returns `{ token, user }` (200). Error: 401 |
+| GET | `/me` | session | Current user info. Never exposes the password hash |
+| POST | `/auth/signout` | session | Deletes the session. 204, token inoperative immediately |
+
+### Teams
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/teams` | session | Create a team. Creator becomes Manager |
+| GET | `/teams` | session | List teams the user belongs to |
+| GET | `/teams/{team_id}` | member | Team detail. Non-member gets 404 (not 403) |
+| GET | `/teams/{team_id}/members` | member | Member list with roles |
+| PATCH | `/teams/{team_id}/members/{user_id}/role` | Manager | Promote/demote Observer/Responder |
+| POST | `/teams/{team_id}/transfer-manager` | Manager | Body: `{ target_user_id }`. Atomic swap, former Manager becomes Responder |
+| POST | `/teams/{team_id}/leave` | member | Manager without transfer gets 409 |
+| POST | `/teams/{team_id}/invitations` | Manager | Returns `{ code }` |
+| POST | `/teams/join` | session | Body: `{ code }`. Joins as Observer. Banned user gets 403 |
+
+### Incidents
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/teams/{team_id}/incidents` | Manager | Body: `{ title, body, severity }`. Initial state `open` |
+| GET | `/teams/{team_id}/incidents` | member | Filterable by `?status=` and `?severity=`. Returns `{ "incidents": [...] }` |
+| GET | `/teams/{team_id}/incidents/{id}` | member | Returns `{ "incident": {...} }` |
+| PATCH | `/teams/{team_id}/incidents/{id}/status` | Responder+ | Body: `{ status, severity? }`. State machine enforced |
+| PATCH | `/teams/{team_id}/incidents/{id}/severity` | Responder+ | Body: `{ severity }` |
+| POST | `/teams/{team_id}/incidents/{id}/assign` | Manager | Body: `{ user_id }`. Target must be Responder+ |
+| POST | `/teams/{team_id}/incidents/{id}/timeline` | Responder+ | Body: `{ content }`. Max 2000 chars |
+| GET | `/teams/{team_id}/incidents/{id}/timeline` | member | Paginated, chronological |
+
+### Releases
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/teams/{team_id}/releases` | Manager | Body: `{ title, body, steps: ["build","staging",...] }` |
+| GET | `/teams/{team_id}/releases` | member | Filterable by `?status=`. Returns `{ "releases": [...] }` |
+| GET | `/teams/{team_id}/releases/{id}` | member | Includes steps with `validated_at`/`validated_by`, linked incidents, progress |
+| POST | `/teams/{team_id}/releases/{id}/start` | Manager | Transitions to `in_progress` |
+| POST | `/teams/{team_id}/releases/{id}/cancel` | Manager | Allowed from `created`, `in_progress`, `blocked` |
+| POST | `/teams/{team_id}/releases/{id}/steps/{step_id}/validate` | Responder+ | Strict sequential order enforced. Blocked release gets 409 |
+| POST | `/teams/{team_id}/releases/{id}/link` | Manager | Body: `{ incident_id }`. Auto-blocks if release is `in_progress` |
+| POST | `/teams/{team_id}/releases/{id}/unlink` | Manager | Body: `{ incident_id }`. Auto-unblocks when no active linked incidents remain |
+
+### Webhooks
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/webhooks/github` | HMAC | GitHub webhook receiver. Validates `X-Hub-Signature-256` (HMAC-SHA256, constant-time). Persists the raw payload to `webhook_deliveries` before processing. Returns 202 immediately; rule evaluation runs async. Invalid/missing signature returns 401. |
+
+The HMAC secret is the `WEBHOOK_SECRET` environment variable. This is a global secret shared between VIGIL and GitHub, not a per-user token.
+
+### Rules
+
+All rule endpoints are team-scoped. Only Managers can create, update, or delete rules. Observers and Responders can list and read them.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/teams/{team_id}/rules` | member | Returns `[...]` (bare array) |
+| POST | `/teams/{team_id}/rules` | Manager | See body format below. Returns 201 + rule |
+| GET | `/teams/{team_id}/rules/{id}` | member | Single rule |
+| PATCH | `/teams/{team_id}/rules/{id}` | Manager | Partial update. Any subset of fields |
+| DELETE | `/teams/{team_id}/rules/{id}` | Manager | 204 |
+
+**Create/update body:**
+
+```json
+{
+  "name": "CI failure -> critical incident",
+  "enabled": true,
+  "trigger": {
+    "service": "github",
+    "event": "workflow_run",
+    "filters": {
+      "workflow_run.conclusion": "failure"
+    }
+  },
+  "reaction": {
+    "type": "vigil_create_incident",
+    "payload": {
+      "title": "CI broken on {{repository.name}}",
+      "severity": "high",
+      "body": "Workflow {{workflow_run.name}} failed"
+    }
+  }
+}
+```
+
+**Validation at creation:**
+
+- `trigger.service` + `trigger.event` must exist in the `ActionCatalog`
+  (the same catalog that feeds `/about.json`). Unknown trigger returns 422.
+- `reaction.type` must exist in the `ReactionRegistry`. Unknown reaction
+  returns 422.
+- Both validations read from the same registries the engine uses at
+  runtime, so a rule that passes validation can always be evaluated.
+
+### Service Connections
+
+Per-user encrypted storage of third-party tokens and webhook URLs.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/me/services` | session | Returns `[{ id, service, created_at, updated_at }]`. Never exposes the token |
+| POST | `/me/services/{service}` | session | Body: `{ "token": "..." }`. Encrypted AES-256-GCM at rest. Upsert semantics: reconnecting overwrites the previous token. `{service}` must match the DB CHECK constraint (`github`, `gitlab`, `discord`). Unknown service returns 404, empty token returns 422 |
+| DELETE | `/me/services/{service}` | session | 204. Deletes the encrypted token |
+
+### Discovery
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/about.json` | none | Dynamic catalog of Actions, Reactions, and the kickoff token. See the dedicated section above |
 
 ---
 
