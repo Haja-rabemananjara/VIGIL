@@ -420,14 +420,19 @@ All endpoints are documented below by functional domain. Error responses share a
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/teams/{team_id}/releases` | Manager | Body: `{ title, body, steps: ["build","staging",...] }` |
-| GET | `/teams/{team_id}/releases` | member | Filterable by `?status=`. Returns `{ "releases": [...] }` |
-| GET | `/teams/{team_id}/releases/{id}` | member | Includes steps with `validated_at`/`validated_by`, linked incidents, progress |
-| POST | `/teams/{team_id}/releases/{id}/start` | Manager | Transitions to `in_progress` |
-| POST | `/teams/{team_id}/releases/{id}/cancel` | Manager | Allowed from `created`, `in_progress`, `blocked` |
-| POST | `/teams/{team_id}/releases/{id}/steps/{step_id}/validate` | Responder+ | Strict sequential order enforced. Blocked release gets 409 |
-| POST | `/teams/{team_id}/releases/{id}/link` | Manager | Body: `{ incident_id }`. Auto-blocks if release is `in_progress` |
-| POST | `/teams/{team_id}/releases/{id}/unlink` | Manager | Body: `{ incident_id }`. Auto-unblocks when no active linked incidents remain |
+| POST | `/teams/{team_id}/releases` | Manager | Body: `{ title, body?, steps: ["build","staging",...] }`. Steps are a simple array of names; positions are derived server-side (1-based). Returns 201 |
+| GET | `/teams/{team_id}/releases` | member | Filterable by `?status=`. Returns a bare array `[...]` with progress `{ completed, total }` per item |
+| GET | `/teams/{team_id}/releases/{id}` | member | Full detail including `steps[]` (with `validated_at`/`validated_by`), `linked_incidents[]` (id, title, status, severity), and `progress` |
+| POST | `/teams/{team_id}/releases/{id}/start` | Manager | `created` to `in_progress`. Returns the updated release. 422 if not in `created` status |
+| POST | `/teams/{team_id}/releases/{id}/cancel` | Manager | Allowed from `created`, `in_progress`, `blocked`. 422 from terminal states (`completed`, `cancelled`) |
+| POST | `/teams/{team_id}/releases/{id}/steps/{step_id}/validate` | Responder+ | Strict sequential order: step N+1 requires step N validated. Auto-completes the release when the last step is validated. 409 if release is `blocked` (mentions the blocking incident). 422 if not `in_progress` |
+| POST | `/teams/{team_id}/releases/{id}/link` | Manager | Body: `{ incident_id }`. If release is `in_progress` and incident is not resolved, auto-blocks. Linking an already-resolved incident does not block. 409 if duplicate link. 422 on terminal releases |
+| POST | `/teams/{team_id}/releases/{id}/unlink` | Manager | Body: `{ incident_id }`. Auto-unblocks when no active unresolved linked incidents remain. 404 if no active link exists |
+
+**Validation rules for creation:**
+- Title required, max 200 characters
+- At least 1 step, at most 20. No empty names, no duplicates (case-insensitive), max 100 chars per name
+- Steps array order determines position (1-based). The client sends `["build", "staging", "prod"]`, the server stores positions 1, 2, 3
 
 ### Webhooks
 
@@ -777,6 +782,20 @@ A few cross-cutting decisions worth calling out explicitly, beyond the per-table
 - **State machine transitions are strict and centralized.** All valid transitions live in a single pure function (`domain::incidents::can_transition`) with no database or HTTP dependency. The allowed matrix is: `open → acknowledged`, `acknowledged → escalated`, `acknowledged → resolved` (shortcut — not all incidents escalate), `escalated → resolved`. Everything else returns 422. This function is the single source of truth called by the service layer, the rule engine, and (later) any future caller. The shortcut `acknowledged → resolved` is a deliberate choice documented in the README because the subject's state diagram could be read either way.
 
 - **Timeline entry length limit: 2000 characters.** Enforced server-side, consistent with the private message limit. Chosen as a reasonable ceiling for an operational note — long enough for a stack trace excerpt, short enough to prevent abuse. The limit is validated in the service layer before touching the database.
+
+- **Release state machine.** Five states: `created` (initial), `in_progress` (active deployment), `completed` (all steps validated), `cancelled` (aborted), `blocked` (halted by an incident). Transitions are centralized in `domain::releases::can_transition`, same pattern as incidents. `completed` and `cancelled` are terminal states — no way out. The `blocked` state is never entered manually; it is always the result of an automatic cascade triggered by linking an active incident.
+
+- **Auto-blocking cascade.** The interaction between releases and incidents follows three rules, all enforced in the service layer:
+  (1) **Link triggers block**: linking a non-resolved incident to an `in_progress` release transitions it to `blocked` immediately.
+  (2) **Resolution triggers unblock**: when an incident transitions to `resolved`, `check_and_unblock_releases_for_incident` finds all blocked releases linked to it and, for each one, counts remaining active unresolved links — if zero, the release returns to `in_progress`.
+  (3) **Unlink triggers unblock**: same check as resolution, applied when a link is manually removed.
+  Multi-incident blocking is handled correctly: a release with three linked incidents stays blocked until the last one is resolved or unlinked.
+
+- **Sequential step validation.** Steps must be validated in position order — `can_validate_step()` in the domain layer checks that all steps with a lower position are already validated. The last step validated triggers automatic completion (`in_progress` to `completed`). This auto-completion is detected by counting unvalidated steps before the UPDATE: if exactly one remained, it was the one just validated, so the release is complete.
+
+- **Blocked release returns 409, not 422.** When a user tries to validate a step on a blocked release, the response is `409 Conflict` (not `422 Validation`) because the release itself is valid — it is an external condition (the linked incident) preventing progress. This distinction helps the client display a meaningful message ("blocked by incident X") rather than a generic validation error.
+
+- **Start does not check existing links.** If incidents are linked to a release while it is still in `created` status and then the Manager starts it, the release transitions to `in_progress` without checking whether any linked incidents are still active. In theory, it should auto-block on start if unresolved links exist. This edge case is cosmetic — the Manager can simply re-link or the next incident resolution will trigger the check — but a production system would verify at start time.
 
 ---
 
