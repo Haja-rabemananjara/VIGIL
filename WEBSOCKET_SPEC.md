@@ -14,7 +14,9 @@ The client opens a single WebSocket connection per session. The session token (t
 
 ### Authentication
 
-The server hashes the received token (SHA-256), looks it up in the `sessions` table, and verifies it is not expired. On failure, the server rejects the upgrade with a **4001** close code and reason `"invalid_token"`. On success, the connection is registered in the broadcaster under the user's ID.
+The server hashes the received token (SHA-256), looks it up in the `sessions` table, and verifies it is not expired.
+Authentication happens **before** the WebSocket upgrade, on the HTTP request itself. The server decodes the hex token, hashes it with SHA-256, and looks up the matching session. On failure, the server responds with **HTTP 401** and the upgrade never happens. This design produces clean HTTP errors visible in browser dev tools, rather than opaque WebSocket close codes.
+On success, the connection is registered in the broadcaster under the user's ID.
 
 ### Implicit Subscription
 
@@ -43,6 +45,7 @@ All messages (server => client) follow a common JSON envelope:
 - Remaining fields are event-specific (documented per event below)
 
 Timestamps are **Unix seconds** (integer) for compactness over the wire. The client converts to local time.
+User identifiers (`by`, `assigned_to`, `author_id`, `watchers`) are **UUIDs**, not display names. The client resolves them to display names locally using the team member list fetched at page load.
 
 ---
 
@@ -70,7 +73,7 @@ Connection drops are expected (network change, laptop sleep, server restart). Th
 
 1. **Exponential backoff** : reconnection attempts at 1s, 2s, 4s, 8s, 16s, capped at 30s
 2. **State re-fetch on reconnect** : after a successful reconnection, the client re-fetches the current state of all visible resources via REST (incident list, active release, presence). This avoids stale UI caused by events missed during the disconnection window. The WS connection only carries **deltas**, not full state.
-3. **Jitter** : a random factor (±25%) is added to each backoff interval to prevent thundering herd when the server restarts and all clients reconnect simultaneously
+3. **Re-fetch on reconnect** : after a successful reconnection, a `reconnectCount` state variable increments. All pages observing this variable re-fetch their data from the REST API to catch up on events missed during the disconnection window.
 
 The server does **not** replay missed events. The client is responsible for reconciling its state via REST after reconnecting.
 
@@ -79,6 +82,25 @@ The server does **not** replay missed events. The client is responsible for reco
 ## Event Catalog
 
 ### Phase 1 : Core
+
+#### `connected`
+
+Sent once, immediately after a successful WebSocket handshake. Not broadcast.
+
+```json
+{
+  "type": "connected",
+  "user_id": "uuid"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_id` | UUID | The authenticated user |
+
+**Trigger:** Successful token validation during the HTTP upgrade.
+**Delivery:** single connection (not broadcast)
+**Client behavior:** The connection indicator transitions from `connecting` to `connected`.
 
 #### `incident_state_changed`
 
@@ -98,9 +120,9 @@ An incident transitions to a new lifecycle state.
 |-------|------|-------------|
 | `incident_id` | UUID | The affected incident |
 | `new_state` | string | One of: `open`, `acknowledged`, `escalated`, `resolved` |
-| `by` | string | Display name of the actor |
+| `by` | UUID | The user who triggered the transition |
 
-**Trigger:** Any lifecycle transition (acknowledge, escalate, resolve).
+**Trigger:** Any lifecycle transition (acknowledge, escalate, resolve), incident creation (`new_state: "open"`), or a rule engine reaction (`vigil_create_incident`, `vigil_escalate_incident`).
 **Delivery:** team
 **Note:** An escalation emits **both** `incident_state_changed` (new_state: `escalated`) **and** `incident_escalated` if the severity also changes. The two are independent signals.
 
@@ -124,11 +146,11 @@ The severity of an incident is raised.
 |-------|------|-------------|
 | `incident_id` | UUID | The affected incident |
 | `new_severity` | string | One of: `low`, `medium`, `high`, `critical` |
-| `by` | string | Display name of the actor |
+| `by` | UUID | The user who triggered the transition |
 
-**Trigger:** Severity change (can accompany an `escalated` state transition or happen independently).
+**Trigger:** `PATCH .../status` with `{ "status": "escalated", "severity": "..." }`. Only emitted when the optional `severity` field is present during an escalation transition. A standalone severity change via `PATCH .../severity` does **not** emit this event.
 **Delivery:** team
-**Note:** Reaching `critical` triggers a native desktop notification (Phase 3).
+**Note:** An escalation emits **two** events in sequence: `incident_state_changed` (new_state: `escalated`) followed by `incident_escalated` (new_severity). The client must handle both.
 
 ---
 
@@ -149,8 +171,8 @@ A responder is assigned to an incident.
 | Field | Type | Description |
 |-------|------|-------------|
 | `incident_id` | UUID | The affected incident |
-| `assigned_to` | string | Display name of the assigned responder |
-| `by` | string | Display name of the manager who assigned |
+| `assigned_to` | UUID | The assigned responder |
+| `by` | UUID | The manager who assigned |
 
 **Trigger:** Manager assigns (or re-assigns) a responder.
 **Delivery:** targeted (team broadcast + explicit push to the assignee)
@@ -167,27 +189,24 @@ A new entry is added to an incident's timeline.
   "type": "timeline_entry_added",
   "team_id": "uuid",
   "incident_id": "uuid",
-  "entry": {
-    "id": "uuid",
-    "content": "Restarted the service, monitoring.",
-    "author": "alice",
-    "kind": "message",
-    "at": 1718000000
-  }
+  "entry_id": "uuid",
+  "author_id": "uuid",
+  "content": "Restarted the service, monitoring.",
+  "at": 1718000000
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `incident_id` | UUID | The parent incident |
-| `entry.id` | UUID | The entry ID (for reactions, editing) |
-| `entry.content` | string | The message text |
-| `entry.author` | string | Display name of the author |
-| `entry.kind` | string | `message` (human) or `system` (auto-generated) |
-| `entry.at` | integer | Unix timestamp of creation |
+| `entry_id` | UUID | The entry ID |
+| `author_id` | UUID | Who wrote it |
+| `content` | string | The message text |
+| `at` | integer | Unix timestamp of creation |
 
-**Trigger:** A responder or manager adds a message, or a system event generates an automatic entry.
+**Trigger:** A responder or manager adds a message via `POST .../timeline`.
 **Delivery:** team
+**Note:** System-generated timeline entries (from state transitions) do **not** emit this event. They are fetched via a timeline reload triggered by `incident_state_changed`.
 
 ---
 
@@ -209,10 +228,34 @@ The list of users currently watching a resource has changed.
 |-------|------|-------------|
 | `resource_type` | string | `incident` (core) or `release` (extended) |
 | `resource_id` | UUID | The watched resource |
-| `watchers` | string[] | Display names of all current watchers |
+| `watchers` | UUID[] | All users currently watching (complete list, not a delta) |
 
 **Trigger:** A user opens or closes an incident/release detail view. Multi-tab aware: a watcher is only removed when **all** their connections on that resource are closed.
 **Delivery:** team
+
+#### `member_role_changed`
+
+A team member's role has been changed.
+
+```json
+{
+  "type": "member_role_changed",
+  "team_id": "uuid",
+  "user_id": "uuid",
+  "new_role": "responder",
+  "by": "uuid"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_id` | UUID | The member whose role changed |
+| `new_role` | string | One of: `observer`, `responder`, `manager` |
+| `by` | UUID | The manager who made the change |
+
+**Trigger:** `PATCH .../members/{user_id}/role` (promotion/demotion) or `POST .../transfer-manager` (emits two events: former manager becoming `responder`, new manager becoming `manager`).
+**Delivery:** team
+**Client behavior:** Pages update the current user's role in-place (enabling/disabling action buttons) and refresh the member list without a page reload.
 
 ---
 
@@ -477,6 +520,7 @@ A rule's reaction failed to execute.
 
 | Event | Mode | Recipients |
 |-------|------|------------|
+| `connected` | single | The authenticating connection only |
 | `incident_state_changed` | team | All team members |
 | `incident_escalated` | team | All team members |
 | `incident_assigned` | targeted | All team members + explicit push to assignee |
@@ -492,6 +536,7 @@ A rule's reaction failed to execute.
 | `reaction_removed` | team | All team members |
 | `rule_triggered` | team | All team members |
 | `rule_failed` | team | All team members |
+| `member_role_changed` | team | All team members |
 
 ---
 
@@ -509,36 +554,34 @@ Three events trigger native OS notifications when the desktop window is closed:
 
 ## Client => Server Messages
 
-The WebSocket is primarily server => client. The client communicates actions via REST, and the resulting state change is broadcast back via WS. The only client => server WS messages are:
+The WebSocket is primarily server => client. The client communicates actions via REST, and the resulting state change is broadcast back via WS. The only client => server WS messages are for presence tracking:
 
-### `presence_join`
-
-```json
-{
-  "type": "presence_join",
-  "resource_type": "incident",
-  "resource_id": "uuid"
-}
-```
-
-Sent when the user opens a resource detail view.
-
-### `presence_leave`
+### `watch`
 
 ```json
 {
-  "type": "presence_leave",
+  "type": "watch",
   "resource_type": "incident",
-  "resource_id": "uuid"
+  "resource_id": "uuid",
+  "team_id": "uuid"
 }
 ```
 
-Sent when the user closes a resource detail view.
+Sent when the user opens a resource detail page. The `team_id` is included so the server can broadcast the resulting `presence_update` to the correct team without an extra database lookup.
 
-### `ping`
+### `unwatch`
 
 ```json
-{ "type": "ping" }
+{
+  "type": "unwatch",
+  "resource_type": "incident",
+  "resource_id": "uuid",
+  "team_id": "uuid"
+}
 ```
 
-Client-side keepalive. Server responds with `{ "type": "pong" }`.
+Sent when the user leaves a resource detail page (component unmount). On hard disconnect (tab crash, network loss), the server automatically unwatches all resources for that connection and broadcasts updated `presence_update` events.
+
+### Multi-tab edge case
+
+The server tracks a **count** per `(user, resource)`. If a user watches the same incident from 3 tabs, they appear once in the `watchers` list but are only removed when all 3 connections close.
