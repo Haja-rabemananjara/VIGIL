@@ -270,20 +270,22 @@ A step in a release is validated.
   "type": "release_step_validated",
   "team_id": "uuid",
   "release_id": "uuid",
-  "step": "staging",
-  "by": "alice"
+  "step_id": "uuid",
+  "step_name": "staging",
+  "by": "uuid"
 }
 ```
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `release_id` | UUID | The parent release |
-| `step` | string | Name of the validated step |
-| `by` | string | Display name of the validator |
+| `step_id` | UUID | The validated step |
+| `step_name` | string | Human-readable name of the step |
+| `by` | UUID | The user who validated |
 
-**Trigger:** A responder or manager validates a release step.
+**Trigger:** A responder or manager validates a release step via `POST .../steps/{step_id}/validate`.
 **Delivery:** team
-
+**Client behavior:** The detail page re-fetches the release to update the stepper. The list page does not re-fetch (progress updates are visible on next navigation).
 ---
 
 #### `release_state_changed`
@@ -304,9 +306,12 @@ A release transitions to a new lifecycle state.
 | `release_id` | UUID | The affected release |
 | `new_state` | string | One of: `created`, `in_progress`, `completed`, `cancelled`, `blocked` |
 
-**Trigger:** Manual transition (start, cancel) or automatic (blocked/unblocked by incident link).
+**Trigger:** Emitted on every release state change:
+- **Manual:** creation (`created`), start (`in_progress`), cancel (`cancelled`)
+- **Automatic:** blocked by incident link (`blocked`), unblocked when last active incident resolved or unlinked (`in_progress`), auto-completed when last step validated (`completed`)
+
 **Delivery:** team
-**Note:** `blocked` triggers a native desktop notification (Phase 3).
+**Note:** `blocked` and `completed` are the two auto-triggered states. `blocked` triggers a native desktop notification (Phase 3). When a release auto-completes, the client receives both `release_step_validated` (for the last step) and `release_state_changed` (new_state: `completed`) in sequence.
 
 ---
 
