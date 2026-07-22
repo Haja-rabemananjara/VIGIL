@@ -772,6 +772,12 @@ A few cross-cutting decisions worth calling out explicitly, beyond the per-table
 - **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Different threat models: a session token only needs to be *verified* (hash comparison is enough, and irreversible by design), while a service token (GitHub, Discord) must be *reused* to call the external API, so it must be decryptable.
 - **WebSocket broadcaster is transport-only.** It exposes `to_team(team_id, event)` and `to_user(user_id, event)`; only services call it, never handlers. Adding a new event type is a new enum variant in `WsEvent` plus a call site in a service - the broadcaster itself never changes.
 
+- **Severity is orthogonal to state.** An incident's severity (`low`/`medium`/`high`/`critical`) and its lifecycle state (`open`/`acknowledged`/`escalated`/`resolved`) are independent axes. You can raise severity without changing state, and an escalation *may* raise severity in the same gesture but doesn't have to. This is a deliberate interpretation of the subject: the `escalated` state represents management involvement, not just a severity bump. The state machine enforces this separation — `PATCH .../status` and `PATCH .../severity` are separate endpoints with separate validation.
+
+- **State machine transitions are strict and centralized.** All valid transitions live in a single pure function (`domain::incidents::can_transition`) with no database or HTTP dependency. The allowed matrix is: `open → acknowledged`, `acknowledged → escalated`, `acknowledged → resolved` (shortcut — not all incidents escalate), `escalated → resolved`. Everything else returns 422. This function is the single source of truth called by the service layer, the rule engine, and (later) any future caller. The shortcut `acknowledged → resolved` is a deliberate choice documented in the README because the subject's state diagram could be read either way.
+
+- **Timeline entry length limit: 2000 characters.** Enforced server-side, consistent with the private message limit. Chosen as a reasonable ceiling for an operational note — long enough for a stack trace excerpt, short enough to prevent abuse. The limit is validated in the service layer before touching the database.
+
 ---
 
 ### UUID generation
