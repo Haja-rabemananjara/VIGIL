@@ -445,3 +445,30 @@ The engine never knows the concrete reaction types. It calls
 `registry.get(kind)` and gets back an `Arc<dyn ReactionExecutor>`. The
 broadcaster never knows the concrete event types. It serializes whatever
 `WsEvent` variant it receives. Both extension points grow at the edge.
+
+## Adding a user-facing string
+
+Never hardcode text in a component. Add a key to the `en` dictionary in
+`client/src/lib/i18n.ts` (convention: `scope.subscope.element`, e.g.
+`auth.signin.title`) and read it with `t("your.key")`. A missing key renders as
+the key itself, making the omission visible rather than shipping blank text. The
+FR dictionary (VGL-082) plugs in as a second dictionary with no component changes.
+
+## Adding a protected page
+
+Create a folder under `client/src/app/` (the folder name is the route). Wrap the
+page content in `<RequireAuth>` to enforce authentication, and in `<AppShell>` if
+it should render inside the app layout (header + sidebar). Read auth state with
+`useAuth()`; never read the token from `localStorage` directly.
+
+### Known limitations (Frontend)
+
+- **Front tests cover logic, not page integration.** Vitest covers the badge
+  components (verifying the color+icon+text signals per enum value) and pure
+  utilities (`navigation`). The auth pages, the `api.ts` HTTP client, and the
+  auth store are not unit-tested — this is a deliberate trade-off, with the
+  testing weight placed on the server's integration suite. The auth flow is
+  verified manually and exercised end-to-end through the server tests.
+
+- **CORS allowed origin is hardcoded** (see Design Decisions). Fine for local
+  dev and the jury demo; a production build should externalize it.

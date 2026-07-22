@@ -85,6 +85,17 @@ PostgreSQL also fits the target deployment story naturally - `db` is one of the 
 
 The crate is split into `lib.rs` (declares all modules, re-exports `AppError`/`AppState`) and a thin `main.rs` (wires config, DB pool, router, and calls `axum::serve`). This split exists so integration tests (`server/tests/`) can import the application as a library and spin up real instances against a disposable database, without duplicating the server bootstrap logic.
 
+
+On the client side:
+
+| Area | Location | Responsibility |
+|------|----------|-----------------|
+| Pages / routing | `client/src/app/` | App Router pages (`signin/`, `signup/`, `onboarding/`, …) |
+| UI components | `client/src/components/` | Reusable components (`StateBadge`, `SeverityBadge`, `ConfirmDialog`, `AppShell`, `UserMenu`) |
+| shadcn primitives | `client/src/components/ui/` | Generated shadcn/ui components (Radix-based) |
+| Lib / infrastructure | `client/src/lib/` | `api.ts` (typed HTTP client), `platform.ts` (native abstraction), `i18n.ts` (`t()`), `navigation.ts`, `utils.ts` |
+| Stores | `client/src/stores/` | Global state — `auth.tsx` (Context + `useAuth()`) |
+
 ---
 
 ### Stack & structure
@@ -135,6 +146,31 @@ This avoids any code duplication: a feature written once works on both targets.
   trade-off: simpler than HttpOnly cookies (which would require server-side CORS
   credentials changes), at the cost of XSS exposure. Acceptable for an academic
   project, would be reconsidered in a production setting.
+
+### Client-side auth flow
+
+The web client consumes the auth endpoints through a single React Context
+(`client/src/stores/auth.tsx`, exposed via `useAuth()`):
+
+- **Session restore on boot.** On mount, the provider reads the token from
+  `localStorage` and calls `GET /me` to validate it. A valid token rehydrates
+  the user; an expired or invalid one is silently cleared. An `isLoading` flag
+  gates the UI until this check resolves, avoiding a flash of the signin screen
+  for already-authenticated users.
+- **Route protection.** A `RequireAuth` wrapper (`client/src/components/RequireAuth.tsx`)
+  redirects unauthenticated users to `/signin` once the boot check has settled.
+- **Signup auto-signin.** Since `POST /auth/signup` returns the user but no token,
+  the client immediately calls signin after a successful signup for a seamless UX.
+- **Signout is local-first.** Signout clears the token and user state even if the
+  server call fails (offline), since the user's intent to leave takes precedence;
+  the token expires server-side regardless.
+- **Post-login routing** is centralized in `postLoginDestination()`
+  (`client/src/lib/navigation.ts`): 0 teams → `/onboarding`, ≥1 team → the last
+  active team's incidents view.
+
+All HTTP calls go through a typed client (`client/src/lib/api.ts`) that injects
+the `Authorization: Bearer` header and throws a typed `ApiError` carrying the HTTP
+status, so callers can branch on 401/409/422 rather than parsing strings.
 
 ### UUID generation
 
@@ -772,6 +808,27 @@ Full specification - connection handshake, envelope format, delivery modes, reco
 
 A few cross-cutting decisions worth calling out explicitly, beyond the per-table rationale above:
 
+- **CORS is configured on the server, not the client.** The API applies a
+  `CorsLayer` (tower-http) allowing the web client's origin, the `Authorization`
+  and `Content-Type` headers, and the REST verbs used. It is applied in `main.rs`
+  only (not in the shared `router()`), so integration tests — which have no browser
+  and no cross-origin concern — are unaffected. **Known limitation:** the allowed
+  origin is currently hardcoded to the dev origin (`http://localhost:3000`). A
+  production deployment should read it from an environment variable
+  (e.g. `CORS_ALLOWED_ORIGIN`), the same way `DATABASE_URL` is externalized.
+
+- **Permission extractors, not middleware.** Access control is implemented as Axum extractors (`TeamMember`, `RequireResponder`, `RequireManager`) declared in handler signatures, not as middleware applied to route groups. A handler that needs Manager access simply declares `manager: RequireManager` as a parameter — the extractor authenticates the user, loads the team membership from the path, checks the role, and rejects the request before the handler body runs. This makes permissions visible at the function signature level (a handler's required role is self-documenting) and avoids the "forgotten middleware" class of bugs where a new route accidentally skips the access check. Adding a new protected route means reusing an existing extractor, never modifying the permission system itself (Open/Closed principle). The extractors compose: `RequireManager` internally calls `TeamMember`, which internally calls `AuthUser`, so the authentication → membership → role chain is checked exactly once per request.
+
+- **Team access returns 404, never 403.** When a user requests a team they are not a member of, the server returns 404 (not 403). This is a deliberate security choice: returning 403 ("you don't have access") reveals that the team exists, which leaks information to an attacker enumerating UUIDs. Returning 404 ("not found") makes a non-existent team indistinguishable from one the user simply isn't part of. This rule is enforced at the SQL level — the membership query joins `teams` with `team_members` on the requesting user's ID, so a non-member row simply produces no result, and the service maps `None` to `NotFound`.
+
+- **Role hierarchy is numeric.** The three roles (`Observer` < `Responder` < `Manager`) are compared via a `level()` function returning 0, 1, 2. The `has_at_least(required)` method compares levels rather than pattern-matching every pair. This means adding a hypothetical fourth role changes one function, not a quadratic number of match arms.
+
+- **Invitation codes use a human-safe alphabet.** Generated codes are 8 characters from a 31-symbol set (`A-Z` + `2-9`, excluding `0/O`, `1/I/L`). These characters are visually confusable when shared via screenshot, voice, or low-resolution chat. The remaining alphabet yields 31^8 ≈ 8.5 billion combinations, making collision astronomically unlikely, but a unique index on active codes provides a safety net.
+
+- **Expired invitation codes return 410, not 404.** A code that once existed but is now expired or exhausted returns `410 Gone` rather than `404 Not Found`. This guides the user: 404 means "check your spelling", 410 means "ask the Manager for a new code". The distinction requires a second query on the error path (checking if the code ever existed), which is acceptable since this is the rare path and the UX benefit is concrete.
+
+- **Manager transfer respects the partial unique index ordering.** The `team_members` table has a partial unique index enforcing exactly one active Manager per team. PostgreSQL checks this constraint after each `UPDATE`, not at transaction commit. The transfer service therefore demotes the current Manager to Responder *first*, then promotes the target to Manager — reversing this order would momentarily create two Managers and trigger a unique constraint violation, even within the same transaction.
+
 - **Uniform error shape.** Every error response - across every endpoint - has the same `{ error: { code, message } }` JSON body. This is implemented once, in `AppError`'s `IntoResponse` impl, so handlers never hand-roll error formatting.
 - **`lib.rs` / `main.rs` split.** The application logic lives in a library crate; `main.rs` is a thin binary entry point. This is what makes `tests/` able to spin up a real, fully-wired server instance per test without duplicating bootstrap code.
 - **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Different threat models: a session token only needs to be *verified* (hash comparison is enough, and irreversible by design), while a service token (GitHub, Discord) must be *reused* to call the external API, so it must be decryptable.
@@ -805,6 +862,16 @@ All UUIDs are generated in Rust (`Uuid::new_v4()`) before being passed to the IN
 The database columns have no `DEFAULT gen_random_uuid()`. This keeps ID generation independent
 from the database engine and allows the application layer to know the entity ID before persistence,
 which simplifies logging, event broadcasting, and tracing.
+
+---
+
+### Known limitations (Teams)
+
+- **No WebSocket events on team mutations.** Role changes, transfers, kicks, and joins do not yet broadcast WebSocket events. The REST endpoints return the correct state, but other connected clients must refresh to see the change. This will be wired when the relevant events (`member_role_changed`, `member_joined`, `member_left`) are added in Epic 04/06.
+
+- **Test helpers are duplicated across test files.** `register_and_login`, `create_team_and_invite`, `join_team` are copy-pasted in `tests/permissions.rs`, `tests/roles.rs`, `tests/transfer.rs`, `tests/leave.rs`. Extracting them into `tests/common/` would reduce duplication. Deferred because it is cosmetic and does not affect test correctness.
+
+- **`find_membership` signature mismatch.** The VGL-021 version takes `&PgPool`, which prevents its use inside a transaction. The transfer service (VGL-024) works around this by calling it before `pool.begin()`, introducing a theoretical TOCTOU race (the member could be kicked between the check and the UPDATE). The `promoted == false` guard catches this, but a cleaner fix would be a version taking `&mut PgConnection`, used consistently in transactional contexts.
 
 ---
 
