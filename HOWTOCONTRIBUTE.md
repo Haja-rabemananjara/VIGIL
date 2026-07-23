@@ -1,8 +1,12 @@
-# HOWTOCONTRIBUTE.md
+# How to contribute
 
 How to extend VIGIL's rule engine and real-time infrastructure. Each
 section is a self-contained recipe: follow the steps, run the tests,
 ship.
+
+The engine is built on the Open/Closed principle: adding a new Action,
+Reaction, or WebSocket event never modifies the engine core, the
+broadcaster, or any existing extension. You add files at the edge.
 
 ---
 
@@ -39,18 +43,7 @@ let action_catalog = ActionCatalog::builder()
 ### 2. Register in `server/tests/common/mod.rs`
 
 The test harness builds its own catalog. Add the same line there so
-integration tests can create rules targeting this event:
-
-```rust
-let action_catalog = server::hooks::ActionCatalog::builder()
-    // ... existing entries ...
-    .register(
-        "gitlab",
-        "pipeline",
-        "A GitLab CI/CD pipeline has finished",
-    )
-    .build();
-```
+integration tests can create rules targeting this event.
 
 ### 3. Verify
 
@@ -58,23 +51,10 @@ let action_catalog = server::hooks::ActionCatalog::builder()
 cargo test --test about_e2e
 ```
 
-The test `about_lists_registered_github_actions` won't check GitLab
-(it's scoped to GitHub), but `every_action_exposes_a_valid_json_filters_example`
-will exercise the new entry if you added a filters example. You can add
-a targeted assertion if needed.
-
 `GET /about.json` now lists `gitlab` with one action. The rule form in
 the web client picks it up on the next page load.
 
-### What you did NOT touch
-
-- The engine (`hooks/engine.rs`)
-- The matcher or templating
-- The broadcaster
-- Any existing Action or Reaction
-- Any frontend code
-
-**Files modified: 2.** `main.rs` and `tests/common/mod.rs`.
+**Files modified: 2** (`main.rs`, `tests/common/mod.rs`).
 
 ---
 
@@ -87,6 +67,11 @@ in its own file under `server/src/hooks/reactions/`.
 **Example: add a `slack_message` reaction.**
 
 ### 1. Create `server/src/hooks/reactions/slack_message.rs`
+
+Implement the `ReactionExecutor` trait. The four metadata methods
+(`kind`, `service_name`, `description`, `payload_example`) feed
+`/about.json` automatically. The `execute` method contains the runtime
+behavior.
 
 ```rust
 use async_trait::async_trait;
@@ -115,18 +100,9 @@ struct SlackPayload {
 
 #[async_trait]
 impl ReactionExecutor for SlackMessage {
-    fn kind(&self) -> &'static str {
-        "slack_message"
-    }
-
-    fn service_name(&self) -> &'static str {
-        "slack"
-    }
-
-    fn description(&self) -> &'static str {
-        "Post a message to a Slack channel via webhook"
-    }
-
+    fn kind(&self) -> &'static str { "slack_message" }
+    fn service_name(&self) -> &'static str { "slack" }
+    fn description(&self) -> &'static str { "Post a message to a Slack channel via webhook" }
     fn payload_example(&self) -> &'static str {
         r#"{
   "text": "CI broken on {{repository.name}}"
@@ -139,21 +115,17 @@ impl ReactionExecutor for SlackMessage {
                 AppError::Validation(format!("Invalid slack_message payload: {e}"))
             })?;
 
-        // Fetch the rule creator's Slack connection (encrypted).
         let connection = repo::service_connections::find_with_token(
             ctx.pool,
             ctx.rule_created_by,
-            ServiceName::Slack, // requires adding Slack to the enum
+            ServiceName::Slack,
         )
         .await?
         .ok_or_else(|| {
-            AppError::Validation(
-                "The rule creator has no Slack connection configured".into(),
-            )
+            AppError::Validation("The rule creator has no Slack connection configured".into())
         })?;
 
-        let webhook_bytes =
-            crypto::decrypt(ctx.master_key, &connection.encrypted_token)?;
+        let webhook_bytes = crypto::decrypt(ctx.master_key, &connection.encrypted_token)?;
         let webhook_url = std::str::from_utf8(&webhook_bytes)
             .map_err(|_| AppError::Internal("Invalid UTF-8 in Slack URL".into()))?;
 
@@ -189,58 +161,13 @@ In the `ReactionRegistry::builder()` block:
 
 ### 4. Register in `server/tests/common/mod.rs`
 
-Same line in the test harness builder:
-
-```rust
-.register(std::sync::Arc::new(
-    server::hooks::reactions::SlackMessage::new(),
-))
-```
+Same line in the test harness builder.
 
 ### 5. If the service is new: add to `ServiceName`
 
 If `slack` is not yet in the `ServiceName` enum
-(`server/src/domain/service_connections.rs`), add the variant and update
-the `CHECK` constraint in a new migration:
-
-```rust
-pub enum ServiceName {
-    Github,
-    Gitlab,
-    Discord,
-    Slack,   // new
-}
-
-impl ServiceName {
-    pub const ALL: [ServiceName; 4] = [
-        ServiceName::Github,
-        ServiceName::Gitlab,
-        ServiceName::Discord,
-        ServiceName::Slack,
-    ];
-    // ...
-    pub fn from_db(s: &str) -> Option<Self> {
-        match s {
-            "github" => Some(Self::Github),
-            "gitlab" => Some(Self::Gitlab),
-            "discord" => Some(Self::Discord),
-            "slack" => Some(Self::Slack),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Github => "github",
-            Self::Gitlab => "gitlab",
-            Self::Discord => "discord",
-            Self::Slack => "slack",
-        }
-    }
-}
-```
-
-Migration:
+(`server/src/domain/service_connections.rs`), add the variant, update
+`from_db`, `as_str`, and the `ALL` array. Then add a migration:
 
 ```sql
 ALTER TABLE service_connections
@@ -253,7 +180,7 @@ ALTER TABLE service_connections
 
 Create `server/tests/slack_reaction_e2e.rs` using `wiremock` to mock
 the Slack endpoint, following the pattern in
-`tests/discord_reaction_e2e.rs`. The three tests to write:
+`tests/discord_reaction_e2e.rs`. Three tests to write:
 
 - Happy path: rule matches, Slack receives the POST with the right body
 - No connection: rule creator has no Slack connection, `rule_failed`
@@ -268,16 +195,7 @@ cargo test --test about_e2e
 ```
 
 `/about.json` now lists `slack` with one reaction, its description, and
-its `payload_example`. The rule form in the web client shows it on the
-next page load.
-
-### What you did NOT touch
-
-- The engine (`hooks/engine.rs`)
-- The matcher, templating, or `EngineContext`
-- The broadcaster
-- Any existing Reaction
-- Any frontend code
+its `payload_example`. The rule form picks it up on the next page load.
 
 **Files modified: 4** (new reaction file, `mod.rs`, `main.rs`,
 `tests/common/mod.rs`) **+ 1 migration** if the service is new.
@@ -287,14 +205,13 @@ next page load.
 ## Adding a new WebSocket event
 
 Events are delivered by the broadcaster, which is transport-only. The
-broadcaster never decides what to send or to whom. Services decide.
+broadcaster never decides what to send or to whom -- services decide.
 
 ### 1. Add a variant to `WsEvent`
 
-In `server/src/ws/events.rs`, add the variant to the `WsEvent` enum:
+In `server/src/ws/events.rs`:
 
 ```rust
-#[serde(rename = "deployment_started")]
 DeploymentStarted {
     team_id: Uuid,
     release_id: Uuid,
@@ -302,13 +219,11 @@ DeploymentStarted {
 },
 ```
 
-The `#[serde(rename = "...")]` controls the `type` field in the JSON
-envelope. Rust naming convention on the variant, wire naming convention
-on the rename.
+Serde's `rename_all = "snake_case"` on the enum handles the wire name.
 
 ### 2. Emit it from a service
 
-In the relevant service function (not a handler), call the broadcaster:
+In the relevant service function (not a handler):
 
 ```rust
 broadcaster
@@ -323,13 +238,11 @@ broadcaster
     .await;
 ```
 
-The broadcaster serializes and delivers. You never touch
-`ws/broadcaster.rs`.
+You never touch `ws/broadcaster.rs`.
 
 ### 3. Handle it in the client
 
-In the component that cares about this event, consume `lastEvent` from
-`useVigilSocket()`:
+In the component that cares, consume `lastEvent` from `useVigilSocket()`:
 
 ```tsx
 useEffect(() => {
@@ -337,7 +250,6 @@ useEffect(() => {
     if (lastEvent.type !== "deployment_started") return;
     if (lastEvent.team_id !== teamId) return;
 
-    // Update local state inline, never fetch inside a WS handler.
     setDeployments((prev) => [...prev, {
         releaseId: lastEvent.release_id as string,
         environment: lastEvent.environment as string,
@@ -346,26 +258,18 @@ useEffect(() => {
 }, [lastEvent, teamId]);
 ```
 
-Rules:
+Two rules:
 
-- **Never call a fetch function inside a WS handler.** Use
+- Never call a fetch function inside a WS handler. Use
   `setState((prev) => ...)` with the data already in the event.
-- The only exception: when a WS event signals the creation of a new
-  entity whose full shape isn't in the event payload (e.g.
-  `newState === "created"` on a resource). In that case, one targeted
+- Exception: when a WS event signals a new entity whose full shape
+  isn't in the payload (e.g. `newState === "created"`). One targeted
   fetch is acceptable.
 
 ### 4. Document it
 
 Add the event to `WEBSOCKET_SPEC.md` with its payload, trigger, and
-delivery mode. Add it to the delivery matrix table at the bottom.
-
-### What you did NOT touch
-
-- The broadcaster (`ws/broadcaster.rs`)
-- Any existing event variant
-- The socket provider (`stores/socket.tsx`)
-- The reconnection logic
+delivery mode.
 
 **Files modified: 3** (`events.rs`, the emitting service, the consuming
 component) **+ 1 doc update**.
@@ -374,56 +278,46 @@ component) **+ 1 doc update**.
 
 ## Adding a complete new service (end-to-end)
 
-Combining the recipes above. Say you want to add **Timer** (an internal
+Combining the recipes above. Example: adding **Timer** (an internal
 cron service that triggers rules at fixed intervals).
 
 ### Checklist
 
-1. **Action** (what Timer can send us):
-   Register `("timer", "cron", "Fires at a configured interval")` in the
-   `ActionCatalog` builder in `main.rs` and `tests/common/mod.rs`.
+1. **Action**: register `("timer", "cron", "Fires at a configured interval")`
+   in the `ActionCatalog` builder in `main.rs` and `tests/common/mod.rs`.
 
-2. **Webhook receiver or internal scheduler**:
-   Timer has no external webhook. You would add an internal scheduler
-   (e.g. `tokio::time::interval`) that calls
-   `hooks::engine::evaluate(ctx, "timer", "cron", &payload, delivery_id)`
-   directly. The engine does not care where the event comes from. This
-   is the only step that differs from an external service like GitHub.
+2. **Webhook receiver or internal scheduler**: Timer has no external
+   webhook. Add an internal scheduler (e.g. `tokio::time::interval`)
+   that calls `hooks::engine::evaluate()` directly. The engine does not
+   care where the event comes from.
 
-3. **Reaction** (optional, if Timer also does something):
-   Timer as described is trigger-only. No new `ReactionExecutor` needed
-   unless Timer also acts (e.g. "schedule a reminder"). If needed,
-   follow the Reaction recipe above.
+3. **Reaction** (optional): Timer as described is trigger-only. No new
+   `ReactionExecutor` needed unless Timer also acts.
 
-4. **`ServiceName` variant** (only if connectable):
-   Timer is internal, nothing to connect. Skip.
+4. **`ServiceName` variant**: only if connectable. Timer is internal, skip.
 
-5. **Tests**:
-   An integration test that starts the scheduler, waits for a tick, and
-   verifies a rule fired. Use `wait_until(|| ...)` with a 5s deadline.
+5. **Tests**: an integration test that starts the scheduler, waits for a
+   tick, and verifies a rule fired.
 
-6. **Documentation**:
-   - `HOWTOCONTRIBUTE.md`: already covered (it's this file)
-   - `WEBSOCKET_SPEC.md`: no new events (Timer uses existing
-     `rule_triggered` / `rule_failed`)
-   - `README.md`: add Timer to the "Registered actions" table
+6. **Documentation**: update `README.md` (registered actions table) and
+   `WEBSOCKET_SPEC.md` if new events are added.
 
 ### Cost estimate
 
-For a service that only triggers (like Timer): **2 files modified**
-(`main.rs` + test harness) + **1 new file** (the scheduler or receiver).
+Trigger-only service: **2 files modified** (`main.rs` + test harness) +
+**1 new file** (scheduler or receiver).
 
-For a service that also reacts (like Slack): add the Reaction recipe on
-top: **+2 files** (reaction + `mod.rs`).
+Service that also reacts: add the Reaction recipe on top (**+2 files**).
 
 The engine, the matcher, the templating, the broadcaster, the frontend:
-untouched. That is the Open/Closed guarantee.
+untouched.
 
 ---
 
-## Architecture summary for contributors
+## Rule engine structure
 
-server/src/hooks/
+For reference, the engine lives under `server/src/hooks/`:
+hooks/
 actions.rs ActionCatalog (metadata, no trait)
 registry.rs ReactionRegistry + ReactionExecutor trait
 engine.rs EngineContext, evaluate(), evaluate_one()
@@ -437,38 +331,29 @@ vigil_escalate_incident.rs
 vigil_block_release.rs
 vigil_validate_release_step.rs
 discord_message.rs
-ws/
-events.rs WsEvent enum (serde-tagged)
-broadcaster.rs to_team() / to_user() (transport only)
 
-The engine never knows the concrete reaction types. It calls
-`registry.get(kind)` and gets back an `Arc<dyn ReactionExecutor>`. The
-broadcaster never knows the concrete event types. It serializes whatever
+The engine calls `registry.get(kind)` and gets back an
+`Arc<dyn ReactionExecutor>`. The broadcaster serializes whatever
 `WsEvent` variant it receives. Both extension points grow at the edge.
 
-## Adding a user-facing string
+Full codebase navigation is in the README.
+
+---
+
+## General conventions
+
+### Adding a user-facing string
 
 Never hardcode text in a component. Add a key to the `en` dictionary in
 `client/src/lib/i18n.ts` (convention: `scope.subscope.element`, e.g.
-`auth.signin.title`) and read it with `t("your.key")`. A missing key renders as
-the key itself, making the omission visible rather than shipping blank text. The
-FR dictionary (VGL-082) plugs in as a second dictionary with no component changes.
+`auth.signin.title`) and read it with `t("your.key")`. A missing key
+renders as the key itself, making the omission visible. The FR dictionary
+plugs in as a second dictionary with no component changes.
 
-## Adding a protected page
+### Adding a protected page
 
-Create a folder under `client/src/app/` (the folder name is the route). Wrap the
-page content in `<RequireAuth>` to enforce authentication, and in `<AppShell>` if
-it should render inside the app layout (header + sidebar). Read auth state with
-`useAuth()`; never read the token from `localStorage` directly.
-
-### Known limitations (Frontend)
-
-- **Front tests cover logic, not page integration.** Vitest covers the badge
-  components (verifying the color+icon+text signals per enum value) and pure
-  utilities (`navigation`). The auth pages, the `api.ts` HTTP client, and the
-  auth store are not unit-tested — this is a deliberate trade-off, with the
-  testing weight placed on the server's integration suite. The auth flow is
-  verified manually and exercised end-to-end through the server tests.
-
-- **CORS allowed origin is hardcoded** (see Design Decisions). Fine for local
-  dev and the jury demo; a production build should externalize it.
+Create a folder under `client/src/app/` (the folder name is the route).
+Wrap the page content in `<RequireAuth>` to enforce authentication, and
+in `<AppShell>` if it should render inside the app layout. Read auth
+state with `useAuth()`; never read the token from `localStorage`
+directly.
