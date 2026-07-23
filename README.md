@@ -1,6 +1,6 @@
 # VIGIL
 
-VIGIL is a collaborative operational control room that handles both realities of production operations in real time: **Releases** (planned deployments, validated step by step) and **Incidents** (detected problems, triaged and resolved). The two are connected - a Release can automatically trigger an Incident, and an active Incident can block an ongoing Release.
+VIGIL is a collaborative operational control room that handles both realities of production operations in real time: **Releases** (planned deployments, validated step by step) and **Incidents** (detected problems, triaged and resolved). The two are connected -- a Release can automatically trigger an Incident, and an active Incident can block an ongoing Release.
 
 > Hajatiana Rabemananjara
 
@@ -8,34 +8,38 @@ VIGIL is a collaborative operational control room that handles both realities of
 
 ## Stack
 
-| Component | Technology | Justification |
-|-----------|-----------|---------------|
-| Application server | **Rust (Axum)** | Imposed |
-| Web client | **Next.js** (TypeScript) | Imposed |
-| Desktop client | **Tauri** | Chosen - see below |
-| Persistence | **PostgreSQL** | Chosen - see below |
-| Real-time | **WebSockets** | Imposed |
-| Containerization | **Docker Compose** | Imposed |
-
+| Component          | Technology              | Justification       |
+|--------------------|-------------------------|----------------------|
+| Application server | **Rust (Axum)**         | Imposed              |
+| Web client         | **Next.js** (TypeScript)| Imposed              |
+| Desktop client     | **Tauri v2**            | Chosen -- see below  |
+| Persistence        | **PostgreSQL**          | Chosen -- see below  |
+| Real-time          | **WebSockets**          | Imposed              |
+| Containerization   | **Docker Compose**      | Imposed              |
 
 ### Why Tauri over Electron
 
-With Rust already chosen for the server, Tauri shares the same language for native/desktop code - no context switch, and architectural concepts (traits, ownership) carry over directly.
+Tauri was chosen over Electron for three concrete reasons:
 
+- **Binary size and footprint.** The AppImage weighs ~100 MB versus 200-400 MB for Electron, which ships its own Chromium. Tauri uses the system webview (WebKitGTK on Linux), lighter for a tool expected to stay open in the background.
+- **Security model by capabilities.** Every native API (notifications, tray, filesystem) must be explicitly declared in a capability file, scoped to specific windows and URLs. This forces a clean separation between the front and the OS.
+- **Consistency with the Rust backend.** The desktop shell (`lib.rs`) reuses the same language and idioms as the server. The embedded HTTP server is 40 lines of Rust with `tiny_http`, versus a separate Node bundling step in Electron.
 
 ### Why PostgreSQL over SQLite
 
 VIGIL's schema leans on three Postgres features that SQLite supports weakly or not at all:
 
-- **Partial unique indexes** are the backbone of several core invariants - exactly one active Manager per team, one active ban per (team, user), one active assignee per incident, one active link per (release, incident). SQLite supports partial indexes, but Postgres's are more mature and battle-tested at this kind of constraint density.
-- **JSONB** with native indexing and operators is used for `rules.trigger_filters`, `rules.reaction_payload`, `webhook_deliveries.payload`, and `audit_log.metadata`. SQLite's JSON support is function-based over TEXT, not a real binary type.
-- **Concurrent writers**: SQLite serializes writes at the database level (single-writer), which doesn't fit a tool whose entire premise is multiple operators acting on the same incident/release simultaneously. Postgres handles concurrent writes with row-level locking.
+- **Partial unique indexes** enforce invariants like exactly one active Manager per team, one active assignee per incident, one active link per (release, incident). SQLite supports partial indexes but Postgres's are more mature at this constraint density.
+- **JSONB** with native indexing is used for rule filters, reaction payloads, and webhook deliveries. SQLite's JSON support is function-based over TEXT, not a real binary type.
+- **Concurrent writers**: SQLite serializes writes at the database level. Postgres handles concurrent writes with row-level locking, which fits a tool where multiple operators act on the same resources simultaneously.
 
-PostgreSQL also fits the target deployment story naturally - `db` is one of the four services in the final `docker-compose.yml`, which is a more native shape for Postgres-as-a-service-container than for a SQLite file shared across containers.
+PostgreSQL also fits the deployment story naturally -- `db` is one of the four services in `docker-compose.yml`.
 
 ---
 
 ## Architecture
+
+The project is a monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The client folder hosts both the web and desktop targets -- the Next.js codebase under `client/src/` is the single source of truth for the UI. It is built with `output: 'export'` (static, CSR only). The Tauri desktop shell at `client/src-tauri/` embeds this static export, ensuring feature parity by construction.
 
 ```
                         ┌──────────────────────────────┐
@@ -69,158 +73,94 @@ PostgreSQL also fits the target deployment story naturally - `db` is one of the 
            │                        │          │    static export        │
            └───────────────────┘          └──────────────────────┘
 ```
-
-**Core principle**: writes go up via REST, truth comes back down via WebSocket. A client never trusts its own HTTP response to update its UI - it waits for the broadcast, exactly like every other connected client. This guarantees all clients (web and desktop) converge on the same state.
+**Core principle**: writes go up via REST, truth comes back down via WebSocket. A client never trusts its own HTTP response to update its UI -- it waits for the broadcast, exactly like every other connected client.
 
 ### Codebase navigation
 
 | Layer | Location | Responsibility |
-|-------|----------|-----------------|
-| Routes | `server/src/routes/` | HTTP route definitions - wiring only, no logic |
-| Handlers | `server/src/handlers/` | Request extraction, calling a service, response formatting - no SQL, no business rules |
-| Services | `server/src/services/` | Business logic - orchestrates repo calls + broadcaster calls + audit log |
-| Domain | `server/src/domain/` | Pure types and rules (e.g. `can_transition`) - zero I/O, zero infrastructure dependencies |
+|-------|----------|----------------|
+| Routes | `server/src/routes/` | HTTP route definitions, wiring only |
+| Handlers | `server/src/handlers/` | Request extraction, response formatting. No SQL, no business rules |
+| Services | `server/src/services/` | Business logic. Orchestrates repo + broadcaster + audit |
+| Domain | `server/src/domain/` | Pure types and rules (e.g. `can_transition`). Zero I/O |
 | Repo | `server/src/repo/` | The only layer that touches SQL (via `sqlx`) |
-| WebSocket | `server/src/ws/` | Broadcaster - transport only; services decide *what* and *to whom*, the broadcaster just delivers |
+| WebSocket | `server/src/ws/` | Broadcaster (transport only). Services decide what and to whom |
+| Hooks | `server/src/hooks/` | Rule engine: registry, matcher, templating, reactions |
 
-The crate is split into `lib.rs` (declares all modules, re-exports `AppError`/`AppState`) and a thin `main.rs` (wires config, DB pool, router, and calls `axum::serve`). This split exists so integration tests (`server/tests/`) can import the application as a library and spin up real instances against a disposable database, without duplicating the server bootstrap logic.
-
-
-On the client side:
+The crate is split into `lib.rs` (declares modules, re-exports core types) and a thin `main.rs` (wires config, pool, router). This split lets integration tests import the application as a library and spin up real instances against disposable databases.
 
 | Area | Location | Responsibility |
-|------|----------|-----------------|
-| Pages / routing | `client/src/app/` | App Router pages (`signin/`, `signup/`, `onboarding/`, …) |
-| UI components | `client/src/components/` | Reusable components (`StateBadge`, `SeverityBadge`, `ConfirmDialog`, `AppShell`, `UserMenu`) |
-| shadcn primitives | `client/src/components/ui/` | Generated shadcn/ui components (Radix-based) |
-| Lib / infrastructure | `client/src/lib/` | `api.ts` (typed HTTP client), `platform.ts` (native abstraction), `i18n.ts` (`t()`), `navigation.ts`, `utils.ts` |
-| Stores | `client/src/stores/` | Global state — `auth.tsx` (Context + `useAuth()`) |
-
----
-
-### Stack & structure
-
-The project is a monorepo with two top-level directories: `server/` (Rust + Axum)
-and `client/` (Next.js). The client folder hosts both the web and desktop targets:
-
-- The Next.js codebase under `client/src/` is the **single source of truth** for the UI.
-- It is built with `output: 'export'` (static export, CSR only, no Next API routes
-  or server features).
-- The desktop application uses Tauri, located at `client/src-tauri/` (sibling of
-  `client/src/`). It embeds the statically-exported Next.js output, ensuring
-  feature parity between web and desktop by construction.
-
-This avoids any code duplication: a feature written once works on both targets.
+|------|----------|----------------|
+| Pages | `client/src/app/` | App Router pages |
+| Components | `client/src/components/` | Reusable UI (`StateBadge`, `SeverityBadge`, `ConfirmDialog`, `AppShell`) |
+| shadcn | `client/src/components/ui/` | Generated shadcn/ui primitives (Radix-based) |
+| Lib | `client/src/lib/` | `api.ts` (HTTP client), `platform.ts` (native abstraction), `i18n.ts`, `useRouteParams.ts` |
+| Stores | `client/src/stores/` | `auth.tsx` (React Context), `socket.tsx` (WebSocket provider) |
 
 ### Frontend conventions
 
-- **Next.js App Router** is used (not Pages Router). Routes live under `client/src/app/`.
-- **TypeScript** strict mode.
-- **Tailwind CSS** for styling, with design tokens documented in `UI_GUIDELINES.md`.
-- **shadcn/ui** for accessible base components. Components are copied into
-  `client/src/components/ui/` via the shadcn CLI and may be customized locally.
-- **No hardcoded user-facing strings** : every visible label goes through a `t()`
-  function from `client/src/lib/i18n.ts`. This makes the FR/EN dictionary swap
-  in Phase 2 a one-file change instead of a screen-by-screen rewrite.
-- **Native capabilities behind a `platform/` layer** (`client/src/lib/platform.ts`).
-  Components never call Tauri APIs directly. The web build uses browser fallbacks
-  (or no-ops); the Tauri build will swap implementations without touching components.
-
-### State management
-
-- **React Context** for the auth store (current user, token). It is small, scoped,
-  and changes rarely.
-- **Zustand** for richer client state as the project grows (active team selection,
-  WS connection status, etc.). Introduced incrementally only where Context becomes
-  cumbersome.
-- **TanStack Query** is reserved for later (incidents lists, paginated timelines)
-  when caching and revalidation become valuable.
+- Next.js **App Router**, TypeScript strict mode, Tailwind CSS, shadcn/ui for base components
+- No hardcoded user-facing strings: every label goes through `t()` from `client/src/lib/i18n.ts`
+- Native capabilities behind `client/src/lib/platform.ts`. Components never call Tauri APIs directly
+- All UUIDs generated in Rust (`Uuid::new_v4()`) before INSERT, never via DB defaults
+- Rust: snake_case, PascalCase types, enforced by `cargo fmt` + clippy. TypeScript: camelCase, PascalCase types, enforced by ESLint + Prettier
 
 ### Authentication
 
-- Opaque session tokens (32 random bytes, hex-encoded over the wire).
-- Server stores SHA-256 of the token as `BYTEA` (irreversible verification).
-- Passwords hashed with **Argon2** (PHC string, stored as `TEXT`).
-- Token sent on every authenticated request via `Authorization: Bearer <token>`.
-- **Client-side storage in `localStorage`** for VIGIL's scope. This is a deliberate
-  trade-off: simpler than HttpOnly cookies (which would require server-side CORS
-  credentials changes), at the cost of XSS exposure. Acceptable for an academic
-  project, would be reconsidered in a production setting.
+- Opaque session tokens (32 random bytes, hex-encoded)
+- Server stores SHA-256 of the token as `BYTEA` (irreversible)
+- Passwords hashed with Argon2 (PHC string, stored as TEXT)
+- Token sent via `Authorization: Bearer <token>` on every authenticated request
+- Client-side storage in `localStorage`. Trade-off: simpler than HttpOnly cookies, at the cost of XSS exposure. Acceptable for an academic project
 
 ### Client-side auth flow
 
-The web client consumes the auth endpoints through a single React Context
-(`client/src/stores/auth.tsx`, exposed via `useAuth()`):
+The auth state lives in a React Context (`client/src/stores/auth.tsx`, exposed via `useAuth()`):
 
-- **Session restore on boot.** On mount, the provider reads the token from
-  `localStorage` and calls `GET /me` to validate it. A valid token rehydrates
-  the user; an expired or invalid one is silently cleared. An `isLoading` flag
-  gates the UI until this check resolves, avoiding a flash of the signin screen
-  for already-authenticated users.
-- **Route protection.** A `RequireAuth` wrapper (`client/src/components/RequireAuth.tsx`)
-  redirects unauthenticated users to `/signin` once the boot check has settled.
-- **Signup auto-signin.** Since `POST /auth/signup` returns the user but no token,
-  the client immediately calls signin after a successful signup for a seamless UX.
-- **Signout is local-first.** Signout clears the token and user state even if the
-  server call fails (offline), since the user's intent to leave takes precedence;
-  the token expires server-side regardless.
-- **Post-login routing** is centralized in `postLoginDestination()`
-  (`client/src/lib/navigation.ts`): 0 teams → `/onboarding`, ≥1 team → the last
-  active team's incidents view.
+- On mount, reads the token from `localStorage` and validates it with `GET /me`. An `isLoading` flag gates the UI until this check resolves
+- `RequireAuth` wrapper redirects unauthenticated users to `/signin`
+- Signup auto-signs in (the API returns no token on signup, so the client calls signin immediately)
+- Signout is local-first: clears state even if the server call fails
+- Post-login routing via `postLoginDestination()`: 0 teams goes to `/onboarding`, 1+ teams goes to the last active team's incidents view
 
-All HTTP calls go through a typed client (`client/src/lib/api.ts`) that injects
-the `Authorization: Bearer` header and throws a typed `ApiError` carrying the HTTP
-status, so callers can branch on 401/409/422 rather than parsing strings.
-
-### UUID generation
-
-All UUIDs are generated in Rust (`Uuid::new_v4()`) before INSERT, never via
-`DEFAULT gen_random_uuid()` in the database. This keeps ID generation independent
-from the database engine and lets the application layer know the entity ID before
-persistence : useful for logging, event broadcasting, and tracing.
-
-### Naming conventions
-
-Each language follows its idiomatic convention:
-- **Rust**: snake_case (functions/vars), PascalCase (types), enforced by `cargo fmt` + clippy.
-- **TypeScript**: camelCase (functions/vars), PascalCase (types/components), enforced by ESLint + Prettier.
+All HTTP calls go through `client/src/lib/api.ts`, which injects the Bearer header and throws typed `ApiError` with HTTP status and server error code.
 
 ---
 
-## Installation & Local Setup
+## Installation and local setup
 
 ### Prerequisites
 
-- Rust (stable) - version pinned via `rust-toolchain.toml`
-- Docker & Docker Compose
+- Rust stable (version pinned via `rust-toolchain.toml`)
+- Node.js 24+
+- Docker and Docker Compose
 - `sqlx-cli`: `cargo install sqlx-cli --no-default-features --features postgres`
-- Node.js 20+ (for the web client, once initialized)
 
 ### Quick start
 
 ```bash
-
-# 1. Start the database (Postgres + Adminer)
+# 1. Start the database
 docker compose -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.dev.yml ps   # wait for "healthy"
 
-# 2. Run migrations
+# 2. Run the server (migrations apply automatically on startup)
 cd server
-export DATABASE_URL=postgres://vigil:vigil_dev@localhost:5432/vigil
-sqlx migrate run
-
-# 3. Build and run the server
 cargo run
+
+# 3. Run the web client
+cd client
+npm install
+npm run dev
 ```
 
-The server listens on `http://localhost:8080`. Verify it's alive:
+The server listens on `http://localhost:8080`. The web client on `http://localhost:3000`.
 
 ```bash
 curl http://localhost:8080/health
 # { "status": "ok", "version": "0.1.0" }
 ```
 
-Adminer (database inspection UI) is available at `http://localhost:8888` - system: PostgreSQL, server: `db`, user/password/database from `.env`.
+Adminer (database UI) is available at `http://localhost:8888`.
 
 ### Running tests
 
@@ -229,72 +169,45 @@ cd server
 cargo test
 ```
 
-Each test spins up its own disposable database (via `spawn_app()` in `tests/common/mod.rs`), runs all migrations against it, and tears it down afterward - full isolation, safe to run in parallel.
+Each test spins up its own disposable database (via `spawn_app()` in `tests/common/mod.rs`), runs all migrations, and tears it down afterward. Full isolation, safe to run in parallel.
 
-### Linting & formatting
+### Linting and formatting
 
 ```bash
 cargo fmt --check
 cargo clippy
+cd client && npx eslint . && npx prettier --check .
 ```
 
 ---
 
 ## Desktop application
 
-The desktop client is a Tauri v2 application targeting **Linux/AppImage**
-(Ubuntu 24.04 tested). It exposes exactly the same features as the web
-client, plus tray icon and OS notifications.
+The desktop client is a Tauri v2 application targeting **Linux/AppImage** (Ubuntu 24.04 tested). It exposes exactly the same features as the web client, plus tray icon and OS notifications.
 
 ### Standalone by construction
 
-The AppImage is standalone: no Node runtime, no external server needed
-at launch. The static Next.js export (`out/`) is embedded in the binary
-and served internally by an embedded HTTP server (`tiny_http`) on
-`http://localhost:9527`.
+The AppImage is standalone: no Node runtime, no external server needed at launch. The static Next.js export (`out/`) is embedded in the binary and served internally by an embedded HTTP server (`tiny_http`) on `http://localhost:9527`.
 
-Rationale: Next.js static export produces one HTML per dynamic route
-(`/teams/placeholder`, not `/teams/<uuid>`). A naive file server would
-return 404 on real UUIDs. The embedded server rewrites any UUID-like
-path segment to `placeholder` while preserving the real URL, so
-client-side routing reads the actual identifier via a small
-`useRouteParams()` hook (`client/src/lib/useRouteParams.ts`) rather
-than `useParams()` (which would be frozen to `placeholder` in the RSC
-payload at build time).
+Rationale: Next.js static export produces one HTML per dynamic route (`/teams/placeholder`, not `/teams/<uuid>`). A naive file server returns 404 on real UUIDs. The embedded server rewrites any UUID-like path segment to `placeholder` while preserving the real URL, so client-side routing reads the actual identifier via `useRouteParams()` (`client/src/lib/useRouteParams.ts`) rather than `useParams()` (which returns the frozen build-time value `placeholder`).
 
 ### Tray icon and background lifecycle
 
-Closing the window does **not** terminate the app. The window is
-hidden, the WebSocket stays connected, and the app remains
-represented by a tray icon (top-right on GNOME). The tray menu
-exposes `Open` (restore window) and `Quit` (real exit).
+Closing the window does not terminate the app. The window is hidden, the WebSocket stays connected, and the app remains represented by a tray icon. The tray menu exposes `Open` (restore window) and `Quit` (real exit).
 
-Requires the `AppIndicator and KStatusNotifierItem` GNOME extension
-(preinstalled on Ubuntu 24.04).
+Requires the AppIndicator GNOME extension (preinstalled on Ubuntu 24.04).
 
 ### Native OS notifications
 
-Three triggers, all fired from a single central hook
-(`client/src/lib/useNotifications.ts`) reacting to WebSocket events:
+Three triggers, fired from a central hook (`client/src/lib/useNotifications.ts`):
 
 - Incident assigned to the current user (`incident_assigned`)
-- Incident escalated to critical (`incident_escalated`)
+- Incident escalated to critical severity (`incident_escalated`)
 - Release blocked by a linked incident (`release_state_changed`)
 
-Notifications are dispatched through the browser `Notification` API
-from within the WebKitGTK webview. This works uniformly on web and
-desktop through the `notify()` abstraction in
-`client/src/lib/platform.ts`.
+Notifications use the browser `Notification` API from within the WebKitGTK webview, dispatched uniformly on web and desktop through `platform.ts`.
 
-**Known limitation.** On GNOME 46+, notifications emitted from a
-webview (whether via the Tauri notification plugin, a custom Rust
-command calling `notify-send`, or the browser API) may not display
-even though the API returns success. This is a documented environment
-bug (see tauri-apps/tauri#14095 and
-tauri-apps/plugins-workspace#2566), independent of application code,
-verified by logs showing `permission: granted` and successful emission
-on every trigger. On GNOME versions prior to 46 or on non-GNOME
-desktops, notifications display correctly.
+**Known limitation.** On GNOME 46+, notifications emitted from a webview may not display even though the API returns success. This is a documented environment bug (tauri-apps/tauri#14095, tauri-apps/plugins-workspace#2566), independent of application code. Verified by logs showing successful emission on every trigger.
 
 ### Building the AppImage
 
@@ -307,26 +220,12 @@ Output: `client/src-tauri/target/release/bundle/appimage/*.AppImage`.
 
 ### Installing and running
 
-Requires `libfuse2t64` on the host to mount the AppImage:
+Requires `libfuse2t64` on the host:
 
 ```bash
 sudo apt install libfuse2t64
 chmod +x vigil-desktop_*.AppImage
 ./vigil-desktop_*.AppImage
-```
-
-To pin VIGIL to the GNOME menu, create
-`~/.local/share/applications/com.vigil.desktop.desktop`:
-
-```
-[Desktop Entry]
-Type=Application
-Name=VIGIL
-Exec=/absolute/path/to/vigil-desktop.AppImage
-Icon=vigil-desktop
-Terminal=false
-Categories=Development;
-StartupWMClass=VIGIL
 ```
 
 ---
@@ -335,27 +234,23 @@ StartupWMClass=VIGIL
 
 The full stack runs via Docker Compose with four services:
 
-| Service          | Role                                      | Port |
-|------------------|-------------------------------------------|------|
-| `db`             | PostgreSQL 16                             | -    |
-| `server`         | Rust/Axum API + WebSocket                 | 8080 |
-| `client_web`     | Nginx serving the Next.js static export   | 8081 |
-| `client_desktop` | Builds the AppImage into a shared volume  | -    |
+| Service          | Role                                    | Port |
+|------------------|-----------------------------------------|------|
+| `db`             | PostgreSQL 16                           | --   |
+| `server`         | Rust/Axum API + WebSocket               | 8080 |
+| `client_web`     | Nginx serving the Next.js static export | 8081 |
+| `client_desktop` | Builds the AppImage into a shared volume| --   |
 
-`client_web` depends on `client_desktop` completing successfully; the
-built AppImage is exposed for download at
-`http://localhost:8081/client.AppImage`.
+`client_web` depends on `client_desktop` completing successfully. The built AppImage is exposed for download at `http://localhost:8081/client.AppImage`.
 
 Two compose files are provided:
 
-- `docker-compose.dev.yml`: db + adminer only, for local development
-  with `cargo run` and `npm run dev` on the host.
-- `docker-compose.yml`: the full production-like stack.
+- `docker-compose.dev.yml`: db + adminer only, for local development with `cargo run` and `npm run dev` on the host
+- `docker-compose.yml`: the full production-like stack
 
 ### Launch the full stack
 
-Copy `.env.example` to `.env` and fill in the sensitive values. The
-`MASTER_KEY_HEX` must be 64 hex characters, generated with:
+Copy `.env.example` to `.env` and fill in the sensitive values. `MASTER_KEY_HEX` must be 64 hex characters:
 
 ```bash
 openssl rand -hex 32
@@ -367,48 +262,29 @@ Then:
 docker compose up --build
 ```
 
-First build takes several minutes (Rust compilation + Next build +
-AppImage bundling). Subsequent builds use the Docker layer cache.
+First build takes several minutes (Rust compilation + Next build + AppImage bundling). Subsequent builds use the Docker layer cache.
 
 - Web client: `http://localhost:8081`
 - API: `http://localhost:8080`
 - Desktop binary: `http://localhost:8081/client.AppImage`
 
-### Development compose
-
-For hot-reload development, only launch the database:
-
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
-
-Then run the server and client locally:
-
-```bash
-cd server && cargo run
-cd client && npm run dev
-```
-
-Adminer is exposed on `http://localhost:8888`.
-
 ---
 
 ## REST API
 
-All endpoints are documented below by functional domain. Error responses share a uniform shape regardless of endpoint:
+All endpoints return errors in a uniform shape:
 
 ```json
 { "error": { "code": "VALIDATION_ERROR", "message": "..." } }
 ```
 
-| HTTP Status | `code` | Meaning |
-|-------------|--------|---------|
+| HTTP Status | Code | Meaning |
+|-------------|------|---------|
 | 401 | `UNAUTHORIZED` | Missing or invalid session token |
 | 403 | `FORBIDDEN` | Authenticated but not permitted |
-| 404 | `NOT_FOUND` | Resource doesn't exist (or hidden as not-found) |
+| 404 | `NOT_FOUND` | Resource doesn't exist (or hidden) |
 | 409 | `CONFLICT` | Unique constraint violation |
 | 422 | `VALIDATION_ERROR` | Input failed validation |
-| 500 | `INTERNAL_ERROR` | Unexpected server error |
 
 ### Health
 
@@ -420,10 +296,10 @@ All endpoints are documented below by functional domain. Error responses share a
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/auth/signup` | none | Create account. Body: `{ email, password, display_name }`. Returns user (201). Errors: 422 (validation), 409 (email taken) |
-| POST | `/auth/signin` | none | Returns `{ token, user }` (200). Error: 401 |
-| GET | `/me` | session | Current user info. Never exposes the password hash |
-| POST | `/auth/signout` | session | Deletes the session. 204, token inoperative immediately |
+| POST | `/auth/signup` | none | Body: `{ email, password, display_name }`. Returns user (201). 409 if email taken |
+| POST | `/auth/signin` | none | Returns `{ token, user }`. 401 if invalid |
+| GET | `/me` | session | Current user info |
+| POST | `/auth/signout` | session | Deletes the session. 204 |
 
 ### Teams
 
@@ -431,10 +307,10 @@ All endpoints are documented below by functional domain. Error responses share a
 |--------|------|------|-------------|
 | POST | `/teams` | session | Create a team. Creator becomes Manager |
 | GET | `/teams` | session | List teams the user belongs to |
-| GET | `/teams/{team_id}` | member | Team detail. Non-member gets 404 (not 403) |
+| GET | `/teams/{team_id}` | member | Team detail. Non-member gets 404 |
 | GET | `/teams/{team_id}/members` | member | Member list with roles |
-| PATCH | `/teams/{team_id}/members/{user_id}/role` | Manager | Promote/demote Observer/Responder |
-| POST | `/teams/{team_id}/transfer-manager` | Manager | Body: `{ target_user_id }`. Atomic swap, former Manager becomes Responder |
+| PATCH | `/teams/{team_id}/members/{user_id}/role` | Manager | Body: `{ role }`. Promote/demote Observer/Responder |
+| POST | `/teams/{team_id}/transfer-manager` | Manager | Body: `{ target_user_id }`. Atomic swap |
 | POST | `/teams/{team_id}/leave` | member | Manager without transfer gets 409 |
 | POST | `/teams/{team_id}/invitations` | Manager | Returns `{ code }` |
 | POST | `/teams/join` | session | Body: `{ code }`. Joins as Observer. Banned user gets 403 |
@@ -444,285 +320,142 @@ All endpoints are documented below by functional domain. Error responses share a
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/teams/{team_id}/incidents` | Manager | Body: `{ title, body, severity }`. Initial state `open` |
-| GET | `/teams/{team_id}/incidents` | member | Filterable by `?status=` and `?severity=`. Returns `{ "incidents": [...] }` |
-| GET | `/teams/{team_id}/incidents/{id}` | member | Returns `{ "incident": {...} }` |
+| GET | `/teams/{team_id}/incidents` | member | Filterable: `?status=`, `?severity=` |
+| GET | `/teams/{team_id}/incidents/{id}` | member | Single incident with `assignee_id` |
 | PATCH | `/teams/{team_id}/incidents/{id}/status` | Responder+ | Body: `{ status, severity? }`. State machine enforced |
 | PATCH | `/teams/{team_id}/incidents/{id}/severity` | Responder+ | Body: `{ severity }` |
 | POST | `/teams/{team_id}/incidents/{id}/assign` | Manager | Body: `{ user_id }`. Target must be Responder+ |
 | POST | `/teams/{team_id}/incidents/{id}/timeline` | Responder+ | Body: `{ content }`. Max 2000 chars |
-| GET | `/teams/{team_id}/incidents/{id}/timeline` | member | Paginated, chronological |
+| GET | `/teams/{team_id}/incidents/{id}/timeline` | member | Chronological entries |
 
 ### Releases
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/teams/{team_id}/releases` | Manager | Body: `{ title, body?, steps: ["build","staging",...] }`. Steps are a simple array of names; positions are derived server-side (1-based). Returns 201 |
-| GET | `/teams/{team_id}/releases` | member | Filterable by `?status=`. Returns a bare array `[...]` with progress `{ completed, total }` per item |
-| GET | `/teams/{team_id}/releases/{id}` | member | Full detail including `steps[]` (with `validated_at`/`validated_by`), `linked_incidents[]` (id, title, status, severity), and `progress` |
-| POST | `/teams/{team_id}/releases/{id}/start` | Manager | `created` to `in_progress`. Returns the updated release. 422 if not in `created` status |
-| POST | `/teams/{team_id}/releases/{id}/cancel` | Manager | Allowed from `created`, `in_progress`, `blocked`. 422 from terminal states (`completed`, `cancelled`) |
-| POST | `/teams/{team_id}/releases/{id}/steps/{step_id}/validate` | Responder+ | Strict sequential order: step N+1 requires step N validated. Auto-completes the release when the last step is validated. 409 if release is `blocked` (mentions the blocking incident). 422 if not `in_progress` |
-| POST | `/teams/{team_id}/releases/{id}/link` | Manager | Body: `{ incident_id }`. If release is `in_progress` and incident is not resolved, auto-blocks. Linking an already-resolved incident does not block. 409 if duplicate link. 422 on terminal releases |
-| POST | `/teams/{team_id}/releases/{id}/unlink` | Manager | Body: `{ incident_id }`. Auto-unblocks when no active unresolved linked incidents remain. 404 if no active link exists |
-
-**Validation rules for creation:**
-- Title required, max 200 characters
-- At least 1 step, at most 20. No empty names, no duplicates (case-insensitive), max 100 chars per name
-- Steps array order determines position (1-based). The client sends `["build", "staging", "prod"]`, the server stores positions 1, 2, 3
+| POST | `/teams/{team_id}/releases` | Manager | Body: `{ title, body?, steps: [...] }`. Steps are names; positions derived server-side. Max 20 steps, title max 200 chars |
+| GET | `/teams/{team_id}/releases` | member | Filterable: `?status=`. Includes `progress { completed, total }` |
+| GET | `/teams/{team_id}/releases/{id}` | member | Full detail: steps, linked_incidents, progress |
+| POST | `/teams/{team_id}/releases/{id}/start` | Manager | `created` to `in_progress` |
+| POST | `/teams/{team_id}/releases/{id}/cancel` | Manager | From `created`, `in_progress`, `blocked`. 422 from terminal states |
+| POST | `/teams/{team_id}/releases/{id}/steps/{step_id}/validate` | Responder+ | Sequential order enforced. Auto-completes on last step. 409 if blocked |
+| POST | `/teams/{team_id}/releases/{id}/link` | Manager | Body: `{ incident_id }`. Auto-blocks if release is `in_progress` and incident unresolved |
+| POST | `/teams/{team_id}/releases/{id}/unlink` | Manager | Body: `{ incident_id }`. Auto-unblocks when no active unresolved links remain |
 
 ### Webhooks
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/webhooks/github` | HMAC | GitHub webhook receiver. Validates `X-Hub-Signature-256` (HMAC-SHA256, constant-time). Persists the raw payload to `webhook_deliveries` before processing. Returns 202 immediately; rule evaluation runs async. Invalid/missing signature returns 401. |
-
-The HMAC secret is the `WEBHOOK_SECRET` environment variable. This is a global secret shared between VIGIL and GitHub, not a per-user token.
+| POST | `/webhooks/github` | HMAC | Validates `X-Hub-Signature-256` (HMAC-SHA256). Persists raw payload. Returns 202; rule evaluation runs async |
 
 ### Rules
 
-All rule endpoints are team-scoped. Only Managers can create, update, or delete rules. Observers and Responders can list and read them.
-
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/teams/{team_id}/rules` | member | Returns `[...]` (bare array) |
-| POST | `/teams/{team_id}/rules` | Manager | See body format below. Returns 201 + rule |
+| GET | `/teams/{team_id}/rules` | member | List rules |
+| POST | `/teams/{team_id}/rules` | Manager | Create rule. Trigger and reaction validated against registries |
 | GET | `/teams/{team_id}/rules/{id}` | member | Single rule |
-| PATCH | `/teams/{team_id}/rules/{id}` | Manager | Partial update. Any subset of fields |
+| PATCH | `/teams/{team_id}/rules/{id}` | Manager | Partial update |
 | DELETE | `/teams/{team_id}/rules/{id}` | Manager | 204 |
 
-**Create/update body:**
-
-```json
-{
-  "name": "CI failure -> critical incident",
-  "enabled": true,
-  "trigger": {
-    "service": "github",
-    "event": "workflow_run",
-    "filters": {
-      "workflow_run.conclusion": "failure"
-    }
-  },
-  "reaction": {
-    "type": "vigil_create_incident",
-    "payload": {
-      "title": "CI broken on {{repository.name}}",
-      "severity": "high",
-      "body": "Workflow {{workflow_run.name}} failed"
-    }
-  }
-}
-```
-
-**Validation at creation:**
-
-- `trigger.service` + `trigger.event` must exist in the `ActionCatalog`
-  (the same catalog that feeds `/about.json`). Unknown trigger returns 422.
-- `reaction.type` must exist in the `ReactionRegistry`. Unknown reaction
-  returns 422.
-- Both validations read from the same registries the engine uses at
-  runtime, so a rule that passes validation can always be evaluated.
-
-### Service Connections
-
-Per-user encrypted storage of third-party tokens and webhook URLs.
+### Service connections
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/me/services` | session | Returns `[{ id, service, created_at, updated_at }]`. Never exposes the token |
-| POST | `/me/services/{service}` | session | Body: `{ "token": "..." }`. Encrypted AES-256-GCM at rest. Upsert semantics: reconnecting overwrites the previous token. `{service}` must match the DB CHECK constraint (`github`, `gitlab`, `discord`). Unknown service returns 404, empty token returns 422 |
+| GET | `/me/services` | session | List connected services (no secrets exposed) |
+| POST | `/me/services/{service}` | session | Body: `{ token }`. Encrypted AES-256-GCM at rest. Upsert. Service must match DB constraint |
 | DELETE | `/me/services/{service}` | session | 204. Deletes the encrypted token |
 
 ### Discovery
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/about.json` | none | Dynamic catalog of Actions, Reactions, and the kickoff token. See the dedicated section above |
+| GET | `/about.json` | none | Dynamic catalog of Actions, Reactions, kickoff token |
 
 ---
 
-## Database Schema
+## Database schema
 
-Full commented DDL lives in [`server/migrations/20260616162323_initial_schema.sql`](./server/migrations/20260616162323_initial_schema.sql); the DBML diagram lives in [`docs/`](./docs/). Nineteen tables, grouped into seven functional blocks:
+Full DDL lives in `server/migrations/`. Nineteen tables in seven blocks:
 
-**Core identity** : `users`, `sessions`, `teams`, `team_members`
-The authentication and workspace root. `team_members` carries the 3-role system (`observer`/`responder`/`manager`) with a partial unique index guaranteeing exactly one active Manager per team.
+**Core identity**: `users`, `sessions`, `teams`, `team_members`. The 3-role system (`observer`/`responder`/`manager`) with a partial unique index guaranteeing exactly one active Manager per team.
 
-**Membership lifecycle** : `invitations`, `team_bans`
-Closes the loop on how someone enters or is barred from a team. `invitations.code` is globally unique (resolved without a `team_id` at join time); `team_bans` uses a partial unique index per `(team_id, user_id)` so a lifted ban can later be re-applied without a schema conflict.
+**Membership lifecycle**: `invitations`, `team_bans`. `invitations.code` is globally unique; `team_bans` uses a partial unique index per `(team_id, user_id)`.
 
-**Incidents** : `incidents`, `incident_assignments`, `timeline_entries`, `timeline_reactions`
-`incidents` holds current state (status + severity as independent axes); `timeline_entries` is the append-only event log of what happened. `incident_assignments` and `timeline_reactions` each enforce their own invariant via a partial/composite unique index (one active assignee; one reaction per user/entry/emoji).
+**Incidents**: `incidents`, `incident_assignments`, `timeline_entries`, `timeline_reactions`. `incident_assignments` enforces one active assignee via partial unique index.
 
-**Releases** : `releases`, `release_steps`, `release_incident_links`
-Mirrors the incidents block structurally (state + transition timestamps), but models a planned, sequential process instead of a reactive one. `release_incident_links` is the N-N table whose presence drives the automatic `blocked` state.
+**Releases**: `releases`, `release_steps`, `release_incident_links`. The N-N link table drives the automatic `blocked` state.
 
-**Social** : `private_messages`
-Strictly bilateral, never grouped. No `team_id` : access is checked at send time via a shared-team query, not stored as a property of the message.
+**Social**: `private_messages`. Bilateral only. No `team_id`; access checked via shared-team query at send time.
 
-**Automation** : `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`
-The Action => REAction pipeline. `service_connections` stores AES-256-GCM–encrypted tokens (reversible, unlike session hashing, because the server must reuse them to call external APIs). `rules` separates filterable columns (service/event) from free-form JSONB (filters/payload templates). `webhook_deliveries` and `rule_executions` are append-only logs of what arrived and what happened.
+**Automation**: `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`. `service_connections` stores AES-256-GCM-encrypted tokens. `rules` separates filterable columns from JSONB payloads.
 
-**Audit** : `audit_log`
-A decoupled observer: no foreign keys to any other table, so it survives deletions elsewhere and never blocks them. Append-only by design - moderation and configuration changes never rewrite history.
+**Audit**: `audit_log`. No foreign keys (survives deletions). Append-only.
 
-### Conventions applied throughout
+### Conventions
 
 - UUID v4 primary keys, generated server-side
-- `TIMESTAMPTZ` for every timestamp; `DEFAULT now()` on every `created_at`
-- Enums are `TEXT` + `CHECK`, never native Postgres enum types (cheaper to extend without a migration touching existing rows)
-- History is preserved via a `status` column, never via `DELETE` - the only tables that use real `DELETE` are `timeline_reactions` (toggling a reaction) and `sessions` (sign out)
-- Foreign keys to `users` never cascade (users are never deleted); foreign keys to `teams` cascade (deleting a team legitimately removes its data)
+- `TIMESTAMPTZ` for every timestamp
+- Enums are `TEXT` + `CHECK`, never native Postgres enum types
+- History preserved via `status` column, never via `DELETE`
+- Foreign keys to `users` never cascade; foreign keys to `teams` cascade
 
 ---
 
-## Rule Engine
+## Rule engine
 
-VIGIL turns external events into VIGIL actions through a rule engine built on two extension seams: a **catalog of Actions** (what services can send us) and a **registry of Reactions** (what we can do in response).
-A rule wires one Action to one Reaction, optionally filtered and templated.
+VIGIL turns external events into actions through a rule engine built on two extension seams: a catalog of Actions (what services can send us) and a registry of Reactions (what we can do in response).
 
 ### Pipeline
 
-External service VIGIL server
-───────────────── ────────────
-GitHub CI fails ┌─ HMAC-SHA256 (constant time)
-│ │ invalid => 401
-│ POST /webhooks/github │
-└───────────────────────────────────►┤ persist raw payload
-│ (webhook_deliveries, replayable)
-│
-│ respond 202 immediately
-│ ┌───────────────────┐
-│ │ tokio::spawn │
-│ │ │
-│ │ load enabled rules │
-│ │ matching event │
-│ │ │ │
-│ │ ▼ │
-│ │ matcher │
-│ │ (dot-notation, │
-│ │ AND, strict eq) │
-│ │ │ │
-│ │ ▼ │
-│ │ templating │
-│ │ ({{path.to.field}}) │
-│ │ │ │
-│ │ ▼ │
-│ │ Reaction.execute() │
-│ │ (via dyn trait) │
-│ │ │ │
-│ │ ▼ │
-│ │ log to │
-│ │ rule_executions │
-│ │ + broadcast │
-│ │ rule_triggered │
-│ │ or rule_failed │
-│ └───────────────────┘
-└────
-
-The webhook receiver responds `202 Accepted` before the engine runs, so a slow reaction (Discord API, blocked release) never delays GitHub. A failure in one rule never affects the others: each is executed in isolation and reported as `rule_failed` on the WS channel.
+The webhook receiver validates HMAC, persists the raw payload to `webhook_deliveries`, and responds 202 immediately. Rule evaluation runs async via `tokio::spawn`: load matching enabled rules, apply dot-notation filters (implicit AND, strict equality), resolve `{{path.to.field}}` template placeholders against the payload, then call `Reaction.execute()` via the trait dispatch. Each rule runs in isolation; a failure in one never affects others.
 
 ### Catalog vs registry
 
 | | ActionCatalog | ReactionRegistry |
 |---|---|---|
-| What it holds | Metadata (service, event, description) | Types implementing `ReactionExecutor` |
-| Where declared | `main.rs` builder | `main.rs` builder |
-| Exposed via | `/about.json` (actions[]) | `/about.json` (reactions[]) |
+| Holds | Metadata (service, event, description) | Types implementing `ReactionExecutor` |
+| Exposed via | `/about.json` actions | `/about.json` reactions |
 | Runtime role | Filter incoming webhooks | Dispatch reactions by kind |
 
-**Asymmetry rationale.** Reactions have runtime behavior (`execute()`), so a trait + `Arc<dyn ReactionExecutor>` earns its complexity. Actions are declarative. They describe events a service can send us; the matching and dispatching happens against fields inside the payload, not against the metadata.
-Building a symmetric `ActionExecutor` trait would be complexity without a purpose. Both extension points still cost a single line in `main.rs` for a new entry.
+Actions are declarative metadata. Reactions have runtime behavior (`execute()`), justifying the trait. Both cost one line in `main.rs` to add.
 
 ### Filters
 
-Filters are dot-notation paths matched against the incoming payload:
+Dot-notation paths matched against the payload. All must match (AND). `{}` matches everything.
 
 ```json
-{
-  "workflow_run.conclusion": "failure",
-  "repository.full_name": "hajatiana/vigil"
-}
+{ "workflow_run.conclusion": "failure", "repository.full_name": "hajatiana/vigil" }
 ```
-
-- All paths must match (implicit AND)
-- Comparison is strict equality on JSON values (string, number, bool)
-- Missing paths never match
-- `{}` matches everything. This is the safe default in the rule form
 
 ### Templating
 
-Reaction payloads may embed `{{path.to.field}}` placeholders resolved
-against the webhook payload:
-
-```json
-{
-  "title": "CI broken on {{repository.name}}",
-  "body":  "Workflow {{workflow_run.name}} failed"
-}
-```
-
-**Unresolved placeholders are left literal.** If the template says `{{workflow.name}}` but the payload only has `workflow_run.name`, the output contains the literal string `{{workflow.name}}` rather than an empty string.
-This is deliberate: it surfaces the mistake at the first run instead of producing silently degraded messages.
+`{{path.to.field}}` placeholders resolved against the payload. Unresolved placeholders are left literal to surface mistakes at first run.
 
 ### Registered reactions
 
 | Kind | Service | Effect |
-|---|---|---|
+|------|---------|--------|
 | `vigil_create_incident` | vigil | Creates an incident on the rule's team |
-| `vigil_escalate_incident` | vigil | Transitions an existing incident to `escalated` |
-| `vigil_block_release` | vigil | Links an incident to a release, triggering the auto-block |
+| `vigil_escalate_incident` | vigil | Escalates an existing incident |
+| `vigil_block_release` | vigil | Links an incident to a release, triggering auto-block |
 | `vigil_validate_release_step` | vigil | Advances a release step |
 | `discord_message` | discord | Posts a message to a Discord webhook URL |
 
-Reactions triggered by a rule are attributed in the audit log to
-`rule.created_by`, not to a system user. This keeps the actor chain
-honest — every action in VIGIL is traceable to a real user.
-
-### Registered actions
-
-Currently: `github/workflow_run`, `github/push`, `github/pull_request`.
-Only `workflow_run` is wired end-to-end in the demo scenario; `push` and
-`pull_request` are registered in the catalog so rules can target them,
-but they carry no VIGIL-specific processing beyond generic dispatch.
-
 ### Service connections
 
-Third-party services are connected per-user via
-`POST /me/services/{service}` with a token or webhook URL body. Tokens
-are encrypted at rest with AES-256-GCM (see `MASTER_KEY_HEX`) and
-decrypted just-in-time inside a reaction (`DiscordMessage` reads the
-rule creator's Discord webhook URL). They are never logged, never
-returned in a response.
+Connected per-user via `POST /me/services/{service}`. Tokens encrypted AES-256-GCM at rest, decrypted just-in-time inside reactions. Never logged, never returned.
 
-Connectable services are the intersection of what the DB `CHECK`
-constraint allows and what the front discovers via `/about.json`
-(`server.services[].connectable`). VIGIL itself appears in the catalog
-(it exposes reactions) but is marked `connectable: false` — it's the
-application, not a third party.
-
-**Known limitation.** GitHub tokens are stored encrypted but not yet
-consumed at runtime: the webhook receiver authenticates GitHub payloads
-via a global `WEBHOOK_SECRET` (HMAC), not via per-user tokens. Reading
-the token would require a reaction that calls the GitHub API on the
-user's behalf (e.g. `github_create_issue`). This is on the extended
-scope backlog.
+**Known limitation.** GitHub tokens are stored but not consumed at runtime: the webhook receiver authenticates via a global `WEBHOOK_SECRET` (HMAC), not per-user tokens.
 
 ---
 
 ## `/about.json`
 
-Public discovery endpoint. Serves the catalog of Actions and Reactions so that clients build their UI without hard-coding any service name, event, or reaction kind.
-
-**GET /about.json** (no authentification)
-
-Response:
+Public discovery endpoint. Clients build their rule form UI entirely from this response.
 
 ```json
 {
-  "client": {
-    "host": "10.0.0.1"
-  },
+  "client": { "host": "10.0.0.1" },
   "server": {
     "current_time": 1718000000,
     "token": "3f2a9b...e4c1",
@@ -731,10 +464,7 @@ Response:
         "name": "github",
         "connectable": true,
         "actions": [
-          {
-            "name": "workflow_run",
-            "description": "A CI workflow run has completed (success or failure)"
-          }
+          { "name": "workflow_run", "description": "A CI workflow run has completed" }
         ],
         "reactions": []
       },
@@ -745,20 +475,8 @@ Response:
         "reactions": [
           {
             "name": "vigil_create_incident",
-            "description": "Create a VIGIL incident with configurable title, severity, and body",
-            "payload_example": "{\n  \"title\": \"CI broken on {{repository.name}}\",\n  \"severity\": \"high\"\n}"
-          }
-        ]
-      },
-      {
-        "name": "discord",
-        "connectable": true,
-        "actions": [],
-        "reactions": [
-          {
-            "name": "discord_message",
-            "description": "Post a message to a Discord channel via webhook",
-            "payload_example": "{\n  \"content\": \"CI broken on {{repository.name}}\",\n  \"username\": \"VIGIL\"\n}"
+            "description": "Create a VIGIL incident",
+            "payload_example": "{ \"title\": \"CI broken on {{repository.name}}\", \"severity\": \"high\" }"
           }
         ]
       }
@@ -767,26 +485,16 @@ Response:
 }
 ```
 
-### Fields
-
-- **`client.host`** : the requesting client's IP, read from the TCP layer via Axum's `ConnectInfo<SocketAddr>`.
-- **`server.current_time`** : Unix seconds, computed on each request.
-- **`server.token`** : SHA-256 of `STUDENT_FIRSTNAME + STUDENT_LOGIN + "VIGIL2026"`, computed once at startup. This is the kickoff token required by the subject.
-- **`server.services[].connectable`** : whether a user can attach a personal token or webhook URL to this service. Derived from the enum  that mirrors the DB `CHECK` constraint on `service_connections.service`, so this field and the connection endpoints share a single source of truth.
-- **`server.services[].actions[]`** : events the service can send us. Sourced from the `ActionCatalog` built at startup.
-- **`server.services[].reactions[]`** : what we can do in response. Sourced from the `ReactionRegistry` by iterating registered executors and grouping by their `service_name()`.
-- **`payload_example`** : present on reactions only. Ships a well-formed example of the JSON payload a reaction expects, used by the rule form to prefill the payload textarea. Adding a new reaction automatically enriches this endpoint. No manual JSON update.
-
-### What this makes possible
-
-The rule form in the web client is built entirely from this endpoint: service selects, event selects, reaction selects, prefilled payload textareas. The client contains no hard-coded service or reaction name.
-Adding a new reaction on the backend adds it to the form on the next page load, with its description and example.
+- `client.host`: requesting client's IP
+- `server.token`: SHA-256 of `STUDENT_FIRSTNAME + STUDENT_LOGIN + "VIGIL2026"`, computed at startup
+- `connectable`: whether a user can attach a token to this service
+- `payload_example`: well-formed example, used to prefill the rule form textarea
 
 ---
 
-## WebSocket Events
+## WebSocket events
 
-Full specification - connection handshake, envelope format, delivery modes, reconnection strategy, and the complete event catalog - lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
+Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 
 ---
 
@@ -795,140 +503,67 @@ Full specification - connection handshake, envelope format, delivery modes, reco
 | Variable            | Required | Description                                              |
 |---------------------|----------|----------------------------------------------------------|
 | `DATABASE_URL`      | yes      | PostgreSQL connection string                             |
-| `SERVER_HOST`       | no       | Default `0.0.0.0`                                        |
+| `SERVER_HOST`       | no       | Default `0.0.0.0`                                       |
 | `SERVER_PORT`       | no       | Default `8080`                                           |
-| `WEBHOOK_SECRET`    | no       | HMAC secret for `POST /webhooks/*` (default: dev secret) |
-| `MASTER_KEY_HEX`    | yes      | 64 hex chars (32 bytes) for AES-256-GCM token encryption |
-| `STUDENT_FIRSTNAME` | yes      | Used to derive the `/about.json` kickoff token           |
-| `STUDENT_LOGIN`     | yes      | Used to derive the `/about.json` kickoff token           |
+| `WEBHOOK_SECRET`    | no       | HMAC secret for webhook validation (default: dev secret) |
+| `MASTER_KEY_HEX`    | yes      | 64 hex chars (32 bytes) for AES-256-GCM encryption      |
+| `STUDENT_FIRSTNAME` | yes      | Derives the `/about.json` kickoff token                  |
+| `STUDENT_LOGIN`     | yes      | Derives the `/about.json` kickoff token                  |
 
 ---
 
-## Design Decisions
+## Design decisions
 
-A few cross-cutting decisions worth calling out explicitly, beyond the per-table rationale above:
+- **Permission extractors, not middleware.** Access control is implemented as Axum extractors (`TeamMember`, `RequireResponder`, `RequireManager`) declared in handler signatures. A handler's required role is self-documenting. Adding a new protected route reuses an existing extractor (Open/Closed).
 
-- **CORS is configured on the server, not the client.** The API applies a
-  `CorsLayer` (tower-http) allowing the web client's origin, the `Authorization`
-  and `Content-Type` headers, and the REST verbs used. It is applied in `main.rs`
-  only (not in the shared `router()`), so integration tests — which have no browser
-  and no cross-origin concern — are unaffected. **Known limitation:** the allowed
-  origin is currently hardcoded to the dev origin (`http://localhost:3000`). A
-  production deployment should read it from an environment variable
-  (e.g. `CORS_ALLOWED_ORIGIN`), the same way `DATABASE_URL` is externalized.
+- **Team access returns 404, never 403.** Returning 403 would reveal that the team exists. Returning 404 makes a non-existent team indistinguishable from one the user isn't part of.
 
-- **Permission extractors, not middleware.** Access control is implemented as Axum extractors (`TeamMember`, `RequireResponder`, `RequireManager`) declared in handler signatures, not as middleware applied to route groups. A handler that needs Manager access simply declares `manager: RequireManager` as a parameter — the extractor authenticates the user, loads the team membership from the path, checks the role, and rejects the request before the handler body runs. This makes permissions visible at the function signature level (a handler's required role is self-documenting) and avoids the "forgotten middleware" class of bugs where a new route accidentally skips the access check. Adding a new protected route means reusing an existing extractor, never modifying the permission system itself (Open/Closed principle). The extractors compose: `RequireManager` internally calls `TeamMember`, which internally calls `AuthUser`, so the authentication → membership → role chain is checked exactly once per request.
+- **Role hierarchy is numeric.** Observer (0) < Responder (1) < Manager (2). `has_at_least(required)` compares levels. Adding a role changes one function.
 
-- **Team access returns 404, never 403.** When a user requests a team they are not a member of, the server returns 404 (not 403). This is a deliberate security choice: returning 403 ("you don't have access") reveals that the team exists, which leaks information to an attacker enumerating UUIDs. Returning 404 ("not found") makes a non-existent team indistinguishable from one the user simply isn't part of. This rule is enforced at the SQL level — the membership query joins `teams` with `team_members` on the requesting user's ID, so a non-member row simply produces no result, and the service maps `None` to `NotFound`.
+- **Severity is orthogonal to state.** An incident's severity and lifecycle state are independent axes. You can raise severity without changing state. `PATCH .../status` and `PATCH .../severity` are separate endpoints.
 
-- **Role hierarchy is numeric.** The three roles (`Observer` < `Responder` < `Manager`) are compared via a `level()` function returning 0, 1, 2. The `has_at_least(required)` method compares levels rather than pattern-matching every pair. This means adding a hypothetical fourth role changes one function, not a quadratic number of match arms.
+- **State machine transitions are strict.** All valid transitions live in a single pure function (`domain::incidents::can_transition`). The shortcut `acknowledged -> resolved` is deliberate (not all incidents escalate).
 
-- **Invitation codes use a human-safe alphabet.** Generated codes are 8 characters from a 31-symbol set (`A-Z` + `2-9`, excluding `0/O`, `1/I/L`). These characters are visually confusable when shared via screenshot, voice, or low-resolution chat. The remaining alphabet yields 31^8 ≈ 8.5 billion combinations, making collision astronomically unlikely, but a unique index on active codes provides a safety net.
+- **Auto-blocking cascade.** Linking a non-resolved incident to an `in_progress` release blocks it. Resolution or unlinking unblocks when no active unresolved links remain. Multi-incident blocking handled correctly.
 
-- **Expired invitation codes return 410, not 404.** A code that once existed but is now expired or exhausted returns `410 Gone` rather than `404 Not Found`. This guides the user: 404 means "check your spelling", 410 means "ask the Manager for a new code". The distinction requires a second query on the error path (checking if the code ever existed), which is acceptable since this is the rare path and the UX benefit is concrete.
+- **Sequential step validation.** Steps must be validated in position order. The last step triggers auto-completion.
 
-- **Manager transfer respects the partial unique index ordering.** The `team_members` table has a partial unique index enforcing exactly one active Manager per team. PostgreSQL checks this constraint after each `UPDATE`, not at transaction commit. The transfer service therefore demotes the current Manager to Responder *first*, then promotes the target to Manager — reversing this order would momentarily create two Managers and trigger a unique constraint violation, even within the same transaction.
+- **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Sessions only need verification (irreversible by design). Service tokens must be reused to call external APIs (reversible by necessity).
 
-- **Uniform error shape.** Every error response - across every endpoint - has the same `{ error: { code, message } }` JSON body. This is implemented once, in `AppError`'s `IntoResponse` impl, so handlers never hand-roll error formatting.
-- **`lib.rs` / `main.rs` split.** The application logic lives in a library crate; `main.rs` is a thin binary entry point. This is what makes `tests/` able to spin up a real, fully-wired server instance per test without duplicating bootstrap code.
-- **Session tokens are hashed (SHA-256); service tokens are encrypted (AES-256-GCM).** Different threat models: a session token only needs to be *verified* (hash comparison is enough, and irreversible by design), while a service token (GitHub, Discord) must be *reused* to call the external API, so it must be decryptable.
-- **WebSocket broadcaster is transport-only.** It exposes `to_team(team_id, event)` and `to_user(user_id, event)`; only services call it, never handlers. Adding a new event type is a new enum variant in `WsEvent` plus a call site in a service - the broadcaster itself never changes.
+- **WebSocket broadcaster is transport-only.** It exposes `to_team()` and `to_user()`; only services call it. Adding a new event is a new enum variant plus a call site.
 
-- **Severity is orthogonal to state.** An incident's severity (`low`/`medium`/`high`/`critical`) and its lifecycle state (`open`/`acknowledged`/`escalated`/`resolved`) are independent axes. You can raise severity without changing state, and an escalation *may* raise severity in the same gesture but doesn't have to. This is a deliberate interpretation of the subject: the `escalated` state represents management involvement, not just a severity bump. The state machine enforces this separation — `PATCH .../status` and `PATCH .../severity` are separate endpoints with separate validation.
+- **Uniform error shape.** Every error response has the same `{ error: { code, message } }` body, implemented once in `AppError::IntoResponse`.
 
-- **State machine transitions are strict and centralized.** All valid transitions live in a single pure function (`domain::incidents::can_transition`) with no database or HTTP dependency. The allowed matrix is: `open → acknowledged`, `acknowledged → escalated`, `acknowledged → resolved` (shortcut — not all incidents escalate), `escalated → resolved`. Everything else returns 422. This function is the single source of truth called by the service layer, the rule engine, and (later) any future caller. The shortcut `acknowledged → resolved` is a deliberate choice documented in the README because the subject's state diagram could be read either way.
+- **CORS allows multiple dev origins.** `http://localhost:3000` (dev), `http://localhost:8081` (Docker web), `http://localhost:9527` (Tauri webview). A production deployment should read origins from an environment variable.
 
-- **Timeline entry length limit: 2000 characters.** Enforced server-side, consistent with the private message limit. Chosen as a reasonable ceiling for an operational note — long enough for a stack trace excerpt, short enough to prevent abuse. The limit is validated in the service layer before touching the database.
+- **Expired invitation codes return 410.** 404 means "check your spelling", 410 means "ask the Manager for a new code".
 
-- **Release state machine.** Five states: `created` (initial), `in_progress` (active deployment), `completed` (all steps validated), `cancelled` (aborted), `blocked` (halted by an incident). Transitions are centralized in `domain::releases::can_transition`, same pattern as incidents. `completed` and `cancelled` are terminal states — no way out. The `blocked` state is never entered manually; it is always the result of an automatic cascade triggered by linking an active incident.
-
-- **Auto-blocking cascade.** The interaction between releases and incidents follows three rules, all enforced in the service layer:
-  (1) **Link triggers block**: linking a non-resolved incident to an `in_progress` release transitions it to `blocked` immediately.
-  (2) **Resolution triggers unblock**: when an incident transitions to `resolved`, `check_and_unblock_releases_for_incident` finds all blocked releases linked to it and, for each one, counts remaining active unresolved links — if zero, the release returns to `in_progress`.
-  (3) **Unlink triggers unblock**: same check as resolution, applied when a link is manually removed.
-  Multi-incident blocking is handled correctly: a release with three linked incidents stays blocked until the last one is resolved or unlinked.
-
-- **Sequential step validation.** Steps must be validated in position order — `can_validate_step()` in the domain layer checks that all steps with a lower position are already validated. The last step validated triggers automatic completion (`in_progress` to `completed`). This auto-completion is detected by counting unvalidated steps before the UPDATE: if exactly one remained, it was the one just validated, so the release is complete.
-
-- **Blocked release returns 409, not 422.** When a user tries to validate a step on a blocked release, the response is `409 Conflict` (not `422 Validation`) because the release itself is valid — it is an external condition (the linked incident) preventing progress. This distinction helps the client display a meaningful message ("blocked by incident X") rather than a generic validation error.
-
-- **Start does not check existing links.** If incidents are linked to a release while it is still in `created` status and then the Manager starts it, the release transitions to `in_progress` without checking whether any linked incidents are still active. In theory, it should auto-block on start if unresolved links exist. This edge case is cosmetic — the Manager can simply re-link or the next incident resolution will trigger the check — but a production system would verify at start time.
+- **Blocked release returns 409.** Not 422, because the release itself is valid -- an external condition prevents progress.
 
 ---
 
-### UUID generation
+## Documented limits
 
-All UUIDs are generated in Rust (`Uuid::new_v4()`) before being passed to the INSERT query.
-The database columns have no `DEFAULT gen_random_uuid()`. This keeps ID generation independent
-from the database engine and allows the application layer to know the entity ID before persistence,
-which simplifies logging, event broadcasting, and tracing.
-
----
-
-### Known limitations (Teams)
-
-- **No WebSocket events on team mutations.** Role changes, transfers, kicks, and joins do not yet broadcast WebSocket events. The REST endpoints return the correct state, but other connected clients must refresh to see the change. This will be wired when the relevant events (`member_role_changed`, `member_joined`, `member_left`) are added in Epic 04/06.
-
-- **Test helpers are duplicated across test files.** `register_and_login`, `create_team_and_invite`, `join_team` are copy-pasted in `tests/permissions.rs`, `tests/roles.rs`, `tests/transfer.rs`, `tests/leave.rs`. Extracting them into `tests/common/` would reduce duplication. Deferred because it is cosmetic and does not affect test correctness.
-
-- **`find_membership` signature mismatch.** The VGL-021 version takes `&PgPool`, which prevents its use inside a transaction. The transfer service (VGL-024) works around this by calling it before `pool.begin()`, introducing a theoretical TOCTOU race (the member could be kicked between the check and the UPDATE). The `promoted == false` guard catches this, but a cleaner fix would be a version taking `&mut PgConnection`, used consistently in transactional contexts.
+- Timeline entry: 2000 characters
+- Private message: 2000 characters
+- Release title: 200 characters
+- Release steps: 1 to 20
+- Step name: 100 characters
+- Available reaction emojis: `+1`, `-1`, `eyes`, `warning`, `check`, `fire`
+- Invitation code: 8 characters, human-safe alphabet (no 0/O, 1/I/L)
 
 ---
 
-## Contract
+## Known limitations
 
-**Sign up**
-POST /auth/signup
-Body: { "email": string, "password": string, "display_name": string }
+- **`find_membership` takes `&PgPool`, not `&mut PgConnection`.** Prevents use inside a transaction. The transfer service calls it before `pool.begin()`, introducing a theoretical TOCTOU race. Guarded by the `promoted == false` check.
 
-201 Created  => { id, email, display_name, language, created_at }
-422 Unprocessable => email too short / password < 8 / display_name null
-409 Conflict      => email already exists
+- **Test helpers are duplicated across test files.** `register_and_login`, `create_team_and_invite` are copy-pasted. Extracting into `tests/common/` deferred.
 
-WS : none.
-
-
-**Sign in + sessions**
-POST /auth/signin
-Body: { "email": string, "password": string }
-
-200 OK    => { "token": "hex string", "user": { id, email, display_name, language, created_at } }
-401       => "invalid credentials"
-
-WS : none.
-
-
-GET /me
-Header: Authorization: Bearer <token_hex>
-
-200 OK  => { id, email, display_name, language, created_at }
-401     => token invalid, expired or absent
-
-
-**Sign out**
-POST /auth/signout
-Header: Authorization: Bearer <token>
-
-204 No Content  => session deleted, token invalid
-401             => token absent or already invalid
-
----
-
-## Target OS
-
-**Linux** - desktop binary delivered as `.AppImage`.
-
----
-
-## Private Messages
-
-- Maximum message length: **2000 characters** (enforced server-side)
-
-## Reactions
-
-- Available emojis: `+1`, `-1`, `eyes`, `warning`, `check`, `fire`
+- **Start does not check existing links.** Starting a release with already-linked unresolved incidents transitions to `in_progress` without auto-blocking. The next incident resolution triggers the check.
 
 ---
 
 ## License
+
 Author: Hajatiana Rabemananjara.
