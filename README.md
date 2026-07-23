@@ -43,34 +43,34 @@ The project is a monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The cl
 
 ```
                         ┌──────────────────────────────┐
-                        │     External services          │
-                        │  (GitHub, GitLab, webhooks)    │
-                        └───────────────┬─────────────────┘
+                        │     External services        │
+                        │  (GitHub, GitLab, webhooks)  │
+                        └───────────────┬──────────────┘
                                         │ POST /webhooks/{service}
                                         ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│                  VIGIL Application Server (Rust / Axum)              │
-│                                                                       │
-│   routes/   =>   handlers/    =>   services/    =>   domain/           │
-│  (wiring)      (parse/format)   (business logic)  (pure rules)      │
-│                                        │                              │
-│                                        ▼                              │
-│                                    repo/ (sqlx)                       │
-│                                        │                              │
-│                                        ▼                              │
-│                              PostgreSQL (19 tables)                  │
-│                                                                       │
-│   services/ also call  ──────────►  ws/broadcaster                   │
-│                                      to_team() / to_user()           │
-└──────────────────────────────────┬──────────────────────────────────┘
+│                  VIGIL Application Server (Rust / Axum)            │
+│                                                                    │
+│   routes/   =>   handlers/    =>   services/    =>   domain/       │
+│  (wiring)      (parse/format)   (business logic)  (pure rules)     │
+│                                        │                           │
+│                                        ▼                           │
+│                                    repo/ (sqlx)                    │
+│                                        │                           │
+│                                        ▼                           │
+│                              PostgreSQL (19 tables)                │
+│                                                                    │
+│   services/ also call  ──────────►  ws/broadcaster                 │
+│                                      to_team() / to_user()         │
+└──────────────────────────────────┬─────────────────────────────────┘
                                     │  REST (writes) + WebSocket (truth)
                      ┌──────────────┴───────────────┐
                      ▼                               ▼
            ┌───────────────────┐          ┌──────────────────────┐
-           │    Web client        │          │    Desktop client       │
-           │    Next.js, CSR       │          │    Tauri, standalone    │
-           │    :8081               │          │    embeds the same      │
-           │                        │          │    static export        │
+           │    Web client     │          │    Desktop client    │
+           │    Next.js, CS    │          │    Tauri, standalone │
+           │    :8081          │          │    embeds the same   │
+           │                   │          │    static export     │
            └───────────────────┘          └──────────────────────┘
 ```
 **Core principle**: writes go up via REST, truth comes back down via WebSocket. A client never trusts its own HTTP response to update its UI -- it waits for the broadcast, exactly like every other connected client.
