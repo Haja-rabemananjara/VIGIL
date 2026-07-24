@@ -32,11 +32,11 @@ interface Member {
 }
 
 interface Execution {
-    key: string;
-    ruleName: string;
-    reactionType: string
-    error: string | null;
-    at: number;
+  key: string;
+  ruleName: string;
+  reactionType: string;
+  error: string | null;
+  at: number;
 }
 
 export function RulesClient() {
@@ -81,9 +81,12 @@ export function RulesClient() {
     };
   }, [token, teamId, user?.id]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!lastEvent) return;
-    if (lastEvent.type !== "rule_triggered" && lastEvent.type !== "rule_failed") {
+    if (
+      lastEvent.type !== "rule_triggered" &&
+      lastEvent.type !== "rule_failed"
+    ) {
       return;
     }
     if (lastEvent.team_id !== teamId) return;
@@ -93,7 +96,8 @@ export function RulesClient() {
       key: `${lastEvent.rule_id as string}-${Date.now()}`,
       ruleName: lastEvent.rule_name as string,
       reactionType: lastEvent.reaction_type as string,
-      error: lastEvent.type === "rule_failed" ? (lastEvent.error as string) : null,
+      error:
+        lastEvent.type === "rule_failed" ? (lastEvent.error as string) : null,
       at: Date.now(),
     };
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -190,14 +194,18 @@ export function RulesClient() {
                             : "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         }
                       >
-                        {rule.enabled ? t("rules.enabled") : t("rules.disabled")}
+                        {rule.enabled
+                          ? t("rules.enabled")
+                          : t("rules.disabled")}
                       </span>
                     </div>
                     <p className="truncate text-sm text-muted-foreground">
                       <span className="font-medium">{t("rules.trigger")}</span>{" "}
                       {rule.trigger_service}.{rule.trigger_event}
                       {" : "}
-                      <span className="font-medium">{t("rules.reaction")}</span>{" "}
+                      <span className="font-medium">
+                        {t("rules.reaction")}
+                      </span>{" "}
                       {rule.reaction_type}
                     </p>
                   </div>
@@ -220,7 +228,9 @@ export function RulesClient() {
                         variant="outline"
                         onClick={() => handleToggle(rule)}
                       >
-                        {rule.enabled ? t("rules.disabled") : t("rules.enabled")}
+                        {rule.enabled
+                          ? t("rules.disabled")
+                          : t("rules.enabled")}
                       </Button>
                       <Button
                         size="sm"
@@ -243,7 +253,7 @@ export function RulesClient() {
           </p>
         )}
 
-                <div className="space-y-2 pt-4">
+        <div className="space-y-2 pt-4">
           <h2 className="text-sm font-medium">{t("rules.activity.title")}</h2>
           {executions.length === 0 ? (
             <p className="text-sm text-muted-foreground">

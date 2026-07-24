@@ -67,7 +67,9 @@ export function MembersClient() {
 
   // Ban dialog
   const [banTarget, setBanTarget] = useState<Member | null>(null);
-  const [banDuration, setBanDuration] = useState<"7d" | "30d" | "90d" | "permanent" | "custom">("7d");
+  const [banDuration, setBanDuration] = useState<
+    "7d" | "30d" | "90d" | "permanent" | "custom"
+  >("7d");
   const [banCustomDate, setBanCustomDate] = useState("");
   const [banReason, setBanReason] = useState("");
   const [banLoading, setBanLoading] = useState(false);
@@ -91,28 +93,28 @@ export function MembersClient() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMembers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, teamId]);
 
   useEffect(() => {
-  if (!lastEvent) return;
+    if (!lastEvent) return;
 
-  if (
-    lastEvent.type === "member_role_changed" &&
-    lastEvent.team_id === teamId
-  ) {
-    const changedUserId = lastEvent.user_id as string;
-    const newRole = lastEvent.new_role as string;
+    if (
+      lastEvent.type === "member_role_changed" &&
+      lastEvent.team_id === teamId
+    ) {
+      const changedUserId = lastEvent.user_id as string;
+      const newRole = lastEvent.new_role as string;
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.user_id === changedUserId ? { ...m, role: newRole } : m,
-      ),
-    );
-  }
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.user_id === changedUserId ? { ...m, role: newRole } : m,
+        ),
+      );
+    }
 
-  if (
+    if (
       lastEvent &&
       lastEvent.type === "member_joined" &&
       lastEvent.team_id === teamId
@@ -131,15 +133,16 @@ export function MembersClient() {
       });
     }
 
-  if (
-    lastEvent &&
-    (lastEvent.type === "member_kicked" || lastEvent.type === "member_banned") &&
-    lastEvent.team_id === teamId
-  ) {
+    if (
+      lastEvent &&
+      (lastEvent.type === "member_kicked" ||
+        lastEvent.type === "member_banned") &&
+      lastEvent.team_id === teamId
+    ) {
       const kickedUserId = lastEvent.user_id as string;
       setMembers((prev) => prev.filter((m) => m.user_id !== kickedUserId));
     }
-}, [lastEvent, teamId]);
+  }, [lastEvent, teamId]);
 
   // Role change
   async function handleRoleChange(targetUserId: string, newRole: string) {
@@ -171,7 +174,7 @@ export function MembersClient() {
         token,
         body: { target_user_id: transferTarget.user_id },
       });
-      // Roles update via WS 
+      // Roles update via WS
       setTransferTarget(null);
     } catch (e) {
       setActionError(e instanceof ApiError ? e.message : t("common.error"));
@@ -255,10 +258,14 @@ export function MembersClient() {
   function computeExpiresAt(): number | null {
     const now = Math.floor(Date.now() / 1000);
     switch (banDuration) {
-      case "7d":  return now + 7 * 86400;
-      case "30d": return now + 30 * 86400;
-      case "90d": return now + 90 * 86400;
-      case "permanent": return null;
+      case "7d":
+        return now + 7 * 86400;
+      case "30d":
+        return now + 30 * 86400;
+      case "90d":
+        return now + 90 * 86400;
+      case "permanent":
+        return null;
       case "custom": {
         if (!banCustomDate) return null;
         const ts = Math.floor(new Date(banCustomDate).getTime() / 1000);
@@ -535,17 +542,19 @@ export function MembersClient() {
                 {t("members.ban.duration")}
               </label>
               <div className="flex flex-wrap gap-2">
-                {(["7d", "30d", "90d", "permanent", "custom"] as const).map((d) => (
-                  <Button
-                    key={d}
-                    type="button"
-                    variant={banDuration === d ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setBanDuration(d)}
-                  >
-                    {t(`members.ban.duration.${d}`)}
-                  </Button>
-                ))}
+                {(["7d", "30d", "90d", "permanent", "custom"] as const).map(
+                  (d) => (
+                    <Button
+                      key={d}
+                      type="button"
+                      variant={banDuration === d ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setBanDuration(d)}
+                    >
+                      {t(`members.ban.duration.${d}`)}
+                    </Button>
+                  ),
+                )}
               </div>
             </div>
 

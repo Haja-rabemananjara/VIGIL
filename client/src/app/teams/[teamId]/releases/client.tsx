@@ -66,7 +66,11 @@ export function ReleasesClient() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createTitle, setCreateTitle] = useState("");
   const [createBody, setCreateBody] = useState("");
-  const [stepInputs, setStepInputs] = useState<string[]>(["build", "staging", "production"]);
+  const [stepInputs, setStepInputs] = useState<string[]>([
+    "build",
+    "staging",
+    "production",
+  ]);
   const [createError, setCreateError] = useState("");
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -94,10 +98,9 @@ export function ReleasesClient() {
   // Fetch role
   useEffect(() => {
     if (!token || !user) return;
-    api<{ user_id: string; role: string }[]>(
-      `/teams/${teamId}/members`,
-      { token },
-    )
+    api<{ user_id: string; role: string }[]>(`/teams/${teamId}/members`, {
+      token,
+    })
       .then((members) => {
         const me = members.find((m) => m.user_id === user.id);
         setRole(me?.role ?? null);
@@ -140,10 +143,7 @@ export function ReleasesClient() {
 
       // New release created: fetch full data (same pattern as incidents)
       if (newState === "created") {
-        api<ReleaseRow[]>(
-          `/teams/${teamId}/releases`,
-          { token: token! },
-        )
+        api<ReleaseRow[]>(`/teams/${teamId}/releases`, { token: token! })
           .then((data) => setReleases(data))
           .catch(() => {});
       }
@@ -155,10 +155,9 @@ export function ReleasesClient() {
     ) {
       const affectedReleaseId = lastEvent.release_id as string;
       // Refetch la release concernée pour récupérer sa liste d'incidents à jour
-      api<ReleaseRow>(
-        `/teams/${teamId}/releases/${affectedReleaseId}`,
-        { token: token! },
-      )
+      api<ReleaseRow>(`/teams/${teamId}/releases/${affectedReleaseId}`, {
+        token: token!,
+      })
         .then((updated) => {
           setReleases((prev) =>
             prev.map((r) => (r.id === affectedReleaseId ? updated : r)),
@@ -166,7 +165,7 @@ export function ReleasesClient() {
         })
         .catch(() => {});
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, teamId]);
 
   // Create dialog handlers
@@ -315,9 +314,7 @@ export function ReleasesClient() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="rel-body">
-                {t("releases.create.bodyLabel")}
-              </Label>
+              <Label htmlFor="rel-body">{t("releases.create.bodyLabel")}</Label>
               <textarea
                 id="rel-body"
                 value={createBody}

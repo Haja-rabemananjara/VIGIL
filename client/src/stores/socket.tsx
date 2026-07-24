@@ -69,7 +69,9 @@ export function VigilSocketProvider({ children }: { children: ReactNode }) {
       if (!mountedRef.current) return;
 
       if (attemptRef.current >= 10) {
-        console.warn("[VigilSocket] Max reconnection attempts reached, giving up");
+        console.warn(
+          "[VigilSocket] Max reconnection attempts reached, giving up",
+        );
         setStatus("disconnected");
         return;
       }

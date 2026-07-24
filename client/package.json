@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "lint:fmt": "prettier --check \"src/**/*.{ts,tsx}\" && cargo fmt --manifest-path src-tauri/Cargo.toml --check",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" && cargo fmt --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@tauri-apps/plugin-notification": "^2.3.3",

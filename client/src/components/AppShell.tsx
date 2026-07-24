@@ -10,7 +10,7 @@ import { useAuth } from "@/stores/auth";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useVigilSocket } from "@/stores/socket";
-import { ConnectionIndicator } from "./ConnectionIndicator"
+import { ConnectionIndicator } from "./ConnectionIndicator";
 import { useNotifications } from "@/lib/useNotifications";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useRouter } from "next/router";
@@ -35,7 +35,6 @@ export function AppShell({ children }: AppShellProps) {
   const { status, lastEvent } = useVigilSocket();
   const { user } = useAuth();
 
-
   const activeTeamId = pathname?.startsWith("/teams/")
     ? pathname.split("/")[2]
     : null;
@@ -44,14 +43,15 @@ export function AppShell({ children }: AppShellProps) {
     if (!token) return;
     api<TeamView[]>("/teams", { token })
       .then(setTeams)
-      .catch(() => { });
+      .catch(() => {});
   }, [token]);
 
   useEffect(() => {
     if (!lastEvent) return;
 
     if (
-      (lastEvent.type === "member_kicked" || lastEvent.type === "member_banned") &&
+      (lastEvent.type === "member_kicked" ||
+        lastEvent.type === "member_banned") &&
       (lastEvent.user_id as string) === user?.id
     ) {
       const removedTeamId = lastEvent.team_id as string;
