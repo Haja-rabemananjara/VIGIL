@@ -120,6 +120,22 @@ pub enum WsEvent {
         new_content: String,
         edited_at: i64,
     },
+
+    ReactionAdded {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        emoji: String,
+        user_id: Uuid,
+    },
+
+    ReactionRemoved {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        emoji: String,
+        user_id: Uuid,
+    },
 }
 
 #[derive(Debug, Deserialize)]
