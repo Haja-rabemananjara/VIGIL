@@ -265,3 +265,74 @@ pub async fn deactivate_member(
 
     Ok(result.rows_affected() > 0)
 }
+
+pub async fn deactivate_member_tx(
+    conn: &mut PgConnection,
+    team_id: Uuid,
+    user_id: Uuid,
+) -> Result<bool, AppError> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE team_members
+        SET status = 'kicked'
+        WHERE team_id = $1
+          AND user_id = $2
+          AND status = 'active'
+        "#,
+        team_id,
+        user_id,
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn insert_ban(
+    conn: &mut PgConnection,
+    id: Uuid,
+    team_id: Uuid,
+    user_id: Uuid,
+    created_by: Uuid,
+    reason: Option<&str>,
+    expires_at: Option<DateTime<Utc>>,
+) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO team_bans (id, team_id, user_id, created_by, reason, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        "#,
+        id,
+        team_id,
+        user_id,
+        created_by,
+        reason,
+        expires_at,
+    )
+    .execute(conn)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn lift_active_ban(
+    pool: &PgPool,
+    team_id: Uuid,
+    user_id: Uuid,
+) -> Result<bool, AppError> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE team_bans
+        SET status = 'lifted'
+        WHERE team_id = $1
+          AND user_id = $2
+          AND status = 'active'
+        "#,
+        team_id,
+        user_id,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}

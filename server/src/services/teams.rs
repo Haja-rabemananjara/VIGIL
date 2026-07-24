@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -214,5 +215,125 @@ pub async fn leave_team(
         return Err(AppError::Internal("member vanished during leave".into()));
     }
 
+    Ok(())
+}
+
+async fn check_moderation_target(
+    pool: &PgPool,
+    team_id: Uuid,
+    manager_id: Uuid,
+    target_user_id: Uuid,
+) -> Result<(), AppError> {
+    if manager_id == target_user_id {
+        return Err(AppError::Validation("cannot moderate yourself".into()));
+    }
+
+    let membership = repo::teams::find_membership(pool, team_id, target_user_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("member not found".into()))?;
+
+    let target_role = Role::from_db(membership.role.as_str())
+        .ok_or_else(|| AppError::Internal("invalid role in database".into()))?;
+
+    if target_role == Role::Manager {
+        return Err(AppError::Validation(
+            "cannot kick or ban the current Manager; transfer the role first".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+pub async fn kick_member(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    team_id: Uuid,
+    manager_id: Uuid,
+    target_user_id: Uuid,
+) -> Result<(), AppError> {
+    check_moderation_target(pool, team_id, manager_id, target_user_id).await?;
+
+    let updated = repo::teams::deactivate_member(pool, team_id, target_user_id).await?;
+    if !updated {
+        return Err(AppError::Internal("member vanished during kick".into()));
+    }
+
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::MemberKicked {
+                team_id,
+                user_id: target_user_id,
+                by: manager_id,
+            },
+        )
+        .await;
+
+    Ok(())
+}
+
+pub async fn ban_member(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    team_id: Uuid,
+    manager_id: Uuid,
+    target_user_id: Uuid,
+    expires_at: Option<DateTime<Utc>>,
+    reason: Option<String>,
+) -> Result<(), AppError> {
+    if let Some(exp) = expires_at {
+        if exp <= Utc::now() {
+            return Err(AppError::Validation(
+                "ban expiry must be in the future".into(),
+            ));
+        }
+    }
+
+    check_moderation_target(pool, team_id, manager_id, target_user_id).await?;
+
+    let mut tx = pool.begin().await?;
+
+    let updated = repo::teams::deactivate_member_tx(&mut tx, team_id, target_user_id).await?;
+    if !updated {
+        return Err(AppError::Internal("member vanished during ban".into()));
+    }
+
+    repo::teams::insert_ban(
+        &mut tx,
+        Uuid::new_v4(),
+        team_id,
+        target_user_id,
+        manager_id,
+        reason.as_deref(),
+        expires_at,
+    )
+    .await?;
+
+    tx.commit().await?;
+
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::MemberBanned {
+                team_id,
+                user_id: target_user_id,
+                expires_at: expires_at.map(|t| t.timestamp()),
+                by: manager_id,
+            },
+        )
+        .await;
+
+    Ok(())
+}
+
+pub async fn unban_member(
+    pool: &PgPool,
+    team_id: Uuid,
+    target_user_id: Uuid,
+) -> Result<(), AppError> {
+    let lifted = repo::teams::lift_active_ban(pool, team_id, target_user_id).await?;
+    if !lifted {
+        return Err(AppError::NotFound("no active ban found".into()));
+    }
     Ok(())
 }

@@ -58,6 +58,19 @@ pub enum WsEvent {
         new_state: String,
     },
 
+    MemberKicked {
+        team_id: Uuid,
+        user_id: Uuid,
+        by: Uuid,
+    },
+
+    MemberBanned {
+        team_id: Uuid,
+        user_id: Uuid,
+        expires_at: Option<i64>,
+        by: Uuid,
+    },
+
     ReleaseIncidentLinked {
         team_id: Uuid,
         release_id: Uuid,
