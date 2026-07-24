@@ -351,12 +351,6 @@ Sent once after a successful handshake. Not broadcast.
 **Trigger:** The engine fails to execute a reaction. Each rule runs in isolation; a failure in one never affects others.
 **Delivery:** team.
 
----
-
-## Planned events (extended scope, not yet implemented)
-
-These events are defined by the subject but not yet wired in the backend. Their payloads are specified here for future implementation.
-
 ### `member_kicked`
 
 ```json
@@ -367,8 +361,8 @@ These events are defined by the subject but not yet wired in the backend. Their 
   "by": "uuid"
 }
 ```
-
-**Delivery:** team (including the kicked member, so their client can react).
+- **Trigger**: Manager kicks a member via `POST /teams/{team_id}/members/{user_id}/kick`
+- **Recipients**: All team members + the kicked user (via `to_user`)
 
 ### `member_banned`
 
@@ -382,8 +376,30 @@ These events are defined by the subject but not yet wired in the backend. Their 
 }
 ```
 
-`until` is `null` for permanent bans.
-**Delivery:** team.
+- **Trigger**: Manager bans a member via `POST /teams/{team_id}/members/{user_id}/ban`
+- **Recipients**: All team members + the banned user (via `to_user`)
+
+### `member_joined`
+
+```json
+{ 
+  "type": "member_joined",
+  "team_id": "uuid",
+  "user_id": "uuid",
+  "display_name": "Bob",
+  "role": "observer"
+}
+```
+- **Trigger**: User joins a team via `POST /teams/join`
+- **Recipients**: All team members
+
+---
+
+## Planned events (extended scope, not yet implemented)
+
+These events are defined by the subject but not yet wired in the backend. Their payloads are specified here for future implementation.
+
+
 
 ### `timeline_entry_edited`
 
