@@ -43,34 +43,34 @@ The project is a monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The cl
 
 ```
                         ┌──────────────────────────────┐
-                        │     External services          │
-                        │  (GitHub, GitLab, webhooks)    │
-                        └───────────────┬─────────────────┘
+                        │     External services        │
+                        │  (GitHub, GitLab, webhooks)  │
+                        └───────────────┬──────────────┘
                                         │ POST /webhooks/{service}
                                         ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│                  VIGIL Application Server (Rust / Axum)              │
-│                                                                       │
-│   routes/   =>   handlers/    =>   services/    =>   domain/           │
-│  (wiring)      (parse/format)   (business logic)  (pure rules)      │
-│                                        │                              │
-│                                        ▼                              │
-│                                    repo/ (sqlx)                       │
-│                                        │                              │
-│                                        ▼                              │
-│                              PostgreSQL (19 tables)                  │
-│                                                                       │
-│   services/ also call  ──────────►  ws/broadcaster                   │
-│                                      to_team() / to_user()           │
-└──────────────────────────────────┬──────────────────────────────────┘
+│                  VIGIL Application Server (Rust / Axum)            │
+│                                                                    │
+│   routes/   =>   handlers/    =>   services/    =>   domain/       │
+│  (wiring)      (parse/format)   (business logic)  (pure rules)     │
+│                                        │                           │
+│                                        ▼                           │
+│                                    repo/ (sqlx)                    │
+│                                        │                           │
+│                                        ▼                           │
+│                              PostgreSQL (19 tables)                │
+│                                                                    │
+│   services/ also call  ──────────►  ws/broadcaster                 │
+│                                      to_team() / to_user()         │
+└──────────────────────────────────┬─────────────────────────────────┘
                                     │  REST (writes) + WebSocket (truth)
                      ┌──────────────┴───────────────┐
                      ▼                               ▼
            ┌───────────────────┐          ┌──────────────────────┐
-           │    Web client        │          │    Desktop client       │
-           │    Next.js, CSR       │          │    Tauri, standalone    │
-           │    :8081               │          │    embeds the same      │
-           │                        │          │    static export        │
+           │    Web client     │          │    Desktop client    │
+           │    Next.js, CS    │          │    Tauri, standalone │
+           │    :8081          │          │    embeds the same   │
+           │                   │          │    static export     │
            └───────────────────┘          └──────────────────────┘
 ```
 **Core principle**: writes go up via REST, truth comes back down via WebSocket. A client never trusts its own HTTP response to update its UI -- it waits for the broadcast, exactly like every other connected client.
@@ -314,6 +314,9 @@ All endpoints return errors in a uniform shape:
 | POST | `/teams/{team_id}/leave` | member | Manager without transfer gets 409 |
 | POST | `/teams/{team_id}/invitations` | Manager | Returns `{ code }` |
 | POST | `/teams/join` | session | Body: `{ code }`. Joins as Observer. Banned user gets 403 |
+| POST | `/teams/{team_id}/members/{user_id}/kick` | Manager | Removes member. History preserved. 204 |
+| POST | `/teams/{team_id}/members/{user_id}/ban` | Manager | Body: `{ expires_at?, reason? }`. Kicks + bans. `expires_at` in Unix seconds, null = permanent. 204 |
+| DELETE | `/teams/{team_id}/bans/{user_id}` | Manager | Lifts active ban. 204. 404 if no active ban |
 
 ### Incidents
 
@@ -539,6 +542,10 @@ Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 - **Expired invitation codes return 410.** 404 means "check your spelling", 410 means "ask the Manager for a new code".
 
 - **Blocked release returns 409.** Not 422, because the release itself is valid -- an external condition prevents progress.
+
+- **Kick and ban broadcast to the target via `to_user`.** When a member is kicked or banned, the broadcaster sends the event to remaining team members via `to_team` AND directly to the target via `to_user`. This is necessary because `to_team` resolves recipients from active memberships, and the target is already deactivated at broadcast time. Without the direct send, the target's client would never learn it was removed.
+
+- **Ban expiry is checked at join time, not by a background job.** Temporary bans have an `expires_at` timestamp. Rather than running a cron to clean up expired bans, the `POST /teams/join` endpoint checks `expires_at > now()` in its query. An expired ban is simply invisible to the join check. This eliminates operational complexity (no scheduler, no missed runs) at the cost of leaving stale rows in `team_bans` — acceptable since they are never displayed and the partial unique index only covers `status = 'active'`.
 
 ---
 

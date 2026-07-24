@@ -45,6 +45,13 @@ pub enum WsEvent {
         watchers: Vec<Uuid>,
     },
 
+    MemberJoined {
+        team_id: Uuid,
+        user_id: Uuid,
+        display_name: String,
+        role: String,
+    },
+
     MemberRoleChanged {
         team_id: Uuid,
         user_id: Uuid,
@@ -56,6 +63,19 @@ pub enum WsEvent {
         team_id: Uuid,
         release_id: Uuid,
         new_state: String,
+    },
+
+    MemberKicked {
+        team_id: Uuid,
+        user_id: Uuid,
+        by: Uuid,
+    },
+
+    MemberBanned {
+        team_id: Uuid,
+        user_id: Uuid,
+        expires_at: Option<i64>,
+        by: Uuid,
     },
 
     ReleaseIncidentLinked {

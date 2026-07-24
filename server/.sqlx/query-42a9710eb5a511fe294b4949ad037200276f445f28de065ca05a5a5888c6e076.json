@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE team_bans\n        SET status = 'lifted'\n        WHERE team_id = $1\n          AND user_id = $2\n          AND status = 'active'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "42a9710eb5a511fe294b4949ad037200276f445f28de065ca05a5a5888c6e076"
+}
