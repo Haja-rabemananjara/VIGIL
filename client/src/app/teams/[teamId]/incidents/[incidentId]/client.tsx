@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVigilSocket } from "@/stores/socket";
 import { useRouteParams } from "@/lib/useRouteParams";
-import { Pencil } from "lucide-react";
+import {
+  TimelineEntryCard,
+  type TimelineEntry,
+} from "@/components/TimelineEntryCard";
 
 interface Incident {
   id: string;
@@ -21,20 +24,10 @@ interface Incident {
   severity: Severity;
   created_by: string;
   created_at: number;
-  acknowledged_at: number | null;
-  escalated_at: number | null;
-  resolved_at: number | null;
   assignee_id: string | null;
 }
 
-interface TimelineEntry {
-  id: string;
-  author_id: string;
-  kind: "message" | "system";
-  content: string;
-  created_at: number;
-  edited_at: number | null;
-}
+type Reactions = Record<string, Record<string, string[]>>;
 
 interface Member {
   user_id: string;
@@ -42,7 +35,6 @@ interface Member {
   role: string;
 }
 
-// HELPERS
 function formatDate(ts: number): string {
   return new Date(ts * 1000).toLocaleString(undefined, {
     month: "short",
@@ -52,7 +44,6 @@ function formatDate(ts: number): string {
   });
 }
 
-// Which transitions are available from a given state
 const NEXT_TRANSITIONS: Record<IncidentState, IncidentState[]> = {
   open: ["acknowledged"],
   acknowledged: ["escalated", "resolved"],
@@ -60,7 +51,6 @@ const NEXT_TRANSITIONS: Record<IncidentState, IncidentState[]> = {
   resolved: [],
 };
 
-// Label for each transition button
 const TRANSITION_LABELS: Record<IncidentState, string> = {
   acknowledged: "incidents.detail.acknowledge",
   escalated: "incidents.detail.escalate",
@@ -68,14 +58,11 @@ const TRANSITION_LABELS: Record<IncidentState, string> = {
   open: "incidents.detail.reopen",
 };
 
-// COMPONENTS
-
 export function IncidentDetailClient() {
   const { teamId, incidentId } = useRouteParams();
   const { token, user } = useAuth();
   const router = useRouter();
 
-  // Data
   const [incident, setIncident] = useState<Incident | null>(null);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -83,29 +70,22 @@ export function IncidentDetailClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Timeline composer
   const [composerText, setComposerText] = useState("");
   const [composerLoading, setComposerLoading] = useState(false);
   const timelineEndRef = useRef<HTMLDivElement>(null);
 
-  // Assign dialog
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignError, setAssignError] = useState("");
-
-  // Transition loading state
   const [transitionLoading, setTransitionLoading] = useState(false);
 
-  // Edit timeline entry
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
-  const [editLoading, setEditLoading] = useState(false);
+  const [reactions, setReactions] = useState<Reactions>({});
+  const [availableEmojis, setAvailableEmojis] = useState<string[]>([]);
 
   const { lastEvent, reconnectCount, send } = useVigilSocket();
   const [watchers, setWatchers] = useState<string[]>([]);
   const [assignee, setAssignee] = useState<string | null>(null);
 
-  // Fetch everything
   useEffect(() => {
     if (!token || !user) return;
     Promise.all([
@@ -115,12 +95,19 @@ export function IncidentDetailClient() {
         { token },
       ),
       api<Member[]>(`/teams/${teamId}/members`, { token }),
+      api<{ emojis: string[] }>(`/reactions/available`, { token }),
+      api<{ reactions: Reactions }>(
+        `/teams/${teamId}/incidents/${incidentId}/reactions`,
+        { token },
+      ),
     ])
-      .then(([inc, tl, mem]) => {
+      .then(([inc, tl, mem, emojiRes, reactionsRes]) => {
         setIncident(inc);
         setAssignee(inc.assignee_id);
         setTimeline(tl.entries);
         setMembers(mem);
+        setAvailableEmojis(emojiRes.emojis);
+        setReactions(reactionsRes.reactions);
         const me = mem.find((m) => m.user_id === user.id);
         setRole(me?.role ?? null);
       })
@@ -128,12 +115,10 @@ export function IncidentDetailClient() {
       .finally(() => setLoading(false));
   }, [token, teamId, incidentId, user]);
 
-  // Scroll timeline to bottom on new entries
   useEffect(() => {
     timelineEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [timeline]);
 
-  // Re-fetch everything after reconnection
   useEffect(() => {
     if (reconnectCount > 0 && token) {
       Promise.all([
@@ -153,13 +138,11 @@ export function IncidentDetailClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reconnectCount]);
 
-  // React to real-time events for this incident
   useEffect(() => {
     if (!lastEvent) return;
 
     const eventIncidentId = lastEvent.incident_id as string | undefined;
 
-    // Presence doesn't need the incident to be loaded
     if (lastEvent.type === "presence_update") {
       const eventResourceId = lastEvent.resource_id as string;
       if (
@@ -175,10 +158,7 @@ export function IncidentDetailClient() {
     if (lastEvent.type === "member_role_changed") {
       const changedUserId = lastEvent.user_id as string;
       const newRole = lastEvent.new_role as string;
-      if (changedUserId === user?.id) {
-        setRole(newRole);
-      }
-      // Also update the members list (for assign dialog display names)
+      if (changedUserId === user?.id) setRole(newRole);
       setMembers((prev) =>
         prev.map((m) =>
           m.user_id === changedUserId ? { ...m, role: newRole } : m,
@@ -188,14 +168,12 @@ export function IncidentDetailClient() {
     }
 
     if (lastEvent.type === "incident_assigned") {
-      const eventIncidentId = lastEvent.incident_id as string;
-      if (eventIncidentId === incidentId) {
+      if ((lastEvent.incident_id as string) === incidentId) {
         setAssignee(lastEvent.assigned_to as string);
       }
       return;
     }
 
-    // All other events need the incident loaded
     if (!incident) return;
     if (eventIncidentId !== incidentId) return;
 
@@ -206,8 +184,7 @@ export function IncidentDetailClient() {
             ? { ...prev, status: lastEvent.new_state as IncidentState }
             : prev,
         );
-        const actor = lastEvent.by as string;
-        if (actor !== user?.id && token) {
+        if ((lastEvent.by as string) !== user?.id && token) {
           api<{ entries: TimelineEntry[] }>(
             `/teams/${teamId}/incidents/${incidentId}/timeline`,
             { token },
@@ -217,14 +194,13 @@ export function IncidentDetailClient() {
         }
         break;
       }
-      case "incident_escalated": {
+      case "incident_escalated":
         setIncident((prev) =>
           prev
             ? { ...prev, severity: lastEvent.new_severity as Severity }
             : prev,
         );
         break;
-      }
       case "timeline_entry_added": {
         const newEntry: TimelineEntry = {
           id: lastEvent.entry_id as string,
@@ -235,7 +211,6 @@ export function IncidentDetailClient() {
           edited_at: null,
         };
         setTimeline((prev) => {
-          // Avoid duplicates (the author already added it optimistically or via refetch)
           if (prev.some((e) => e.id === newEntry.id)) return prev;
           return [...prev, newEntry];
         });
@@ -256,23 +231,50 @@ export function IncidentDetailClient() {
         );
         break;
       }
+      case "reaction_added": {
+        const entryId = lastEvent.entry_id as string;
+        const emoji = lastEvent.emoji as string;
+        const userId = lastEvent.user_id as string;
+        setReactions((prev) => {
+          const er = { ...(prev[entryId] || {}) };
+          const users = [...(er[emoji] || [])];
+          if (!users.includes(userId)) users.push(userId);
+          er[emoji] = users;
+          return { ...prev, [entryId]: er };
+        });
+        break;
+      }
+      case "reaction_removed": {
+        const entryId = lastEvent.entry_id as string;
+        const emoji = lastEvent.emoji as string;
+        const userId = lastEvent.user_id as string;
+        setReactions((prev) => {
+          const er = { ...(prev[entryId] || {}) };
+          const users = (er[emoji] || []).filter((id) => id !== userId);
+          if (users.length === 0) {
+            delete er[emoji];
+          } else {
+            er[emoji] = users;
+          }
+          return { ...prev, [entryId]: er };
+        });
+        break;
+      }
       default:
         break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, incidentId, teamId, token]);
 
-  // Presence: tell the server we're watching this incident
+  // Presence
   useEffect(() => {
     if (!teamId || !incidentId) return;
-
     send({
       type: "watch",
       resource_type: "incident",
       resource_id: incidentId,
       team_id: teamId,
     });
-
     return () => {
       send({
         type: "unwatch",
@@ -284,40 +286,32 @@ export function IncidentDetailClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, incidentId]);
 
-  // Transition
   async function handleTransition(toStatus: IncidentState) {
     if (!incident) return;
     setTransitionLoading(true);
     try {
       const updated = await api<Incident>(
         `/teams/${teamId}/incidents/${incidentId}/status`,
-        {
-          method: "PATCH",
-          token,
-          body: { status: toStatus },
-        },
+        { method: "PATCH", token, body: { status: toStatus } },
       );
       setIncident(updated);
-      // Refresh timeline to show the new system entry
       const tl = await api<{ entries: TimelineEntry[] }>(
         `/teams/${teamId}/incidents/${incidentId}/timeline`,
         { token },
       );
       setTimeline(tl.entries);
     } catch {
-      // Silent — could add a toast here later
+      // silent
     } finally {
       setTransitionLoading(false);
     }
   }
 
-  // Display Name on the Incidents (creator and author)
   function displayName(userId: string): string {
     const member = members.find((m) => m.user_id === userId);
     return member?.display_name ?? userId;
   }
 
-  // Assign
   async function handleAssign(userId: string) {
     setAssignLoading(true);
     setAssignError("");
@@ -336,7 +330,6 @@ export function IncidentDetailClient() {
     }
   }
 
-  // Timeline post
   async function handlePost() {
     const content = composerText.trim();
     if (!content) return;
@@ -358,45 +351,47 @@ export function IncidentDetailClient() {
     }
   }
 
-  async function handleEditSave(entryId: string) {
-    const content = editText.trim();
-    if (!content) return;
-    setEditLoading(true);
+  function handleEntryUpdated(updated: TimelineEntry) {
+    setTimeline((prev) =>
+      prev.map((e) => (e.id === updated.id ? updated : e)),
+    );
+  }
+
+  async function handleToggleReaction(entryId: string, emoji: string) {
+    const entryReactions = reactions[entryId] || {};
+    const users = entryReactions[emoji] || [];
+    const hasReacted = users.includes(user!.id);
     try {
-      const updated = await api<TimelineEntry>(`/timeline/${entryId}`, {
-        method: "PATCH",
-        token,
-        body: { content },
-      });
-      setTimeline((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
-      setEditingEntryId(null);
-      setEditText("");
+      if (hasReacted) {
+        await api(
+          `/timeline/${entryId}/reactions/${encodeURIComponent(emoji)}`,
+          { method: "DELETE", token },
+        );
+      } else {
+        await api(`/timeline/${entryId}/reactions`, {
+          method: "POST",
+          token,
+          body: { emoji },
+        });
+      }
     } catch {
-    } finally {
-      setEditLoading(false);
+      // silent
     }
   }
 
-  // Eligible responders for assign dialog
   const eligibleMembers = members.filter(
     (m) => m.role === "responder" || m.role === "manager",
   );
 
-  // Render
-
   if (loading) {
     return (
-      <>
-        <div className="p-6 text-muted-foreground">{t("common.loading")}</div>
-      </>
+      <div className="p-6 text-muted-foreground">{t("common.loading")}</div>
     );
   }
 
   if (error || !incident) {
     return (
-      <>
-        <div className="p-6 text-destructive">{error || t("common.error")}</div>
-      </>
+      <div className="p-6 text-destructive">{error || t("common.error")}</div>
     );
   }
 
@@ -407,7 +402,6 @@ export function IncidentDetailClient() {
   return (
     <>
       <div className="mx-auto max-w-3xl space-y-6 p-6">
-        {/* Back (back to incidents) link */}
         <button
           onClick={() => router.push(`/teams/${teamId}/incidents`)}
           className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -467,29 +461,23 @@ export function IncidentDetailClient() {
               </span>
               {" · "}
               {formatDate(incident.created_at)}
-              {assignee && (
-                <div className="text-sm text-muted-foreground">
-                  {t("incidents.detail.assignee")}{" "}
-                  <span className="text-foreground font-medium">
+              <div className="text-sm text-muted-foreground">
+                {t("incidents.detail.assignee")}{" "}
+                {assignee ? (
+                  <span className="font-medium text-foreground">
                     {displayName(assignee)}
                   </span>
-                </div>
-              )}
-              {!assignee && (
-                <div className="text-sm text-muted-foreground">
-                  {t("incidents.detail.assignee")}{" "}
+                ) : (
                   <span className="italic">
                     {t("incidents.detail.noAssignee")}
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Actions (only visible to Responder+) */}
             {canAct && (
               <div className="flex items-center justify-between pt-2">
                 <div className="flex flex-wrap gap-2">
-                  {/* Transition buttons */}
                   {nextTransitions.map((toStatus) => (
                     <Button
                       key={toStatus}
@@ -502,7 +490,6 @@ export function IncidentDetailClient() {
                     </Button>
                   ))}
                 </div>
-                {/* Assign button (Manager only) */}
                 {isManager && (
                   <Button
                     size="sm"
@@ -526,104 +513,23 @@ export function IncidentDetailClient() {
             </p>
           ) : (
             <div className="space-y-2">
-              {timeline.map((entry) => {
-                const isOwnMessage =
-                  entry.kind === "message" && entry.author_id === user?.id;
-                const isEditing = editingEntryId === entry.id;
-
-                return (
-                  <div
-                    key={entry.id}
-                    className={`rounded-lg border px-4 py-3 text-sm ${
-                      entry.kind === "system"
-                        ? "border-dashed bg-muted/30 text-muted-foreground"
-                        : "bg-card"
-                    }`}
-                  >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-medium">
-                        {entry.kind === "system"
-                          ? t("timeline.system")
-                          : displayName(entry.author_id)}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        {formatDate(entry.created_at)}
-                        {entry.edited_at && (
-                          <span
-                            className="italic"
-                            title={formatDate(entry.edited_at)}
-                          >
-                            · {t("timeline.edited")}
-                          </span>
-                        )}
-                        {isOwnMessage && !isEditing && (
-                          <button
-                            onClick={() => {
-                              setEditingEntryId(entry.id);
-                              setEditText(entry.content);
-                            }}
-                            className="ml-1 flex items-center gap-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
-                          >
-                            <span>{t("action.edit")}</span>
-                            <Pencil className="h-3 w-3"/>
-                          </button>
-                        )}
-                      </span>
-                    </div>
-
-                    {isEditing ? (
-                      <div className="mt-2 space-y-2">
-                        <textarea
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          rows={2}
-                          onKeyDown={(e) => {
-                            if (
-                              e.key === "Enter" &&
-                              e.ctrlKey &&
-                              !editLoading
-                            ) {
-                              handleEditSave(entry.id);
-                            }
-                            if (e.key === "Escape") {
-                              setEditingEntryId(null);
-                              setEditText("");
-                            }
-                          }}
-                          className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleEditSave(entry.id)}
-                            disabled={editLoading || !editText.trim()}
-                          >
-                            {t("action.save")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingEntryId(null);
-                              setEditText("");
-                            }}
-                            disabled={editLoading}
-                          >
-                            {t("action.cancel")}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="mt-1">{entry.content}</p>
-                    )}
-                  </div>
-                );
-              })}
+              {timeline.map((entry) => (
+                <TimelineEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  currentUserId={user?.id}
+                  displayName={displayName}
+                  entryReactions={reactions[entry.id] || {}}
+                  availableEmojis={availableEmojis}
+                  token={token}
+                  onEntryUpdated={handleEntryUpdated}
+                  onReactionToggle={handleToggleReaction}
+                />
+              ))}
+              <div ref={timelineEndRef} />
             </div>
           )}
 
-          {/* Composer (Responder+ only) */}
           {canAct && (
             <div className="flex gap-2 pt-2">
               <textarea
@@ -652,7 +558,7 @@ export function IncidentDetailClient() {
       {/* Assign dialog */}
       {assignOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg space-y-4">
+          <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-6 shadow-lg">
             <h3 className="font-semibold">
               {t("incidents.assign.dialogTitle")}
             </h3>

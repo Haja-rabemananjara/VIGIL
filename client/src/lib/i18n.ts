@@ -12,6 +12,7 @@ const en: Dictionary = {
   "action.create": "Create",
   "action.edit": "Edit",
   "action.save": "Save",
+  "reactions.add": "React",
 
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",
