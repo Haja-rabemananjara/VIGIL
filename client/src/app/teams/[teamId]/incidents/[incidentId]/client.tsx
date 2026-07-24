@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVigilSocket } from "@/stores/socket";
 import { useRouteParams } from "@/lib/useRouteParams";
+import { Pencil } from "lucide-react";
 
 interface Incident {
   id: string;
@@ -94,6 +95,11 @@ export function IncidentDetailClient() {
 
   // Transition loading state
   const [transitionLoading, setTransitionLoading] = useState(false);
+
+  // Edit timeline entry
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
 
   const { lastEvent, reconnectCount, send } = useVigilSocket();
   const [watchers, setWatchers] = useState<string[]>([]);
@@ -235,6 +241,21 @@ export function IncidentDetailClient() {
         });
         break;
       }
+      case "timeline_entry_edited": {
+        const entryId = lastEvent.entry_id as string;
+        setTimeline((prev) =>
+          prev.map((e) =>
+            e.id === entryId
+              ? {
+                  ...e,
+                  content: lastEvent.new_content as string,
+                  edited_at: lastEvent.edited_at as number,
+                }
+              : e,
+          ),
+        );
+        break;
+      }
       default:
         break;
     }
@@ -334,6 +355,25 @@ export function IncidentDetailClient() {
       // silent
     } finally {
       setComposerLoading(false);
+    }
+  }
+
+  async function handleEditSave(entryId: string) {
+    const content = editText.trim();
+    if (!content) return;
+    setEditLoading(true);
+    try {
+      const updated = await api<TimelineEntry>(`/timeline/${entryId}`, {
+        method: "PATCH",
+        token,
+        body: { content },
+      });
+      setTimeline((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
+      setEditingEntryId(null);
+      setEditText("");
+    } catch {
+    } finally {
+      setEditLoading(false);
     }
   }
 
@@ -486,34 +526,100 @@ export function IncidentDetailClient() {
             </p>
           ) : (
             <div className="space-y-2">
-              {timeline.map((entry) => (
-                <div
-                  key={entry.id}
-                  className={`rounded-lg border px-4 py-3 text-sm ${
-                    entry.kind === "system"
-                      ? "border-dashed bg-muted/30 text-muted-foreground"
-                      : "bg-card"
-                  }`}
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium">
-                      {entry.kind === "system"
-                        ? t("timeline.system")
-                        : displayName(entry.author_id)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDate(entry.created_at)}
-                      {entry.edited_at && (
-                        <span className="ml-1 italic">
-                          · {t("timeline.edited")}
-                        </span>
-                      )}
-                    </span>
+              {timeline.map((entry) => {
+                const isOwnMessage =
+                  entry.kind === "message" && entry.author_id === user?.id;
+                const isEditing = editingEntryId === entry.id;
+
+                return (
+                  <div
+                    key={entry.id}
+                    className={`rounded-lg border px-4 py-3 text-sm ${
+                      entry.kind === "system"
+                        ? "border-dashed bg-muted/30 text-muted-foreground"
+                        : "bg-card"
+                    }`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium">
+                        {entry.kind === "system"
+                          ? t("timeline.system")
+                          : displayName(entry.author_id)}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {formatDate(entry.created_at)}
+                        {entry.edited_at && (
+                          <span
+                            className="italic"
+                            title={formatDate(entry.edited_at)}
+                          >
+                            · {t("timeline.edited")}
+                          </span>
+                        )}
+                        {isOwnMessage && !isEditing && (
+                          <button
+                            onClick={() => {
+                              setEditingEntryId(entry.id);
+                              setEditText(entry.content);
+                            }}
+                            className="ml-1 flex items-center gap-1 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded px-1"
+                          >
+                            <span>{t("action.edit")}</span>
+                            <Pencil className="h-3 w-3"/>
+                          </button>
+                        )}
+                      </span>
+                    </div>
+
+                    {isEditing ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          rows={2}
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              e.ctrlKey &&
+                              !editLoading
+                            ) {
+                              handleEditSave(entry.id);
+                            }
+                            if (e.key === "Escape") {
+                              setEditingEntryId(null);
+                              setEditText("");
+                            }
+                          }}
+                          className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleEditSave(entry.id)}
+                            disabled={editLoading || !editText.trim()}
+                          >
+                            {t("action.save")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingEntryId(null);
+                              setEditText("");
+                            }}
+                            disabled={editLoading}
+                          >
+                            {t("action.cancel")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-1">{entry.content}</p>
+                    )}
                   </div>
-                  <p className="mt-1">{entry.content}</p>
-                </div>
-              ))}
-              <div ref={timelineEndRef} />
+                );
+              })}
             </div>
           )}
 

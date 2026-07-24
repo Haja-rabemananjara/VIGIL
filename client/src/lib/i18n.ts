@@ -10,6 +10,8 @@ const en: Dictionary = {
   "action.copied": "Copied!",
   "action.copy": "Copy",
   "action.create": "Create",
+  "action.edit": "Edit",
+  "action.save": "Save",
 
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",

@@ -31,4 +31,8 @@ pub fn routes() -> Router<AppState> {
             "/teams/{team_id}/incidents/{incident_id}/timeline",
             post(handlers::incidents::add_timeline_entry).get(handlers::incidents::get_timeline),
         )
+        .route(
+            "/timeline/{entry_id}",
+            patch(handlers::incidents::edit_timeline_entry),
+        )
 }
