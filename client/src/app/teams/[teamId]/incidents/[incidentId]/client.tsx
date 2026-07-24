@@ -352,9 +352,7 @@ export function IncidentDetailClient() {
   }
 
   function handleEntryUpdated(updated: TimelineEntry) {
-    setTimeline((prev) =>
-      prev.map((e) => (e.id === updated.id ? updated : e)),
-    );
+    setTimeline((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
   }
 
   async function handleToggleReaction(entryId: string, emoji: string) {
