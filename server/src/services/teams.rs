@@ -258,16 +258,14 @@ pub async fn kick_member(
         return Err(AppError::Internal("member vanished during kick".into()));
     }
 
-    broadcaster
-        .to_team(
-            team_id,
-            WsEvent::MemberKicked {
-                team_id,
-                user_id: target_user_id,
-                by: manager_id,
-            },
-        )
-        .await;
+    let event = WsEvent::MemberKicked {
+        team_id,
+        user_id: target_user_id,
+        by: manager_id,
+    };
+
+    broadcaster.to_team(team_id, event.clone()).await;
+    broadcaster.to_user(target_user_id, event);
 
     Ok(())
 }
@@ -281,12 +279,12 @@ pub async fn ban_member(
     expires_at: Option<DateTime<Utc>>,
     reason: Option<String>,
 ) -> Result<(), AppError> {
-    if let Some(exp) = expires_at {
-        if exp <= Utc::now() {
-            return Err(AppError::Validation(
-                "ban expiry must be in the future".into(),
-            ));
-        }
+    if let Some(exp) = expires_at
+        && exp <= Utc::now()
+    {
+        return Err(AppError::Validation(
+            "ban expiry must be in the future".into(),
+        ));
     }
 
     check_moderation_target(pool, team_id, manager_id, target_user_id).await?;
@@ -311,17 +309,15 @@ pub async fn ban_member(
 
     tx.commit().await?;
 
-    broadcaster
-        .to_team(
-            team_id,
-            WsEvent::MemberBanned {
-                team_id,
-                user_id: target_user_id,
-                expires_at: expires_at.map(|t| t.timestamp()),
-                by: manager_id,
-            },
-        )
-        .await;
+    let event = WsEvent::MemberBanned {
+        team_id,
+        user_id: target_user_id,
+        expires_at: expires_at.map(|t| t.timestamp()),
+        by: manager_id,
+    };
+
+    broadcaster.to_team(team_id, event.clone()).await;
+    broadcaster.to_user(target_user_id, event);
 
     Ok(())
 }

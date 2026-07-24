@@ -202,7 +202,10 @@ async fn temporary_ban_expires_naturally() {
 
     let tomorrow = chrono::Utc::now().timestamp() + 86400;
     let res = client
-        .post(format!("{}/teams/{team_id}/members/{bob_id}/ban", app.address))
+        .post(format!(
+            "{}/teams/{team_id}/members/{bob_id}/ban",
+            app.address
+        ))
         .bearer_auth(&alice_token)
         .json(&json!({ "expires_at": tomorrow }))
         .send()
@@ -330,7 +333,10 @@ async fn ban_with_past_expiry_returns_422() {
 
     let past = chrono::Utc::now().timestamp() - 3600;
     let res = client
-        .post(format!("{}/teams/{team_id}/members/{bob_id}/ban", app.address))
+        .post(format!(
+            "{}/teams/{team_id}/members/{bob_id}/ban",
+            app.address
+        ))
         .bearer_auth(&alice_token)
         .json(&json!({ "expires_at": past }))
         .send()

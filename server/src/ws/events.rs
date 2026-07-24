@@ -45,6 +45,13 @@ pub enum WsEvent {
         watchers: Vec<Uuid>,
     },
 
+    MemberJoined {
+        team_id: Uuid,
+        user_id: Uuid,
+        display_name: String,
+        role: String,
+    },
+
     MemberRoleChanged {
         team_id: Uuid,
         user_id: Uuid,
