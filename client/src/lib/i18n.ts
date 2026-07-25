@@ -2,8 +2,6 @@ type Dictionary = Record<string, string>;
 
 const en: Dictionary = {
   "app.name": "VIGIL",
-  "common.loading": "Loading...",
-  "common.error": "Something went wrong",
   "action.cancel": "Cancel",
   "action.close": "Close",
   "action.confirm": "Confirm",
@@ -12,6 +10,8 @@ const en: Dictionary = {
   "action.create": "Create",
   "action.edit": "Edit",
   "action.save": "Save",
+  "common.loading": "Loading...",
+  "common.error": "Something went wrong",
   "reactions.add": "React",
 
   "auth.signin.title": "Sign in to VIGIL",
@@ -49,41 +49,6 @@ const en: Dictionary = {
   "app.shell.releases": "Releases",
   "app.shell.rules": "Rules",
 
-  "user.profile": "Profile",
-  "user.services": "Connected services",
-
-  "onboarding.welcome": "Welcome",
-  "onboarding.subtitle": "You're not part of any team yet. Get started below.",
-  "onboarding.create.title": "Create a team",
-  "onboarding.create.desc": "Start a new workspace and invite your teammates.",
-  "onboarding.create.action": "Create a team",
-  "onboarding.join.title": "Join a team",
-  "onboarding.join.desc": "Have an invitation code? Join an existing team.",
-  "onboarding.join.action": "Enter a code",
-  "onboarding.myTeams": "Your teams",
-  "onboarding.myTeams.desc":
-    "Incident management will be available in a future update.",
-
-  "teams.create.dialogTitle": "Create a new team",
-  "teams.create.dialogDesc": "Give your team a name to get started.",
-  "teams.create.nameLabel": "Team name",
-  "teams.create.namePlaceholder": "e.g. Team front",
-  "teams.create.error.empty": "Team name is required",
-
-  "teams.join.dialogTitle": "Join a team",
-  "teams.join.dialogDesc":
-    "Enter the invitation code shared by your team manager.",
-  "teams.join.codeLabel": "Invitation code",
-  "teams.join.codePlaceholder": "e.g. A7X9K2MP",
-  "teams.join.submit": "Join",
-  "teams.join.error.empty": "Invitation code is required",
-  "teams.join.success": "You joined the team!",
-
-  "teams.invite.dialogTitle": "Invite to team",
-  "teams.invite.dialogDesc": "Share this code with people you want to invite.",
-  "teams.invite.generate": "Generate code",
-  "teams.invite.button": "Invite",
-
   "incidents.title": "Incidents",
   "incidents.empty": "No incidents yet.",
   "incidents.new": "New incident",
@@ -114,23 +79,11 @@ const en: Dictionary = {
   "incidents.create.severityLabel": "Severity",
   "incidents.create.error.emptyTitle": "Title is required",
 
-  "timeline.empty": "No entries yet.",
-  "timeline.composer.placeholder": "Add a note to the timeline…",
-  "timeline.composer.submit": "Post",
-  "timeline.system": "System",
-  "timeline.edited": "edited",
-
   "incidents.assign.dialogTitle": "Assign responder",
   "incidents.assign.dialogDesc":
     "Select a team member to assign to this incident.",
   "incidents.assign.submit": "Assign",
   "incidents.assign.noEligible": "No eligible responders in this team.",
-
-  "ws.connected": "Connected",
-  "ws.connecting": "Connecting…",
-  "ws.disconnected": "Disconnected",
-
-  "presence.watching": "Watching now:",
 
   "members.title": "Team members",
   "members.you": "(you)",
@@ -175,6 +128,26 @@ const en: Dictionary = {
   "members.ban.reason.placeholder": "e.g. Repeated spam",
   "members.ban.confirm": "Ban member",
   "members.ban.error.pastDate": "Ban expiry must be in the future",
+
+  "members.message": "Message",
+  "messages.title": "Messages",
+  "messages.empty": "No messages yet. Say hi!",
+  "messages.composer.placeholder": "Write a message...",
+  "messages.send": "Send",
+
+  "onboarding.welcome": "Welcome",
+  "onboarding.subtitle": "You're not part of any team yet. Get started below.",
+  "onboarding.create.title": "Create a team",
+  "onboarding.create.desc": "Start a new workspace and invite your teammates.",
+  "onboarding.create.action": "Create a team",
+  "onboarding.join.title": "Join a team",
+  "onboarding.join.desc": "Have an invitation code? Join an existing team.",
+  "onboarding.join.action": "Enter a code",
+  "onboarding.myTeams": "Your teams",
+  "onboarding.myTeams.desc":
+    "Incident management will be available in a future update.",
+
+  "presence.watching": "Watching now:",
 
   "release.state.created": "Created",
   "release.state.in_progress": "In Progress",
@@ -277,6 +250,39 @@ const en: Dictionary = {
     "Rules using {service} will stop working until you reconnect.",
   "services.empty": "No connectable services available.",
   "services.error.emptyToken": "A token is required",
+
+  "teams.create.dialogTitle": "Create a new team",
+  "teams.create.dialogDesc": "Give your team a name to get started.",
+  "teams.create.nameLabel": "Team name",
+  "teams.create.namePlaceholder": "e.g. Team front",
+  "teams.create.error.empty": "Team name is required",
+
+  "teams.join.dialogTitle": "Join a team",
+  "teams.join.dialogDesc":
+    "Enter the invitation code shared by your team manager.",
+  "teams.join.codeLabel": "Invitation code",
+  "teams.join.codePlaceholder": "e.g. A7X9K2MP",
+  "teams.join.submit": "Join",
+  "teams.join.error.empty": "Invitation code is required",
+  "teams.join.success": "You joined the team!",
+
+  "teams.invite.dialogTitle": "Invite to team",
+  "teams.invite.dialogDesc": "Share this code with people you want to invite.",
+  "teams.invite.generate": "Generate code",
+  "teams.invite.button": "Invite",
+
+  "timeline.empty": "No entries yet.",
+  "timeline.composer.placeholder": "Add a note to the timeline…",
+  "timeline.composer.submit": "Post",
+  "timeline.system": "System",
+  "timeline.edited": "edited",
+
+  "user.profile": "Profile",
+  "user.services": "Connected services",
+
+  "ws.connected": "Connected",
+  "ws.connecting": "Connecting…",
+  "ws.disconnected": "Disconnected",
 };
 
 const dict: Dictionary = en;
