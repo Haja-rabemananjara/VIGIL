@@ -300,6 +300,7 @@ All endpoints return errors in a uniform shape:
 | POST | `/auth/signin` | none | Returns `{ token, user }`. 401 if invalid |
 | GET | `/me` | session | Current user info |
 | POST | `/auth/signout` | session | Deletes the session. 204 |
+| GET | `/users/{user_id}` | session | Public profile: `{ id, display_name }` |
 
 ### Teams
 
@@ -330,6 +331,23 @@ All endpoints return errors in a uniform shape:
 | POST | `/teams/{team_id}/incidents/{id}/assign` | Manager | Body: `{ user_id }`. Target must be Responder+ |
 | POST | `/teams/{team_id}/incidents/{id}/timeline` | Responder+ | Body: `{ content }`. Max 2000 chars |
 | GET | `/teams/{team_id}/incidents/{id}/timeline` | member | Chronological entries |
+| PATCH | `/timeline/{entry_id}` | session | Author only. Body: `{ content }`. System entries not editable (422). Manager on another's entry gets 403 |
+| GET | `/teams/{team_id}/incidents/{id}/reactions` | member | All reactions for all timeline entries of this incident, grouped by entry and emoji |
+
+### Reactions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/reactions/available` | session | Fixed server set: `+1`, `-1`, `eyes`, `warning`, `check`, `fire` |
+| POST | `/timeline/{entry_id}/reactions` | session | Body: `{ emoji }`. 409 if already reacted with same emoji. Only on incident timeline entries |
+| DELETE | `/timeline/{entry_id}/reactions/{emoji}` | session | Remove own reaction. 404 if not found |
+
+### Private messages
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/messages/{user_id}` | session | Body: `{ content }`. Max 2000 chars. Must share at least one team (403). Cannot message self (422) |
+| GET | `/messages/{user_id}` | session | Bilateral conversation history. Paginated: `?before=&limit=`. Must share at least one team (403) |
 
 ### Releases
 
