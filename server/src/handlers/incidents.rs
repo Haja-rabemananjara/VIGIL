@@ -7,6 +7,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::extractors::RequireResponder;
+use crate::handlers::auth;
 use crate::{
     error::AppError,
     extractors::{RequireManager, TeamMember},
@@ -207,4 +208,27 @@ pub async fn get_timeline(
     .await?;
 
     Ok(Json(serde_json::json!({ "entries": entries })))
+}
+
+#[derive(Deserialize)]
+pub struct EditTimelineEntryBody {
+    pub content: String,
+}
+
+pub async fn edit_timeline_entry(
+    State(state): State<AppState>,
+    auth_user: auth::AuthUser,
+    Path(entry_id): Path<Uuid>,
+    Json(body): Json<EditTimelineEntryBody>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let entry = services::incidents::edit_timeline_entry(
+        &state.pool,
+        state.broadcaster,
+        entry_id,
+        auth_user.id,
+        body.content,
+    )
+    .await?;
+
+    Ok(Json(serde_json::to_value(entry).unwrap()))
 }

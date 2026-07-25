@@ -104,12 +104,45 @@ pub enum WsEvent {
         rule_name: String,
         reaction_type: String,
     },
+
     RuleFailed {
         team_id: Uuid,
         rule_id: Uuid,
         rule_name: String,
         reaction_type: String,
         error: String,
+    },
+
+    TimelineEntryEdited {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        new_content: String,
+        edited_at: i64,
+    },
+
+    ReactionAdded {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        emoji: String,
+        user_id: Uuid,
+    },
+
+    ReactionRemoved {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        emoji: String,
+        user_id: Uuid,
+    },
+
+    PrivateMessageReceived {
+        from: Uuid,
+        to: Uuid,
+        message_id: Uuid,
+        content: String,
+        at: i64,
     },
 }
 

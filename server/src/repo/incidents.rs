@@ -328,3 +328,45 @@ pub async fn list_timeline_entries(
 
     Ok(rows)
 }
+
+pub async fn find_timeline_entry(
+    pool: &PgPool,
+    entry_id: Uuid,
+) -> Result<Option<TimelineEntryRow>, AppError> {
+    let row = sqlx::query_as!(
+        TimelineEntryRow,
+        r#"
+        SELECT id, incident_id, author_id, kind, content, created_at, edited_at
+        FROM timeline_entries
+        WHERE id = $1
+        "#,
+        entry_id,
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(row)
+}
+
+pub async fn update_timeline_entry_content(
+    pool: &PgPool,
+    entry_id: Uuid,
+    new_content: &str,
+) -> Result<TimelineEntryRow, AppError> {
+    let row = sqlx::query_as!(
+        TimelineEntryRow,
+        r#"
+        UPDATE timeline_entries
+        SET content   = $2,
+            edited_at = now()
+        WHERE id = $1
+        RETURNING id, incident_id, author_id, kind, content, created_at, edited_at
+        "#,
+        entry_id,
+        new_content,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row)
+}

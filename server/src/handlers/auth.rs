@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
+use axum::extract::Path;
 
 use crate::AppState;
 use crate::domain::auth::parse_bearer_token;
@@ -84,6 +85,29 @@ pub async fn me(user: AuthUser) -> Json<UserResponse> {
         language: user.language,
         created_at: user.created_at.timestamp(),
     })
+}
+
+pub async fn get_user_public(
+    State(state): State<AppState>,
+    _auth_user: AuthUser,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT id, display_name
+        FROM users
+        WHERE id = $1
+        "#,
+        user_id,
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+
+    Ok(Json(serde_json::json!({
+        "id": row.id,
+        "display_name": row.display_name,
+    })))
 }
 
 #[derive(Debug, Clone)]
