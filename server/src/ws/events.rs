@@ -136,6 +136,14 @@ pub enum WsEvent {
         emoji: String,
         user_id: Uuid,
     },
+
+    PrivateMessageReceived {
+        from: Uuid,
+        to: Uuid,
+        message_id: Uuid,
+        content: String,
+        at: i64,
+    },
 }
 
 #[derive(Debug, Deserialize)]

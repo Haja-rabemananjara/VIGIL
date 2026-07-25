@@ -2,6 +2,7 @@ pub mod about;
 pub mod auth;
 pub mod incidents;
 pub mod invitations;
+pub mod messages;
 pub mod reactions;
 pub mod releases;
 pub mod rules;

@@ -55,7 +55,13 @@ async fn create_incident(address: &str, token: &str, team_id: Uuid) -> Uuid {
     Uuid::parse_str(body["id"].as_str().unwrap()).unwrap()
 }
 
-async fn add_timeline_entry(address: &str, token: &str, team_id: Uuid, incident_id: Uuid, content: &str) -> Uuid {
+async fn add_timeline_entry(
+    address: &str,
+    token: &str,
+    team_id: Uuid,
+    incident_id: Uuid,
+    content: &str,
+) -> Uuid {
     let client = reqwest::Client::new();
     let res = client
         .post(format!(
@@ -205,7 +211,10 @@ async fn remove_reaction_happy_path() {
         .unwrap();
 
     let res = client
-        .delete(format!("{}/timeline/{entry_id}/reactions/check", app.address))
+        .delete(format!(
+            "{}/timeline/{entry_id}/reactions/check",
+            app.address
+        ))
         .bearer_auth(&alice)
         .send()
         .await
