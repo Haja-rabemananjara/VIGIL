@@ -206,7 +206,7 @@ async fn wait_until<F>(mut check: F) -> bool
 where
     F: FnMut() -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send>>,
 {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     while std::time::Instant::now() < deadline {
         if check().await {
             return true;

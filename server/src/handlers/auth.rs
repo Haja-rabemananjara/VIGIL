@@ -1,4 +1,5 @@
 use axum::extract::FromRequestParts;
+use axum::extract::Path;
 use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
 use axum::{Json, extract::State, http::StatusCode};
@@ -6,7 +7,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
-use axum::extract::Path;
 
 use crate::AppState;
 use crate::domain::auth::parse_bearer_token;
