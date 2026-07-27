@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
-import { StateBadge, type IncidentState } from "@/components/StateBadge";
-import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { type IncidentState } from "@/components/StateBadge";
+import { type Severity } from "@/components/SeverityBadge";
 import { useVigilSocket } from "@/stores/socket";
 import { useRouteParams } from "@/lib/useRouteParams";
 import {
   TimelineEntryCard,
   type TimelineEntry,
 } from "@/components/TimelineEntryCard";
+import { IncidentWatchers } from "@/components/IncidentWatchers";
+import { IncidentHeader } from "@/components/IncidentHeader";
+import { AssignDialog } from "@/components/AssignDialog";
+import { TimelineComposer } from "@/components/TimelineComposer";
 
 interface Incident {
   id: string;
@@ -35,27 +37,11 @@ interface Member {
   role: string;
 }
 
-function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 const NEXT_TRANSITIONS: Record<IncidentState, IncidentState[]> = {
   open: ["acknowledged"],
   acknowledged: ["escalated", "resolved"],
   escalated: ["resolved"],
   resolved: [],
-};
-
-const TRANSITION_LABELS: Record<IncidentState, string> = {
-  acknowledged: "incidents.detail.acknowledge",
-  escalated: "incidents.detail.escalate",
-  resolved: "incidents.detail.resolve",
-  open: "incidents.detail.reopen",
 };
 
 export function IncidentDetailClient() {
@@ -141,13 +127,10 @@ export function IncidentDetailClient() {
   useEffect(() => {
     if (!lastEvent) return;
 
-    const eventIncidentId = lastEvent.incident_id as string | undefined;
-
     if (lastEvent.type === "presence_update") {
-      const eventResourceId = lastEvent.resource_id as string;
       if (
         lastEvent.resource_type === "incident" &&
-        eventResourceId === incidentId
+        (lastEvent.resource_id as string) === incidentId
       ) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setWatchers(lastEvent.watchers as string[]);
@@ -175,7 +158,7 @@ export function IncidentDetailClient() {
     }
 
     if (!incident) return;
-    if (eventIncidentId !== incidentId) return;
+    if ((lastEvent.incident_id as string | undefined) !== incidentId) return;
 
     switch (lastEvent.type) {
       case "incident_state_changed": {
@@ -260,8 +243,6 @@ export function IncidentDetailClient() {
         });
         break;
       }
-      default:
-        break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, incidentId, teamId, token]);
@@ -308,8 +289,7 @@ export function IncidentDetailClient() {
   }
 
   function displayName(userId: string): string {
-    const member = members.find((m) => m.user_id === userId);
-    return member?.display_name ?? userId;
+    return members.find((m) => m.user_id === userId)?.display_name ?? userId;
   }
 
   async function handleAssign(userId: string) {
@@ -356,8 +336,7 @@ export function IncidentDetailClient() {
   }
 
   async function handleToggleReaction(entryId: string, emoji: string) {
-    const entryReactions = reactions[entryId] || {};
-    const users = entryReactions[emoji] || [];
+    const users = reactions[entryId]?.[emoji] || [];
     const hasReacted = users.includes(user!.id);
     try {
       if (hasReacted) {
@@ -377,9 +356,6 @@ export function IncidentDetailClient() {
     }
   }
 
-  const eligibleMembers = members.filter(
-    (m) => m.role === "responder" || m.role === "manager",
-  );
 
   if (loading) {
     return (
@@ -393,9 +369,11 @@ export function IncidentDetailClient() {
     );
   }
 
-  const nextTransitions = NEXT_TRANSITIONS[incident.status];
   const canAct = role === "responder" || role === "manager";
   const isManager = role === "manager";
+  const eligibleMembers = members.filter(
+    (m) => m.role === "responder" || m.role === "manager",
+  );
 
   return (
     <>
@@ -407,102 +385,20 @@ export function IncidentDetailClient() {
           {t("incidents.detail.backToList")}
         </button>
 
-        {/* Watchers */}
-        {watchers.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {t("presence.watching")}
-            </span>
-            <div className="flex -space-x-2">
-              {watchers.map((userId) => {
-                const name = displayName(userId);
-                const initials = name
-                  .split(" ")
-                  .map((w) => w[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase();
-                return (
-                  <div
-                    key={userId}
-                    title={name}
-                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-[10px] font-medium text-primary-foreground"
-                  >
-                    {initials}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <IncidentWatchers watchers={watchers} displayName={displayName} />
 
-        {/* Header card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
-              <CardTitle className="text-xl">{incident.title}</CardTitle>
-              <div className="flex shrink-0 items-center gap-2">
-                <StateBadge state={incident.status} />
-                <SeverityBadge severity={incident.severity} />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {incident.body && (
-              <p className="text-sm text-muted-foreground">{incident.body}</p>
-            )}
+        <IncidentHeader
+          incident={incident}
+          assignee={assignee}
+          displayName={displayName}
+          canAct={canAct}
+          isManager={isManager}
+          nextTransitions={NEXT_TRANSITIONS[incident.status]}
+          transitionLoading={transitionLoading}
+          onTransition={handleTransition}
+          onOpenAssign={() => setAssignOpen(true)}
+        />
 
-            <div className="text-sm text-muted-foreground">
-              {t("incidents.detail.createdBy")}{" "}
-              <span className="text-foreground">
-                {displayName(incident.created_by)}
-              </span>
-              {" · "}
-              {formatDate(incident.created_at)}
-              <div className="text-sm text-muted-foreground">
-                {t("incidents.detail.assignee")}{" "}
-                {assignee ? (
-                  <span className="font-medium text-foreground">
-                    {displayName(assignee)}
-                  </span>
-                ) : (
-                  <span className="italic">
-                    {t("incidents.detail.noAssignee")}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {canAct && (
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex flex-wrap gap-2">
-                  {nextTransitions.map((toStatus) => (
-                    <Button
-                      key={toStatus}
-                      size="sm"
-                      variant={toStatus === "resolved" ? "default" : "outline"}
-                      disabled={transitionLoading}
-                      onClick={() => handleTransition(toStatus)}
-                    >
-                      {t(TRANSITION_LABELS[toStatus])}
-                    </Button>
-                  ))}
-                </div>
-                {isManager && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setAssignOpen(true)}
-                  >
-                    {t("incidents.detail.assign")}
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Timeline */}
         <div className="space-y-3">
           <h2 className="text-lg font-medium">Timeline</h2>
           {timeline.length === 0 ? (
@@ -529,76 +425,27 @@ export function IncidentDetailClient() {
           )}
 
           {canAct && (
-            <div className="flex gap-2 pt-2">
-              <textarea
-                value={composerText}
-                onChange={(e) => setComposerText(e.target.value)}
-                placeholder={t("timeline.composer.placeholder")}
-                rows={2}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && e.ctrlKey && !composerLoading) {
-                    handlePost();
-                  }
-                }}
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Button
-                onClick={handlePost}
-                disabled={composerLoading || !composerText.trim()}
-              >
-                {t("timeline.composer.submit")}
-              </Button>
-            </div>
+            <TimelineComposer
+              value={composerText}
+              loading={composerLoading}
+              onChange={setComposerText}
+              onSubmit={handlePost}
+            />
           )}
         </div>
       </div>
 
-      {/* Assign dialog */}
-      {assignOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-6 shadow-lg">
-            <h3 className="font-semibold">
-              {t("incidents.assign.dialogTitle")}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {t("incidents.assign.dialogDesc")}
-            </p>
-            {eligibleMembers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t("incidents.assign.noEligible")}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {eligibleMembers.map((m) => (
-                  <button
-                    key={m.user_id}
-                    onClick={() => handleAssign(m.user_id)}
-                    disabled={assignLoading}
-                    className="w-full rounded-md border px-4 py-2 text-left text-sm hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {m.display_name}{" "}
-                    <span className="text-muted-foreground">({m.role})</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {assignError && (
-              <p className="text-sm text-destructive">{assignError}</p>
-            )}
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAssignOpen(false);
-                  setAssignError("");
-                }}
-              >
-                {t("action.cancel")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AssignDialog
+        open={assignOpen}
+        eligibleMembers={eligibleMembers}
+        loading={assignLoading}
+        error={assignError}
+        onAssign={handleAssign}
+        onClose={() => {
+          setAssignOpen(false);
+          setAssignError("");
+        }}
+      />
     </>
   );
 }
