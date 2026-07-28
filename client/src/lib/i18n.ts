@@ -2,6 +2,7 @@ type Dictionary = Record<string, string>;
 
 const en: Dictionary = {
   "app.name": "VIGIL",
+  "action.back": "Back",
   "action.cancel": "Cancel",
   "action.close": "Close",
   "action.confirm": "Confirm",

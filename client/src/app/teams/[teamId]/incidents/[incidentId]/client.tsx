@@ -247,7 +247,6 @@ export function IncidentDetailClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, incidentId, teamId, token]);
 
-  // Presence
   useEffect(() => {
     if (!teamId || !incidentId) return;
     send({
@@ -282,7 +281,6 @@ export function IncidentDetailClient() {
       );
       setTimeline(tl.entries);
     } catch {
-      // silent
     } finally {
       setTransitionLoading(false);
     }
@@ -325,7 +323,6 @@ export function IncidentDetailClient() {
       });
       setComposerText("");
     } catch {
-      // silent
     } finally {
       setComposerLoading(false);
     }
@@ -351,11 +348,8 @@ export function IncidentDetailClient() {
           body: { emoji },
         });
       }
-    } catch {
-      // silent
-    }
+    } catch {}
   }
-
 
   if (loading) {
     return (
