@@ -33,6 +33,8 @@ const en: Dictionary = {
   "auth.error.invalidCredentials": "Invalid email or password",
   "auth.error.emailTaken": "This email is already in use",
   "auth.error.passwordTooShort": "Password must be at least 8 characters",
+  "auth.showPassword": "Show password",
+  "auth.hidePassword": "Hide password",
 
   "incident.state.open": "Open",
   "incident.state.acknowledged": "Acknowledged",
