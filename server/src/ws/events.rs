@@ -144,6 +144,10 @@ pub enum WsEvent {
         content: String,
         at: i64,
     },
+
+    UserTyping {
+        from: Uuid,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,5 +162,8 @@ pub enum WsClientMessage {
         resource_type: String,
         resource_id: Uuid,
         team_id: Uuid,
+    },
+    Typing {
+        recipient_id: Uuid,
     },
 }
