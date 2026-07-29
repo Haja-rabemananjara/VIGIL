@@ -7,7 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 
-// Mocks 
+// Mocks
 
 const mockApi = vi.fn();
 vi.mock("@/lib/api", () => {
@@ -90,9 +90,7 @@ describe("OnboardingPage", () => {
     mockApi.mockResolvedValueOnce([TEAM_FIXTURE]);
     render(<OnboardingPage />);
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /back/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument(),
     );
   });
 
@@ -100,9 +98,7 @@ describe("OnboardingPage", () => {
     mockApi.mockResolvedValueOnce([TEAM_FIXTURE]);
     render(<OnboardingPage />);
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /back/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument(),
     );
     fireEvent.click(screen.getByRole("button", { name: /back/i }));
     expect(mockPush).toHaveBeenCalledWith("/teams/t1/incidents");
@@ -116,9 +112,7 @@ describe("OnboardingPage", () => {
     ]);
     render(<OnboardingPage />);
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /back/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument(),
     );
     fireEvent.click(screen.getByRole("button", { name: /back/i }));
     expect(mockPush).toHaveBeenCalledWith("/teams/t2/incidents");
@@ -129,9 +123,7 @@ describe("OnboardingPage", () => {
   it("opens create dialog with a text input", async () => {
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     expect(
       within(screen.getByRole("dialog")).getByRole("textbox"),
     ).toBeInTheDocument();
@@ -140,40 +132,30 @@ describe("OnboardingPage", () => {
   it("shows error for empty team name", async () => {
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /create/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /create/i }));
     await waitFor(() =>
       expect(dialog.querySelector(".text-destructive")).toBeInTheDocument(),
     );
   });
 
   it("creates team and navigates on success", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({
-        id: "new-t",
-        name: "My Team",
-        role: "manager",
-        created_at: "2024-01-01T00:00:00Z",
-      });
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce({
+      id: "new-t",
+      name: "My Team",
+      role: "manager",
+      created_at: "2024-01-01T00:00:00Z",
+    });
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByRole("textbox"), {
       target: { value: "My Team" },
     });
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /create/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /create/i }));
 
     await waitFor(() => {
       expect(mockApi).toHaveBeenCalledWith(
@@ -190,22 +172,16 @@ describe("OnboardingPage", () => {
   it("shows API error on create failure", async () => {
     mockApi
       .mockResolvedValueOnce([])
-      .mockRejectedValueOnce(
-        new ApiError(422, "validation", "Name too short"),
-      );
+      .mockRejectedValueOnce(new ApiError(422, "validation", "Name too short"));
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByRole("textbox"), {
       target: { value: "X" },
     });
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /create/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /create/i }));
 
     await waitFor(() =>
       expect(within(dialog).getByText("Name too short")).toBeInTheDocument(),
@@ -219,16 +195,12 @@ describe("OnboardingPage", () => {
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByRole("textbox"), {
       target: { value: "Test" },
     });
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /create/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /create/i }));
 
     await waitFor(() =>
       expect(
@@ -242,9 +214,7 @@ describe("OnboardingPage", () => {
   it("opens join dialog with a text input", async () => {
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /enter a code/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     expect(
       within(screen.getByRole("dialog")).getByRole("textbox"),
     ).toBeInTheDocument();
@@ -253,39 +223,29 @@ describe("OnboardingPage", () => {
   it("shows error for empty join code", async () => {
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /enter a code/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /join/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /join/i }));
     await waitFor(() =>
       expect(dialog.querySelector(".text-destructive")).toBeInTheDocument(),
     );
   });
 
   it("joins team and navigates on success", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({
-        team_id: "joined-t",
-        team_name: "Joined",
-        role: "observer",
-      });
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce({
+      team_id: "joined-t",
+      team_name: "Joined",
+      role: "observer",
+    });
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /enter a code/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByRole("textbox"), {
       target: { value: "ABC123" },
     });
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /join/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /join/i }));
 
     await waitFor(() => {
       expect(mockApi).toHaveBeenCalledWith(
@@ -302,22 +262,16 @@ describe("OnboardingPage", () => {
   it("shows API error on join failure", async () => {
     mockApi
       .mockResolvedValueOnce([])
-      .mockRejectedValueOnce(
-        new ApiError(404, "not_found", "Invalid code"),
-      );
+      .mockRejectedValueOnce(new ApiError(404, "not_found", "Invalid code"));
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /enter a code/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByRole("textbox"), {
       target: { value: "BAD" },
     });
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: /join/i }),
-    );
+    fireEvent.click(within(dialog).getByRole("button", { name: /join/i }));
 
     await waitFor(() =>
       expect(within(dialog).getByText("Invalid code")).toBeInTheDocument(),
@@ -327,9 +281,7 @@ describe("OnboardingPage", () => {
   it("uppercases the join code input", async () => {
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /enter a code/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const input = within(screen.getByRole("dialog")).getByRole(
       "textbox",
     ) as HTMLInputElement;
@@ -340,20 +292,16 @@ describe("OnboardingPage", () => {
   // Keyboard
 
   it("submits create dialog on Enter key", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({
-        id: "enter-t",
-        name: "Enter Team",
-        role: "manager",
-        created_at: "2024-01-01T00:00:00Z",
-      });
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce({
+      id: "enter-t",
+      name: "Enter Team",
+      role: "manager",
+      created_at: "2024-01-01T00:00:00Z",
+    });
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const input = within(screen.getByRole("dialog")).getByRole("textbox");
     fireEvent.change(input, { target: { value: "Enter Team" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -367,19 +315,15 @@ describe("OnboardingPage", () => {
   });
 
   it("submits join dialog on Enter key", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce({
-        team_id: "enter-jt",
-        team_name: "Joined",
-        role: "observer",
-      });
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce({
+      team_id: "enter-jt",
+      team_name: "Joined",
+      role: "observer",
+    });
 
     render(<OnboardingPage />);
     fireEvent.click(screen.getByRole("button", { name: /enter a code/i }));
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
     const input = within(screen.getByRole("dialog")).getByRole("textbox");
     fireEvent.change(input, { target: { value: "XYZ" } });
     fireEvent.keyDown(input, { key: "Enter" });

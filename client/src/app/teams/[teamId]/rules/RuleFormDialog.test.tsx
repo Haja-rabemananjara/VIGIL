@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 // Mocks
 
@@ -101,9 +96,7 @@ function renderDialog(overrides: Partial<typeof defaultProps> = {}) {
 
 /** Wait for about.json to load*/
 async function waitForAbout() {
-  await waitFor(() =>
-    expect(screen.getByRole("dialog")).toBeInTheDocument(),
-  );
+  await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
 }
 
 /** Fill minimal valid form: name + service + event + reaction */
@@ -319,9 +312,7 @@ describe("RuleFormDialog", () => {
 
   it("creates a new rule via POST", async () => {
     const savedRule = { ...EXISTING_RULE, id: "new-r", name: "My Rule" };
-    mockApi
-      .mockResolvedValueOnce(ABOUT)
-      .mockResolvedValueOnce(savedRule);
+    mockApi.mockResolvedValueOnce(ABOUT).mockResolvedValueOnce(savedRule);
 
     renderDialog();
     await waitForAbout();
@@ -343,9 +334,7 @@ describe("RuleFormDialog", () => {
 
   it("updates an existing rule via PATCH", async () => {
     const updated = { ...EXISTING_RULE, name: "Updated" };
-    mockApi
-      .mockResolvedValueOnce(ABOUT)
-      .mockResolvedValueOnce(updated);
+    mockApi.mockResolvedValueOnce(ABOUT).mockResolvedValueOnce(updated);
 
     renderDialog({ rule: EXISTING_RULE });
     await waitForAbout();
@@ -412,9 +401,7 @@ describe("RuleFormDialog", () => {
     renderDialog();
     await waitForAbout();
 
-    const checkbox = screen.getByLabelText(
-      /^enabled$/i,
-    ) as HTMLInputElement;
+    const checkbox = screen.getByLabelText(/^enabled$/i) as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
     fireEvent.click(checkbox);
     expect(checkbox.checked).toBe(false);

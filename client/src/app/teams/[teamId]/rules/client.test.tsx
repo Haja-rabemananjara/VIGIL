@@ -43,10 +43,7 @@ vi.mock("@/stores/socket", () => ({
 }));
 
 vi.mock("./RuleFormDialog", () => ({
-  RuleFormDialog: (props: {
-    open: boolean;
-    rule: { name: string } | null;
-  }) => {
+  RuleFormDialog: (props: { open: boolean; rule: { name: string } | null }) => {
     if (!props.open) return null;
     return (
       <div data-testid="rule-form-dialog">
@@ -119,9 +116,7 @@ describe("RulesClient", () => {
   });
 
   it("shows empty state when no rules", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("No rules yet.")).toBeInTheDocument(),
@@ -166,9 +161,7 @@ describe("RulesClient", () => {
   // Manager vs Observer
 
   it("shows 'New rule' button for manager", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
     render(<RulesClient />);
     await waitFor(() =>
       expect(
@@ -178,9 +171,7 @@ describe("RulesClient", () => {
   });
 
   it("hides 'New rule' button and shows manager-only message for observer", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(MEMBERS_OBSERVER);
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_OBSERVER);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText(/only the manager/i)).toBeInTheDocument(),
@@ -318,9 +309,7 @@ describe("RulesClient", () => {
   // Form dialog
 
   it("opens form dialog for new rule", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
     render(<RulesClient />);
     await waitFor(() =>
       expect(
@@ -354,9 +343,7 @@ describe("RulesClient", () => {
   // Activity feed
 
   it("shows empty activity state", async () => {
-    mockApi
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("Recent activity")).toBeInTheDocument(),

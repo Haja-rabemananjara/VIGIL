@@ -16,6 +16,8 @@ VIGIL is a collaborative operational control room that handles both realities of
 | Persistence        | **PostgreSQL**          | Chosen -- see below  |
 | Real-time          | **WebSockets**          | Imposed              |
 | Containerization   | **Docker Compose**      | Imposed              |
+| Test coverage (server) | `cargo-llvm-cov` (LLVM engine) |
+| Test coverage (client) | Vitest 4 + `@vitest/coverage-v8` |
 
 ### Why Tauri over Electron
 
@@ -86,6 +88,8 @@ The project is a monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The cl
 | Repo | `server/src/repo/` | The only layer that touches SQL (via `sqlx`) |
 | WebSocket | `server/src/ws/` | Broadcaster (transport only). Services decide what and to whom |
 | Hooks | `server/src/hooks/` | Rule engine: registry, matcher, templating, reactions |
+- **Server tests** : `server/tests/` (integration), `server/src/**/tests` (unit)
+- **Client tests** : `client/src/**/*.test.{ts,tsx}` (co-located with source files)
 
 The crate is split into `lib.rs` (declares modules, re-exports core types) and a thin `main.rs` (wires config, pool, router). This split lets integration tests import the application as a library and spin up real instances against disposable databases.
 
@@ -164,12 +168,60 @@ Adminer (database UI) is available at `http://localhost:8888`.
 
 ### Running tests
 
+#### Server (Rust)
+
+Run all backend tests (unit + integration):
+
 ```bash
-cd server
-cargo test
+cd server && cargo test
 ```
 
-Each test spins up its own disposable database (via `spawn_app()` in `tests/common/mod.rs`), runs all migrations, and tears it down afterward. Full isolation, safe to run in parallel.
+Run a specific test file:
+
+```bash
+cargo test --test timeline
+cargo test --test reactions
+cargo test --test messages
+```
+
+Test infrastructure uses a shared PostgreSQL template database (`vigil_test_template`) via `OnceLock<Mutex<bool>>` + `CREATE DATABASE ... TEMPLATE`, reducing per-test setup from ~40s to ~500ms. Parallelism is capped at 4 threads (`.cargo/config.toml`) to avoid PostgreSQL connection saturation.
+
+**+90 tests** covering: authentication, teams, incidents lifecycle, releases lifecycle, timeline editing, emoji reactions, private messages, moderation (kick/ban/unban), rule engine, webhook pipeline, WebSocket event delivery.
+
+#### Client (TypeScript / Vitest)
+
+Run all frontend tests:
+
+```bash
+cd client && npm test -- --run
+```
+
+Run in watch mode during development:
+
+```bash
+cd client && npm test
+```
+
+Frontend tests follow the project guideline: **utilities + critical components**. Page integrators (>300 lines) that orchestrate already-tested components are excluded from coverage measurement but are indirectly validated by the backend integration test suite.
+
+#### Coverage reports
+
+Generate both reports:
+
+```bash
+# Server : HTML report in docs/coverage/html/
+cd server && cargo llvm-cov --html --output-dir ../docs/coverage --ignore-run-fail -- --test-threads=2
+
+# Client : HTML report in docs/client-coverage/
+cd client && npm test -- --run --coverage
+```
+
+| Component | Tool | Current coverage | Threshold |
+|-----------|------|-----------------|-----------|
+| Server | `cargo-llvm-cov` | **88.52%** line coverage | 70% |
+| Client | `@vitest/coverage-v8` | **70.90%** | 70% |
+
+Reports are committed in `docs/coverage/` (server) and `docs/client-coverage/` (client).
 
 ### Linting and formatting
 
@@ -177,6 +229,7 @@ Each test spins up its own disposable database (via `spawn_app()` in `tests/comm
 cargo fmt --check
 cargo clippy
 cd client && npx eslint . && npx prettier --check .
+npx prettier --write .
 ```
 
 ---
@@ -563,7 +616,7 @@ Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 
 - **Kick and ban broadcast to the target via `to_user`.** When a member is kicked or banned, the broadcaster sends the event to remaining team members via `to_team` AND directly to the target via `to_user`. This is necessary because `to_team` resolves recipients from active memberships, and the target is already deactivated at broadcast time. Without the direct send, the target's client would never learn it was removed.
 
-- **Ban expiry is checked at join time, not by a background job.** Temporary bans have an `expires_at` timestamp. Rather than running a cron to clean up expired bans, the `POST /teams/join` endpoint checks `expires_at > now()` in its query. An expired ban is simply invisible to the join check. This eliminates operational complexity (no scheduler, no missed runs) at the cost of leaving stale rows in `team_bans` — acceptable since they are never displayed and the partial unique index only covers `status = 'active'`.
+- **Ban expiry is checked at join time, not by a background job.** Temporary bans have an `expires_at` timestamp. Rather than running a cron to clean up expired bans, the `POST /teams/join` endpoint checks `expires_at > now()` in its query. An expired ban is simply invisible to the join check. This eliminates operational complexity (no scheduler, no missed runs) at the cost of leaving stale rows in `team_bans`, acceptable since they are never displayed and the partial unique index only covers `status = 'active'`.
 
 ---
 

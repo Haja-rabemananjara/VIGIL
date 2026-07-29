@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 // Mocks
 
@@ -30,8 +25,12 @@ let mockLastEvent: unknown = null;
 let mockReconnectCount = 0;
 vi.mock("@/stores/socket", () => ({
   useVigilSocket: () => ({
-    get lastEvent() { return mockLastEvent; },
-    get reconnectCount() { return mockReconnectCount; },
+    get lastEvent() {
+      return mockLastEvent;
+    },
+    get reconnectCount() {
+      return mockReconnectCount;
+    },
   }),
 }));
 
@@ -40,8 +39,20 @@ Element.prototype.scrollIntoView = vi.fn();
 import { ConversationClient } from "./client";
 
 const MSGS = [
-  { id: "m1", sender_id: "me", recipient_id: "other-id", content: "Hello!", created_at: 1700000000 },
-  { id: "m2", sender_id: "other-id", recipient_id: "me", content: "Hi there!", created_at: 1700000060 },
+  {
+    id: "m1",
+    sender_id: "me",
+    recipient_id: "other-id",
+    content: "Hello!",
+    created_at: 1700000000,
+  },
+  {
+    id: "m2",
+    sender_id: "other-id",
+    recipient_id: "me",
+    content: "Hi there!",
+    created_at: 1700000060,
+  },
 ];
 
 describe("ConversationClient", () => {
@@ -84,9 +95,7 @@ describe("ConversationClient", () => {
       .mockResolvedValueOnce({ messages: [] })
       .mockResolvedValueOnce({ id: "other-id", display_name: "Bob" });
     render(<ConversationClient />);
-    await waitFor(() =>
-      expect(screen.getByText("Bob")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Bob")).toBeInTheDocument());
   });
 
   it("falls back to userId when user info fetch fails", async () => {
@@ -249,8 +258,6 @@ describe("ConversationClient", () => {
     fireEvent.change(textarea, { target: { value: "will fail" } });
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
-    await waitFor(() =>
-      expect(textarea).toHaveValue("will fail"),
-    );
+    await waitFor(() => expect(textarea).toHaveValue("will fail"));
   });
 });
