@@ -55,7 +55,7 @@ export function MembersClient() {
   const { lastEvent } = useVigilSocket();
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !teamId) return;
     api<MemberView[]>(`/teams/${teamId}/members`, { token })
       .then(setMembers)
       .catch(() => setError(t("common.error")))
@@ -100,6 +100,7 @@ export function MembersClient() {
   }, [lastEvent, teamId]);
 
   async function handleRoleChange(targetUserId: string, newRole: string) {
+    if (!teamId) return;
     setActionError("");
     try {
       await api(`/teams/${teamId}/members/${targetUserId}/role`, {
@@ -119,6 +120,7 @@ export function MembersClient() {
 
   async function handleTransfer() {
     if (!transferTarget) return;
+    if (!teamId) return;
     setActionError("");
     try {
       await api(`/teams/${teamId}/transfer-manager`, {
@@ -133,6 +135,7 @@ export function MembersClient() {
   }
 
   async function handleLeave() {
+    if (!teamId) return;
     setActionError("");
     try {
       await api(`/teams/${teamId}/leave`, { method: "POST", token });
@@ -149,6 +152,7 @@ export function MembersClient() {
 
   async function handleKick() {
     if (!kickTarget) return;
+    if (!teamId) return;
     setActionError("");
     try {
       await api(`/teams/${teamId}/members/${kickTarget.user_id}/kick`, {
@@ -182,6 +186,7 @@ export function MembersClient() {
 
   async function handleBan() {
     if (!banTarget) return;
+    if (!teamId) return;
     setBanLoading(true);
     setActionError("");
     try {
@@ -219,6 +224,7 @@ export function MembersClient() {
   }
 
   async function handleGenerateCode() {
+    if (!teamId) return;
     setInviteLoading(true);
     try {
       const res = await api<{ code: string }>(`/teams/${teamId}/invitations`, {
@@ -235,9 +241,12 @@ export function MembersClient() {
 
   async function handleCopyCode() {
     if (!inviteCode) return;
-    await navigator.clipboard.writeText(inviteCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(inviteCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+    }
   }
 
   if (loading) {
