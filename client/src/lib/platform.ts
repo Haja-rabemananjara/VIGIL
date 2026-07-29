@@ -9,24 +9,22 @@ export function isDesktop(): boolean {
 
 /**
  * Trigger a notification visible to the user.
+ * * Uses the browser Notification API in both web and Tauri contexts.
+ * Tauri's WebView (WebKitGTK on Linux) supports this API natively,
+ * so no platform-specific branch is needed.
  */
 export async function notify(title: string, body: string): Promise<void> {
-  console.log("[notify] called", { title });
   if (typeof window === "undefined") return;
 
   // web
-  if (!("Notification" in window)) {
-    console.log("[notify] Notification API absente");
-    return;
-  }
-  console.log("[notify] permission:", Notification.permission);
+  if (!("Notification" in window)) return;
+
   if (Notification.permission === "default") {
-    const p = await Notification.requestPermission();
-    console.log("[notify] after request:", p);
+    await Notification.requestPermission();
   }
+
   if (Notification.permission === "granted") {
     new Notification(title, { body });
-    console.log("[notify] sent via browser API");
   }
 }
 

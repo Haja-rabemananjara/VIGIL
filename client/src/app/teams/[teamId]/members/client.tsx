@@ -245,8 +245,7 @@ export function MembersClient() {
       await navigator.clipboard.writeText(inviteCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-    }
+    } catch {}
   }
 
   if (loading) {
