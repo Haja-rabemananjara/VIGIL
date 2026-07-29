@@ -27,7 +27,6 @@ export default defineConfig({
         "src/lib/useNotifications.ts",
         "src/app/teams/[teamId]/releases/client.tsx",
         "src/app/teams/[teamId]/releases/[releaseId]/client.tsx",
-        "src/app/onboarding/page.tsx",
         "src/app/messages/[userId]/page.tsx",
         "src/app/settings/services/page.tsx",
         "src/app/teams/[teamId]/page.tsx",
