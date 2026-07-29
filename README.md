@@ -566,6 +566,46 @@ Public discovery endpoint. Clients build their rule form UI entirely from this r
 
 ---
 
+## Security Audit
+
+### Commands
+
+```bash
+# Rust dependencies
+cd server && cargo audit
+
+# Node dependencies
+cd client && npm audit
+```
+
+Running dependency audits regularly is important to catch known vulnerabilities early. Even when all findings are false positives for your use-case, documenting the analysis demonstrates security awareness and helps future contributors understand the risk posture.
+
+### Rust (`cargo audit`)
+
+1 medium-severity advisory and 2 warnings, all on transitive
+dependencies not used directly by VIGIL:
+
+- **rsa** (RUSTSEC-2023-0071, medium 5.9) : Marvin Attack timing
+  sidechannel. VIGIL uses AES-256-GCM and SHA-256, never RSA. Pulled
+  transitively. No upstream fix available.
+- **anyhow** (RUSTSEC-2026-0190) : unsoundness in `downcast_mut()`.
+  VIGIL uses `thiserror`, not `anyhow`. Transitive dependency only.
+- **spin** : yanked version, transitive. No security impact.
+
+### Node (`npm audit`)
+
+12 high-severity advisories, none applicable in production:
+
+- **next** (9 advisories) : all relate to Server Actions, SSR
+  middleware, or the Image Optimization API. VIGIL uses
+  `output: 'export'` (static CSR); no Next.js server runs in
+  production. Static files are served by nginx.
+- **postcss** / **sharp** : transitive Next.js dependencies used at
+  build time only, never exposed at runtime.
+- **brace-expansion to eslint** : development tooling only.
+
+---
+
 ## WebSocket events
 
 Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
