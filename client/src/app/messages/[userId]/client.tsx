@@ -47,7 +47,10 @@ export function ConversationClient() {
   const [sending, setSending] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const { lastEvent, reconnectCount } = useVigilSocket();
+  const lastTypingSent = useRef(0);
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { lastEvent, reconnectCount, send } = useVigilSocket();
 
   useEffect(() => {
     if (!token || !otherUserId) return;
@@ -104,6 +107,23 @@ export function ConversationClient() {
     });
   }, [lastEvent, otherUserId, user?.id]);
 
+  useEffect(() => {
+    if (!lastEvent || lastEvent.type !== "user_typing") return;
+    if ((lastEvent.from as string) !== otherUserId) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsOtherTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000);
+  }, [lastEvent, otherUserId]);
+
+    // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, []);
+
   async function handleSend() {
     const content = composerText.trim();
     if (!content) return;
@@ -124,6 +144,13 @@ export function ConversationClient() {
     } finally {
       setSending(false);
     }
+  }
+
+  function handleTyping() {
+    const now = Date.now();
+    if (now - lastTypingSent.current < 2500) return;
+    lastTypingSent.current = now;
+    send({ type: "typing", recipient_id: otherUserId });
   }
 
   const displayName = otherUser?.display_name ?? otherUserId ?? "";
@@ -186,11 +213,21 @@ export function ConversationClient() {
         <div ref={bottomRef} />
       </div>
 
+      {isOtherTyping && (
+        <p className="px-6 text-xs text-muted-foreground animate-pulse">
+          {displayName} {t("messages.typing")}
+        </p>
+      )}
+
+
       {/* Composer */}
       <div className="flex gap-2 border-t px-6 py-3">
         <textarea
           value={composerText}
-          onChange={(e) => setComposerText(e.target.value)}
+          onChange={(e) => {
+            setComposerText(e.target.value);
+            handleTyping();
+          }}
           placeholder={t("messages.composer.placeholder")}
           rows={1}
           onKeyDown={(e) => {

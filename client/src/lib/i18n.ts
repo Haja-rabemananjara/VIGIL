@@ -131,12 +131,13 @@ const en: Dictionary = {
   "members.ban.reason.placeholder": "e.g. Repeated spam",
   "members.ban.confirm": "Ban member",
   "members.ban.error.pastDate": "Ban expiry must be in the future",
-
   "members.message": "Message",
+
   "messages.title": "Messages",
   "messages.empty": "No messages yet. Say hi!",
   "messages.composer.placeholder": "Write a message...",
   "messages.send": "Send",
+  "messages.typing": "is typing...",
 
   "onboarding.welcome": "Welcome",
   "onboarding.subtitle": "You're not part of any team yet. Get started below.",
