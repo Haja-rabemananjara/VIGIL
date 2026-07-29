@@ -73,7 +73,7 @@ export function IncidentDetailClient() {
   const [assignee, setAssignee] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token || !user) return;
+    if (!token || !user || !teamId || !incidentId) return;
     Promise.all([
       api<Incident>(`/teams/${teamId}/incidents/${incidentId}`, { token }),
       api<{ entries: TimelineEntry[] }>(
@@ -106,7 +106,7 @@ export function IncidentDetailClient() {
   }, [timeline]);
 
   useEffect(() => {
-    if (reconnectCount > 0 && token) {
+    if (reconnectCount > 0 && token && teamId && incidentId) {
       Promise.all([
         api<Incident>(`/teams/${teamId}/incidents/${incidentId}`, { token }),
         api<{ entries: TimelineEntry[] }>(
@@ -268,6 +268,7 @@ export function IncidentDetailClient() {
 
   async function handleTransition(toStatus: IncidentState) {
     if (!incident) return;
+    if (!teamId || !incidentId) return;
     setTransitionLoading(true);
     try {
       const updated = await api<Incident>(
@@ -281,6 +282,7 @@ export function IncidentDetailClient() {
       );
       setTimeline(tl.entries);
     } catch {
+      // Transition state will be corrected by the next WS broadcast
     } finally {
       setTransitionLoading(false);
     }
@@ -291,6 +293,7 @@ export function IncidentDetailClient() {
   }
 
   async function handleAssign(userId: string) {
+    if (!teamId || !incidentId) return;
     setAssignLoading(true);
     setAssignError("");
     try {
@@ -311,6 +314,7 @@ export function IncidentDetailClient() {
   async function handlePost() {
     const content = composerText.trim();
     if (!content) return;
+    if (!teamId || !incidentId) return;
     setComposerLoading(true);
     try {
       const entry = await api<TimelineEntry>(
@@ -323,6 +327,7 @@ export function IncidentDetailClient() {
       });
       setComposerText("");
     } catch {
+      // Timeline entry will appear via WS broadcat if the POST succeeded
     } finally {
       setComposerLoading(false);
     }
@@ -333,8 +338,9 @@ export function IncidentDetailClient() {
   }
 
   async function handleToggleReaction(entryId: string, emoji: string) {
+    if (!user) return;
     const users = reactions[entryId]?.[emoji] || [];
-    const hasReacted = users.includes(user!.id);
+    const hasReacted = users.includes(user.id);
     try {
       if (hasReacted) {
         await api(
@@ -348,7 +354,9 @@ export function IncidentDetailClient() {
           body: { emoji },
         });
       }
-    } catch {}
+    } catch {
+      // Reaction state will be corrected by the next broadcast
+    }
   }
 
   if (loading) {

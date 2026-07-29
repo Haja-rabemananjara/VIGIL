@@ -79,7 +79,7 @@ export function IncidentsClient() {
 
   // Fetch incidents
   async function fetchIncidents() {
-    if (!token) return;
+    if (!token || !teamId) return;
     setLoading(true);
     setError("");
     try {
@@ -102,7 +102,7 @@ export function IncidentsClient() {
 
   // Fetch current user's role in this team
   useEffect(() => {
-    if (!token || !user) return;
+    if (!token || !user || !teamId) return;
     api<{ user_id: string; display_name: string; role: string }[]>(
       `/teams/${teamId}/members`,
       { token },
@@ -161,8 +161,9 @@ export function IncidentsClient() {
         });
 
         if (newState === "open") {
+          if (!token) break;
           api<{ incidents: IncidentRow[] }>(`/teams/${teamId}/incidents`, {
-            token: token!,
+            token,
           })
             .then((data) => setIncidents(data.incidents))
             .catch(() => {});
@@ -202,6 +203,7 @@ export function IncidentsClient() {
       setCreateError(t("incidents.create.error.emptyTitle"));
       return;
     }
+    if (!teamId) return;
     setCreateLoading(true);
     setCreateError("");
     try {
