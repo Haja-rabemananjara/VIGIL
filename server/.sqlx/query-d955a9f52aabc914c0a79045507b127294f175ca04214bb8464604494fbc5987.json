@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO rule_executions (id, rule_id, delivery_id, status, error, executed_at)\n        VALUES ($1, $2, $3, $4, $5, now())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d955a9f52aabc914c0a79045507b127294f175ca04214bb8464604494fbc5987"
+}

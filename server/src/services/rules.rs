@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -165,4 +166,32 @@ pub async fn delete_rule(
         .await;
 
     Ok(())
+}
+
+#[derive(Serialize)]
+pub struct ExecutionResponse {
+    pub id: Uuid,
+    pub rule_name: String,
+    pub reaction_type: String,
+    pub status: String,
+    pub error: Option<String>,
+    pub executed_at: i64,
+}
+
+pub async fn list_recent_executions(
+    pool: &PgPool,
+    team_id: Uuid,
+) -> Result<Vec<ExecutionResponse>, AppError> {
+    let rows = repo::rules::list_recent_executions(pool, team_id, 20).await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| ExecutionResponse {
+            id: r.id,
+            rule_name: r.rule_name,
+            reaction_type: r.reaction_type,
+            status: r.status,
+            error: r.error,
+            executed_at: r.executed_at.timestamp(),
+        })
+        .collect())
 }

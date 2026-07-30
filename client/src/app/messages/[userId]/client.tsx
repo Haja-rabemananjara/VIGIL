@@ -117,7 +117,7 @@ export function ConversationClient() {
     typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000);
   }, [lastEvent, otherUserId]);
 
-    // Cleanup timeout on unmount
+  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -218,7 +218,6 @@ export function ConversationClient() {
           {displayName} {t("messages.typing")}
         </p>
       )}
-
 
       {/* Composer */}
       <div className="flex gap-2 border-t px-6 py-3">

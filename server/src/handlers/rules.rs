@@ -67,6 +67,15 @@ pub async fn update(
     Ok(Json(rule))
 }
 
+pub async fn list_executions(
+    State(state): State<AppState>,
+    _member: crate::extractors::TeamMember,
+    Path(team_id): Path<Uuid>,
+) -> Result<Json<Vec<services::rules::ExecutionResponse>>, AppError> {
+    let executions = services::rules::list_recent_executions(&state.pool, team_id).await?;
+    Ok(Json(executions))
+}
+
 pub async fn delete(
     State(state): State<AppState>,
     RequireManager(_member): RequireManager,

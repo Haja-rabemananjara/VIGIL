@@ -20,8 +20,14 @@ export function useNotifications() {
         break;
       }
       case "incident_escalated": {
-        if (lastEvent.new_severity === "critical" && lastEvent.by !== user?.id) {
-          notify("Critical incident", "An incident has been escalated to critical severity.");
+        if (
+          lastEvent.new_severity === "critical" &&
+          lastEvent.by !== user?.id
+        ) {
+          notify(
+            "Critical incident",
+            "An incident has been escalated to critical severity.",
+          );
         }
         break;
       }
@@ -42,13 +48,25 @@ export function useNotifications() {
       }
       case "private_message_received": {
         if (lastEvent.from !== user?.id) {
-          notify("New message", (lastEvent.content as string) || "You received a private message.");
+          notify(
+            "New message",
+            (lastEvent.content as string) || "You received a private message.",
+          );
         }
         break;
       }
       case "member_role_changed": {
-        if (lastEvent.user_id === user?.id && lastEvent.new_role === "manager") {
-          notify("Role updated", "You are now Manager of this team.");
+        if (lastEvent.user_id === user?.id) {
+          const role = lastEvent.new_role as string;
+          const labels: Record<string, string> = {
+            manager: "You are now Manager of this team.",
+            responder: "You have been promoted to Responder.",
+            observer: "Your role has been changed to Observer.",
+          };
+          const message = labels[role];
+          if (message) {
+            notify("Role updated", message);
+          }
         }
         break;
       }

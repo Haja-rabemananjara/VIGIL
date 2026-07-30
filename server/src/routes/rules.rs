@@ -18,4 +18,8 @@ pub fn routes() -> Router<AppState> {
                 .patch(handlers::rules::update)
                 .delete(handlers::rules::delete),
         )
+        .route(
+            "/teams/{team_id}/rules/executions",
+            get(handlers::rules::list_executions),
+        )
 }

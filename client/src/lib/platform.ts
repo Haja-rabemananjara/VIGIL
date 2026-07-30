@@ -24,7 +24,6 @@ export async function notify(title: string, body: string): Promise<void> {
   } catch (e) {
     console.error("[notify] native error:", e);
   }
-  
 }
 
 /**

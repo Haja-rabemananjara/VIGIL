@@ -5,7 +5,6 @@ use tauri::{
     tray::TrayIconBuilder,
     Listener, Manager, WindowEvent,
 };
-use std::io::Read;
 use tiny_http::{Header, Response, Server};
 
 fn is_uuid_like(segment: &str) -> bool {
@@ -60,8 +59,8 @@ pub fn run() {
             // --- Local HTTP server ---
             let handle = app.handle().clone();
             thread::spawn(move || {
-                let server = Server::http(("127.0.0.1", PORT))
-                    .expect("failed to start local server");
+                let server =
+                    Server::http(("127.0.0.1", PORT)).expect("failed to start local server");
                 let resolver = handle.asset_resolver();
 
                 for mut request in server.incoming_requests() {
