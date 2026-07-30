@@ -113,6 +113,21 @@ pub enum WsEvent {
         error: String,
     },
 
+    RuleCreated {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    RuleUpdated {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    RuleDeleted {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
     TimelineEntryEdited {
         team_id: Uuid,
         incident_id: Uuid,

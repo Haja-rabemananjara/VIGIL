@@ -126,11 +126,18 @@ export function ReleasesClient() {
     if (!lastEvent) return;
     if (lastEvent.team_id !== teamId) return;
 
+    if (
+      lastEvent.type === "member_role_changed" &&
+      lastEvent.user_id === user?.id
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRole(lastEvent.new_role as string);
+    }
+
     if (lastEvent.type === "release_state_changed") {
       const eventId = lastEvent.release_id as string;
       const newState = lastEvent.new_state as string;
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReleases((prev) => {
         const exists = prev.some((r) => r.id === eventId);
         if (exists) {

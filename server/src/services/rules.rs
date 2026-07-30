@@ -9,9 +9,11 @@ use crate::repo::{
     self,
     rules::{NewRule, RulePatch},
 };
+use crate::ws::{Broadcaster, WsEvent};
 
 pub async fn create_rule(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     catalog: &ActionCatalog,
     registry: &ReactionRegistry,
     team_id: Uuid,
@@ -66,6 +68,16 @@ pub async fn create_rule(
     )
     .await?;
 
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::RuleCreated {
+                team_id,
+                rule_id: rule.id,
+            },
+        )
+        .await;
+
     Ok(rule)
 }
 
@@ -81,6 +93,7 @@ pub async fn get_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<Rul
 
 pub async fn update_rule(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     catalog: &ActionCatalog,
     registry: &ReactionRegistry,
     team_id: Uuid,
@@ -126,15 +139,30 @@ pub async fn update_rule(
         reaction_payload: payload_value.as_ref(),
     };
 
-    repo::rules::update_rule(pool, team_id, rule_id, patch)
+    let rule = repo::rules::update_rule(pool, team_id, rule_id, patch)
         .await?
-        .ok_or_else(|| AppError::NotFound("Rule not found".to_string()))
+        .ok_or_else(|| AppError::NotFound("Rule not found".to_string()))?;
+
+    broadcaster
+        .to_team(team_id, WsEvent::RuleUpdated { team_id, rule_id })
+        .await;
+
+    Ok(rule)
 }
 
-pub async fn delete_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<(), AppError> {
+pub async fn delete_rule(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    team_id: Uuid,
+    rule_id: Uuid,
+) -> Result<(), AppError> {
     let deleted = repo::rules::delete_rule(pool, team_id, rule_id).await?;
     if !deleted {
         return Err(AppError::NotFound("Rule not found".to_string()));
     }
+    broadcaster
+        .to_team(team_id, WsEvent::RuleDeleted { team_id, rule_id })
+        .await;
+
     Ok(())
 }

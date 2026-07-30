@@ -84,12 +84,16 @@ export function RulesClient() {
   useEffect(() => {
     if (!lastEvent) return;
     if (
-      lastEvent.type !== "rule_triggered" &&
-      lastEvent.type !== "rule_failed"
+      lastEvent.type === "rule_created" ||
+      lastEvent.type === "rule_updated" ||
+      lastEvent.type === "rule_deleted"
     ) {
-      return;
+      if (lastEvent.team_id === teamId) {
+        api<Rule[]>(`/teams/${teamId}/rules`, { token: token! })
+          .then(setRules)
+          .catch(() => {});
+      }
     }
-    if (lastEvent.team_id !== teamId) return;
 
     // The event carries everything we display, so no refetch here.
     const entry: Execution = {
@@ -102,7 +106,7 @@ export function RulesClient() {
     };
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setExecutions((prev) => [entry, ...prev].slice(0, 20));
-  }, [lastEvent, teamId]);
+  }, [lastEvent, teamId, token]);
 
   function handleSaved(saved: Rule) {
     setRules((prev) => {
