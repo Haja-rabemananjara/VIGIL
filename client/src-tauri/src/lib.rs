@@ -5,6 +5,7 @@ use tauri::{
     tray::TrayIconBuilder,
     Listener, Manager, WindowEvent,
 };
+use std::io::Read;
 use tiny_http::{Header, Response, Server};
 
 fn is_uuid_like(segment: &str) -> bool {
@@ -59,11 +60,37 @@ pub fn run() {
             // --- Local HTTP server ---
             let handle = app.handle().clone();
             thread::spawn(move || {
-                let server =
-                    Server::http(("127.0.0.1", PORT)).expect("failed to start local server");
+                let server = Server::http(("127.0.0.1", PORT))
+                    .expect("failed to start local server");
                 let resolver = handle.asset_resolver();
 
-                for request in server.incoming_requests() {
+                for mut request in server.incoming_requests() {
+                    // Native notification endpoint (bypasses GNOME webview bug)
+                    if request.url().starts_with("/__notify")
+                        && request.method() == &tiny_http::Method::Post
+                    {
+                        let mut body = String::new();
+                        let _ = request.as_reader().read_to_string(&mut body);
+                        if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&body) {
+                            let title = payload["title"].as_str().unwrap_or("VIGIL").to_string();
+                            let body_text = payload["body"].as_str().unwrap_or("").to_string();
+                            thread::spawn(move || {
+                                let _ = Command::new("notify-send")
+                                    .args([
+                                        "--app-name=VIGIL",
+                                        "--urgency=normal",
+                                        "--expire-time=5000",
+                                        &title,
+                                        &body_text,
+                                    ])
+                                    .output();
+                            });
+                        }
+                        let _ = request.respond(Response::from_string("ok"));
+                        continue;
+                    }
+
+                    // SPA asset serving with UUID->placeholder rewriting
                     let asset_path = resolve_asset_path(request.url());
                     let response = match resolver.get(asset_path) {
                         Some(asset) => {

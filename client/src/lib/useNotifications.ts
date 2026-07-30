@@ -17,6 +17,7 @@ export function useNotifications() {
 
   useEffect(() => {
     if (!lastEvent) return;
+    console.log("[useNotifications] event:", lastEvent?.type);
 
     switch (lastEvent.type) {
       case "incident_assigned": {

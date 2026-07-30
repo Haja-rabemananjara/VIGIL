@@ -16,13 +16,24 @@ export function isDesktop(): boolean {
 export async function notify(title: string, body: string): Promise<void> {
   if (typeof window === "undefined") return;
 
-  // web
-  if (!("Notification" in window)) return;
+  if (isDesktop()) {
+    try {
+      await fetch("http://localhost:9527/__notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body }),
+      });
+    } catch (e) {
+      console.error("[notify] native error:", e);
+    }
+    return;
+  }
 
+  // web fallback
+  if (!("Notification" in window)) return;
   if (Notification.permission === "default") {
     await Notification.requestPermission();
   }
-
   if (Notification.permission === "granted") {
     new Notification(title, { body });
   }
