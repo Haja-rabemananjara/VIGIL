@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            re.id,\n            r.name AS rule_name,\n            r.reaction_type,\n            re.status,\n            re.error,\n            re.executed_at\n        FROM rule_executions re\n        JOIN rules r ON r.id = re.rule_id\n        WHERE r.team_id = $1\n        ORDER BY re.executed_at DESC\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "rule_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "reaction_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "executed_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "59c3cecfb29e8f2b59a0518e1c81655be955295024e1f578a0d7e16b619492fe"
+}

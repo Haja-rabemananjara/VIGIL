@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::rules::Rule;
+use crate::error::AppError;
 
 pub struct NewRule<'a> {
     pub id: Uuid,
@@ -194,4 +195,68 @@ pub async fn list_matching_rules(
     .await?;
 
     Ok(rows)
+}
+
+pub struct RuleExecutionRow {
+    pub id: Uuid,
+    pub rule_name: String,
+    pub reaction_type: String,
+    pub status: String,
+    pub error: Option<String>,
+    pub executed_at: chrono::DateTime<chrono::Utc>,
+}
+
+pub async fn list_recent_executions(
+    pool: &PgPool,
+    team_id: Uuid,
+    limit: i64,
+) -> Result<Vec<RuleExecutionRow>, AppError> {
+    let rows = sqlx::query_as!(
+        RuleExecutionRow,
+        r#"
+        SELECT
+            re.id,
+            r.name AS rule_name,
+            r.reaction_type,
+            re.status,
+            re.error,
+            re.executed_at
+        FROM rule_executions re
+        JOIN rules r ON r.id = re.rule_id
+        WHERE r.team_id = $1
+        ORDER BY re.executed_at DESC
+        LIMIT $2
+        "#,
+        team_id,
+        limit,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
+
+pub async fn insert_execution(
+    pool: &PgPool,
+    id: Uuid,
+    rule_id: Uuid,
+    delivery_id: Uuid,
+    status: &str,
+    error: Option<&str>,
+) -> Result<(), AppError> {
+    sqlx::query!(
+        r#"
+        INSERT INTO rule_executions (id, rule_id, delivery_id, status, error, executed_at)
+        VALUES ($1, $2, $3, $4, $5, now())
+        "#,
+        id,
+        rule_id,
+        delivery_id,
+        status,
+        error,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }

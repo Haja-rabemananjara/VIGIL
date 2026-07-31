@@ -56,68 +56,57 @@ describe("getApiUrl", () => {
 });
 
 describe("notify", () => {
-  const originalNotification = global.Notification;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
-    // Silence the console during these tests
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    global.fetch = vi.fn().mockResolvedValue({});
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    global.Notification = originalNotification;
+    global.fetch = originalFetch;
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
   });
 
-  it("returns early when Notification API is absent", async () => {
-    // @ts-expect-error - test setup
-    delete global.Notification;
-    await expect(notify("Title", "Body")).resolves.toBeUndefined();
+  it("returns early when not in desktop mode", async () => {
+    await notify("Test", "Body");
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it("creates a notification when permission is granted", async () => {
-    const NotificationMock = vi.fn();
-    // @ts-expect-error - static property
-    NotificationMock.permission = "granted";
-    // @ts-expect-error - test setup
-    global.Notification = NotificationMock;
-    // @ts-expect-error - required for jsdom
-    window.Notification = NotificationMock;
+  it("sends a fetch to __notify endpoint when in desktop mode", async () => {
+    (window as unknown as Record<string, unknown>).__TAURI__ = true;
 
     await notify("Test", "Body text");
 
-    expect(NotificationMock).toHaveBeenCalledWith("Test", {
-      body: "Body text",
-    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:9527/__notify",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Test", body: "Body text" }),
+      }),
+    );
   });
 
-  it("requests permission when it is default", async () => {
-    const requestPermission = vi.fn().mockResolvedValue("denied");
-    const NotificationMock = vi.fn();
-    // @ts-expect-error - static properties
-    NotificationMock.permission = "default";
-    // @ts-expect-error - static properties
-    NotificationMock.requestPermission = requestPermission;
-    // @ts-expect-error - test setup
-    global.Notification = NotificationMock;
-    // @ts-expect-error - required for jsdom
-    window.Notification = NotificationMock;
+  it("works with __TAURI_INTERNALS__ too", async () => {
+    (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = true;
 
-    await notify("Test", "Body");
+    await notify("Alert", "Something happened");
 
-    expect(requestPermission).toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:9527/__notify",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
-  it("does not create a notification when permission is denied", async () => {
-    const NotificationMock = vi.fn();
-    // @ts-expect-error - static property
-    NotificationMock.permission = "denied";
-    // @ts-expect-error - test setup
-    global.Notification = NotificationMock;
-    // @ts-expect-error - required for jsdom
-    window.Notification = NotificationMock;
+  it("does not throw when fetch fails", async () => {
+    (window as unknown as Record<string, unknown>).__TAURI__ = true;
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("network"),
+    );
 
-    await notify("Test", "Body");
-
-    expect(NotificationMock).not.toHaveBeenCalled();
+    await expect(notify("Test", "Body")).resolves.toBeUndefined();
   });
 });

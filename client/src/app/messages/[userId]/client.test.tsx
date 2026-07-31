@@ -31,6 +31,7 @@ vi.mock("@/stores/socket", () => ({
     get reconnectCount() {
       return mockReconnectCount;
     },
+    send: vi.fn(),
   }),
 }));
 
@@ -259,5 +260,108 @@ describe("ConversationClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
     await waitFor(() => expect(textarea).toHaveValue("will fail"));
+  });
+
+  // Typing indicator
+
+  it("sends typing event on keystroke (throttled)", async () => {
+    const mockSend = vi.fn();
+    vi.mocked(await import("@/stores/socket")).useVigilSocket = (() => ({
+      lastEvent: null,
+      reconnectCount: 0,
+      send: mockSend,
+    })) as never;
+
+    mockApi
+      .mockResolvedValueOnce({ messages: [] })
+      .mockResolvedValueOnce({ id: "other-id", display_name: "Bob" });
+    render(<ConversationClient />);
+    await waitFor(() => expect(screen.getByText("Bob")).toBeInTheDocument());
+
+    const textarea = screen.getByPlaceholderText("Write a message...");
+    fireEvent.change(textarea, { target: { value: "h" } });
+  });
+
+  it("does not duplicate messages with the same id", async () => {
+    mockApi
+      .mockResolvedValueOnce({ messages: MSGS })
+      .mockResolvedValueOnce({ id: "other-id", display_name: "Bob" });
+
+    mockLastEvent = {
+      type: "private_message_received",
+      from: "other-id",
+      to: "me",
+      message_id: "m2",
+      content: "Hi there!",
+      at: 1700000060,
+    };
+
+    render(<ConversationClient />);
+    await waitFor(() => expect(screen.getByText("Hello!")).toBeInTheDocument());
+
+    const matches = screen.getAllByText("Hi there!");
+    expect(matches).toHaveLength(1);
+  });
+
+  it("ignores typing events from other conversations", async () => {
+    mockApi
+      .mockResolvedValueOnce({ messages: [] })
+      .mockResolvedValueOnce({ id: "other-id", display_name: "Bob" });
+    render(<ConversationClient />);
+    await waitFor(() => expect(screen.getByText("Bob")).toBeInTheDocument());
+
+    mockLastEvent = { type: "user_typing", from: "someone-else" };
+    render(<ConversationClient />);
+
+    expect(screen.queryByText(/is typing/i)).not.toBeInTheDocument();
+  });
+
+  it("ignores WS events from other conversations", async () => {
+    mockApi
+      .mockResolvedValueOnce({ messages: [] })
+      .mockResolvedValueOnce({ id: "other-id", display_name: "Bob" });
+    render(<ConversationClient />);
+    await waitFor(() => expect(screen.getByText("Bob")).toBeInTheDocument());
+
+    mockLastEvent = {
+      type: "private_message_received",
+      from: "someone-else",
+      to: "another-person",
+      message_id: "m99",
+      content: "Not for us",
+      at: 1700005000,
+    };
+    render(<ConversationClient />);
+
+    expect(screen.queryByText("Not for us")).not.toBeInTheDocument();
+  });
+
+  // Reconnect
+  it("re-fetches messages on reconnect", async () => {
+    mockApi
+      .mockResolvedValueOnce({ messages: MSGS })
+      .mockResolvedValueOnce({ id: "other-id", display_name: "Bob" });
+    render(<ConversationClient />);
+    await waitFor(() => expect(screen.getByText("Hello!")).toBeInTheDocument());
+
+    // Simulate reconnect
+    mockReconnectCount = 1;
+    mockApi.mockResolvedValueOnce({
+      messages: [
+        ...MSGS,
+        {
+          id: "m3",
+          sender_id: "other-id",
+          recipient_id: "me",
+          content: "After reconnect",
+          created_at: 1700000120,
+        },
+      ],
+    });
+
+    render(<ConversationClient />);
+    await waitFor(() =>
+      expect(screen.getByText("After reconnect")).toBeInTheDocument(),
+    );
   });
 });

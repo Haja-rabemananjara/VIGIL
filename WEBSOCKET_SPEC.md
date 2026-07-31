@@ -351,6 +351,33 @@ Sent once after a successful handshake. Not broadcast.
 **Trigger:** The engine fails to execute a reaction. Each rule runs in isolation; a failure in one never affects others.
 **Delivery:** team.
 
+### `rule_created`
+
+```json
+{ "type": "rule_created", "team_id": "uuid", "rule_id": "uuid" }
+```
+
+**Trigger:** Manager creates a rule.
+**Delivery:** team.
+
+### `rule_updated`
+
+```json
+{ "type": "rule_updated", "team_id": "uuid", "rule_id": "uuid" }
+```
+
+**Trigger:** Manager updates a rule.
+**Delivery:** team.
+
+### `rule_deleted`
+
+```json
+{ "type": "rule_deleted", "team_id": "uuid", "rule_id": "uuid" }
+```
+
+**Trigger:** Manager deletes a rule.
+**Delivery:** team.
+
 ### `member_kicked`
 
 ```json
@@ -493,6 +520,9 @@ Sent once after a successful handshake. Not broadcast.
 | `private_message_received` | bilateral | yes |
 | `reaction_added` | team | yes |
 | `reaction_removed` | team | yes |
+| `rule_created` | team | yes |
+| `rule_updated` | team | yes |
+| `rule_deleted` | team | yes |
 
 ---
 
@@ -502,4 +532,10 @@ Sent once after a successful handshake. Not broadcast.
 |---------|-------------|-----------|
 | User assigned to an incident | `incident_assigned` | `assigned_to` = current user |
 | Incident reaches critical | `incident_escalated` | `new_severity` = `critical` |
-| Release blocked | `release_state_changed` | `new_state` = `blocked` |
+| Release state changed | `release_state_changed` | all states except `created` |
+| Private message received | `private_message_received` | `from` ≠ current user |
+| Promoted to Manager | `member_role_changed` | `user_id` = current user, `new_role` = `manager` |
+| Rule executed | `rule_triggered` | always |
+| Rule failed | `rule_failed` | always |
+
+Notifications are desktop-only, dispatched via `notify-send` through the embedded HTTP server. The web client does not emit notifications.

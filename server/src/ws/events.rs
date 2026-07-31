@@ -113,6 +113,21 @@ pub enum WsEvent {
         error: String,
     },
 
+    RuleCreated {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    RuleUpdated {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    RuleDeleted {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
     TimelineEntryEdited {
         team_id: Uuid,
         incident_id: Uuid,
@@ -144,6 +159,10 @@ pub enum WsEvent {
         content: String,
         at: i64,
     },
+
+    UserTyping {
+        from: Uuid,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,5 +177,8 @@ pub enum WsClientMessage {
         resource_type: String,
         resource_id: Uuid,
         team_id: Uuid,
+    },
+    Typing {
+        recipient_id: Uuid,
     },
 }

@@ -57,16 +57,34 @@ export function RulesClient() {
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-
     Promise.all([
       api<Rule[]>(`/teams/${teamId}/rules`, { token }),
       api<Member[]>(`/teams/${teamId}/members`, { token }),
+      api<
+        {
+          id: string;
+          rule_name: string;
+          reaction_type: string;
+          status: string;
+          error: string | null;
+          executed_at: number;
+        }[]
+      >(`/teams/${teamId}/rules/executions`, { token }),
     ])
-      .then(([fetchedRules, members]) => {
+      .then(([fetchedRules, members, fetchedExecs]) => {
         if (cancelled) return;
         setRules(fetchedRules);
         setIsManager(
           members.find((m) => m.user_id === user?.id)?.role === "manager",
+        );
+        setExecutions(
+          fetchedExecs.map((e) => ({
+            key: e.id,
+            ruleName: e.rule_name,
+            reactionType: e.reaction_type,
+            error: e.error,
+            at: e.executed_at * 1000,
+          })),
         );
       })
       .catch(() => {
@@ -75,7 +93,6 @@ export function RulesClient() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-
     return () => {
       cancelled = true;
     };
@@ -83,26 +100,36 @@ export function RulesClient() {
 
   useEffect(() => {
     if (!lastEvent) return;
+
     if (
-      lastEvent.type !== "rule_triggered" &&
-      lastEvent.type !== "rule_failed"
+      lastEvent.type === "rule_created" ||
+      lastEvent.type === "rule_updated" ||
+      lastEvent.type === "rule_deleted"
     ) {
+      if (lastEvent.team_id === teamId) {
+        api<Rule[]>(`/teams/${teamId}/rules`, { token: token! })
+          .then(setRules)
+          .catch(() => {});
+      }
       return;
     }
-    if (lastEvent.team_id !== teamId) return;
 
-    // The event carries everything we display, so no refetch here.
-    const entry: Execution = {
-      key: `${lastEvent.rule_id as string}-${Date.now()}`,
-      ruleName: lastEvent.rule_name as string,
-      reactionType: lastEvent.reaction_type as string,
-      error:
-        lastEvent.type === "rule_failed" ? (lastEvent.error as string) : null,
-      at: Date.now(),
-    };
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setExecutions((prev) => [entry, ...prev].slice(0, 20));
-  }, [lastEvent, teamId]);
+    if (
+      lastEvent.type === "rule_triggered" ||
+      lastEvent.type === "rule_failed"
+    ) {
+      const entry: Execution = {
+        key: `${lastEvent.rule_id as string}-${Date.now()}`,
+        ruleName: lastEvent.rule_name as string,
+        reactionType: lastEvent.reaction_type as string,
+        error:
+          lastEvent.type === "rule_failed" ? (lastEvent.error as string) : null,
+        at: Date.now(),
+      };
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExecutions((prev) => [entry, ...prev].slice(0, 20));
+    }
+  }, [lastEvent, teamId, token]);
 
   function handleSaved(saved: Rule) {
     setRules((prev) => {

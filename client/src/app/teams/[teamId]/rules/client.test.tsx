@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-// Mocks
+//  Mocks
 
 const mockApi = vi.fn();
 vi.mock("@/lib/api", () => {
@@ -92,6 +92,18 @@ const RULE = {
 const MEMBERS_MANAGER = [{ user_id: "me", role: "manager" }];
 const MEMBERS_OBSERVER = [{ user_id: "me", role: "observer" }];
 
+/** Mock the 3 initial fetches: rules, members, executions */
+function mockInitialFetch(
+  rules: unknown[] = [],
+  members: unknown[] = MEMBERS_MANAGER,
+  executions: unknown[] = [],
+) {
+  mockApi
+    .mockResolvedValueOnce(rules)
+    .mockResolvedValueOnce(members)
+    .mockResolvedValueOnce(executions);
+}
+
 describe("RulesClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -99,7 +111,7 @@ describe("RulesClient", () => {
     capturedOnConfirm = null;
   });
 
-  // Loading / Error / Empty
+  //  Loading / Error / Empty
 
   it("shows loading state", () => {
     mockApi.mockImplementation(() => new Promise(() => {}));
@@ -116,19 +128,17 @@ describe("RulesClient", () => {
   });
 
   it("shows empty state when no rules", async () => {
-    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("No rules yet.")).toBeInTheDocument(),
     );
   });
 
-  // Rules rendering
+  //  Rules rendering
 
   it("renders rule name and enabled badge", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() => {
       expect(screen.getByText("CI failure rule")).toBeInTheDocument();
@@ -137,9 +147,7 @@ describe("RulesClient", () => {
   });
 
   it("shows disabled badge for disabled rule", async () => {
-    mockApi
-      .mockResolvedValueOnce([{ ...RULE, enabled: false }])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([{ ...RULE, enabled: false }], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("CI failure rule")).toBeInTheDocument(),
@@ -148,9 +156,7 @@ describe("RulesClient", () => {
   });
 
   it("shows trigger and reaction info", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() => {
       expect(screen.getByText(/github\.workflow_run/)).toBeInTheDocument();
@@ -158,10 +164,10 @@ describe("RulesClient", () => {
     });
   });
 
-  // Manager vs Observer
+  //  Manager vs Observer
 
   it("shows 'New rule' button for manager", async () => {
-    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(
@@ -171,7 +177,7 @@ describe("RulesClient", () => {
   });
 
   it("hides 'New rule' button and shows manager-only message for observer", async () => {
-    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_OBSERVER);
+    mockInitialFetch([], MEMBERS_OBSERVER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText(/only the manager/i)).toBeInTheDocument(),
@@ -182,9 +188,7 @@ describe("RulesClient", () => {
   });
 
   it("shows edit/toggle/delete buttons for manager", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("CI failure rule")).toBeInTheDocument(),
@@ -198,9 +202,7 @@ describe("RulesClient", () => {
   });
 
   it("hides action buttons for observer", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_OBSERVER);
+    mockInitialFetch([RULE], MEMBERS_OBSERVER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("CI failure rule")).toBeInTheDocument(),
@@ -213,18 +215,17 @@ describe("RulesClient", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Toggle
+  //  Toggle
 
-  it("toggles rule enabled to disabled", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER)
-      .mockResolvedValueOnce({ ...RULE, enabled: false });
+  it("toggles rule enabled → disabled", async () => {
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
+    mockApi.mockResolvedValueOnce({ ...RULE, enabled: false });
 
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("CI failure rule")).toBeInTheDocument(),
     );
+
     fireEvent.click(screen.getByRole("button", { name: /^disabled$/i }));
 
     await waitFor(() =>
@@ -239,10 +240,8 @@ describe("RulesClient", () => {
   });
 
   it("shows error when toggle fails", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER)
-      .mockRejectedValueOnce(new ApiError(500, "server", "Toggle failed"));
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
+    mockApi.mockRejectedValueOnce(new ApiError(500, "server", "Toggle failed"));
 
     render(<RulesClient />);
     await waitFor(() =>
@@ -255,13 +254,11 @@ describe("RulesClient", () => {
     );
   });
 
-  // Delete
+  //  Delete
 
   it("opens confirm dialog and deletes rule", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER)
-      .mockResolvedValueOnce(undefined);
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
+    mockApi.mockResolvedValueOnce(undefined);
 
     render(<RulesClient />);
     await waitFor(() =>
@@ -285,10 +282,8 @@ describe("RulesClient", () => {
   });
 
   it("shows error when delete fails", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER)
-      .mockRejectedValueOnce(new ApiError(500, "err", "Delete failed"));
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
+    mockApi.mockRejectedValueOnce(new ApiError(500, "err", "Delete failed"));
 
     render(<RulesClient />);
     await waitFor(() =>
@@ -306,10 +301,10 @@ describe("RulesClient", () => {
     );
   });
 
-  // Form dialog
+  //  Form dialog
 
   it("opens form dialog for new rule", async () => {
-    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(
@@ -325,9 +320,7 @@ describe("RulesClient", () => {
   });
 
   it("opens form dialog for editing a rule", async () => {
-    mockApi
-      .mockResolvedValueOnce([RULE])
-      .mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([RULE], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("CI failure rule")).toBeInTheDocument(),
@@ -343,7 +336,7 @@ describe("RulesClient", () => {
   // Activity feed
 
   it("shows empty activity state", async () => {
-    mockApi.mockResolvedValueOnce([]).mockResolvedValueOnce(MEMBERS_MANAGER);
+    mockInitialFetch([], MEMBERS_MANAGER, []);
     render(<RulesClient />);
     await waitFor(() =>
       expect(screen.getByText("Recent activity")).toBeInTheDocument(),

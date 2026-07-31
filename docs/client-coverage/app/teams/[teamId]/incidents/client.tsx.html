@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">42.2% </span>
+                <span class="strong">40.7% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>46/109</span>
+                <span class='fraction'>46/113</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">31.57% </span>
+                <span class="strong">32.81% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>18/57</span>
+                <span class='fraction'>21/64</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">44.89% </span>
+                <span class="strong">44% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>44/98</span>
+                <span class='fraction'>44/100</span>
             </div>
         
             
@@ -461,7 +461,9 @@
 <a name='L396'></a><a href='#L396'>396</a>
 <a name='L397'></a><a href='#L397'>397</a>
 <a name='L398'></a><a href='#L398'>398</a>
-<a name='L399'></a><a href='#L399'>399</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L399'></a><a href='#L399'>399</a>
+<a name='L400'></a><a href='#L400'>400</a>
+<a name='L401'></a><a href='#L401'>401</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -625,8 +627,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -634,6 +634,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -646,16 +649,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -664,7 +657,18 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -940,7 +944,7 @@ export function IncidentsClient() {
 &nbsp;
   // Fetch incidents
   async function fetchIncidents() {
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (!token) <span class="cstat-no" title="statement not covered" >return;</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!token || !teamId) <span class="cstat-no" title="statement not covered" >return;</span>
     setLoading(true);
     setError("");
     try {
@@ -963,7 +967,7 @@ export function IncidentsClient() {
 &nbsp;
   // Fetch current user's role in this team
   useEffect(() =&gt; {
-    <span class="missing-if-branch" title="if path not taken" >I</span>if (!token || !user) <span class="cstat-no" title="statement not covered" >return;</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!token || !user || !teamId) <span class="cstat-no" title="statement not covered" >return;</span>
     api&lt;{ user_id: string; display_name: string; role: string }[]&gt;(
       `/teams/${teamId}/members`,
       { token },
@@ -1022,8 +1026,9 @@ export function IncidentsClient() {
         });
 &nbsp;
 <span class="cstat-no" title="statement not covered" >        if (newState === "open") {</span>
+<span class="cstat-no" title="statement not covered" >          if (!token) <span class="cstat-no" title="statement not covered" >break;</span></span>
 <span class="cstat-no" title="statement not covered" >          api&lt;{ incidents: IncidentRow[] }&gt;(`/teams/${teamId}/incidents`, {</span>
-            token: token!,
+            token,
           })
             .then(<span class="fstat-no" title="function not covered" >(d</span>ata) =&gt; <span class="cstat-no" title="statement not covered" >setIncidents(data.incidents))</span>
             .catch(<span class="fstat-no" title="function not covered" >() =&gt; {</span>});
@@ -1063,6 +1068,7 @@ export function IncidentsClient() {
 <span class="cstat-no" title="statement not covered" >      setCreateError(t("incidents.create.error.emptyTitle"));</span>
 <span class="cstat-no" title="statement not covered" >      return;</span>
     }
+<span class="cstat-no" title="statement not covered" >    if (!teamId) <span class="cstat-no" title="statement not covered" >return;</span></span>
 <span class="cstat-no" title="statement not covered" >    setCreateLoading(true);</span>
 <span class="cstat-no" title="statement not covered" >    setCreateError("");</span>
 <span class="cstat-no" title="statement not covered" >    try {</span>
@@ -1264,7 +1270,7 @@ export function IncidentsClient() {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-29T09:14:39.793Z
+                at 2026-07-31T09:54:40.077Z
             </div>
         <script src="../../../../prettify.js"></script>
         <script>

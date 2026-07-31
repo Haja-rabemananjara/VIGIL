@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -9,9 +10,11 @@ use crate::repo::{
     self,
     rules::{NewRule, RulePatch},
 };
+use crate::ws::{Broadcaster, WsEvent};
 
 pub async fn create_rule(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     catalog: &ActionCatalog,
     registry: &ReactionRegistry,
     team_id: Uuid,
@@ -66,6 +69,16 @@ pub async fn create_rule(
     )
     .await?;
 
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::RuleCreated {
+                team_id,
+                rule_id: rule.id,
+            },
+        )
+        .await;
+
     Ok(rule)
 }
 
@@ -81,6 +94,7 @@ pub async fn get_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<Rul
 
 pub async fn update_rule(
     pool: &PgPool,
+    broadcaster: Broadcaster,
     catalog: &ActionCatalog,
     registry: &ReactionRegistry,
     team_id: Uuid,
@@ -126,15 +140,58 @@ pub async fn update_rule(
         reaction_payload: payload_value.as_ref(),
     };
 
-    repo::rules::update_rule(pool, team_id, rule_id, patch)
+    let rule = repo::rules::update_rule(pool, team_id, rule_id, patch)
         .await?
-        .ok_or_else(|| AppError::NotFound("Rule not found".to_string()))
+        .ok_or_else(|| AppError::NotFound("Rule not found".to_string()))?;
+
+    broadcaster
+        .to_team(team_id, WsEvent::RuleUpdated { team_id, rule_id })
+        .await;
+
+    Ok(rule)
 }
 
-pub async fn delete_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<(), AppError> {
+pub async fn delete_rule(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    team_id: Uuid,
+    rule_id: Uuid,
+) -> Result<(), AppError> {
     let deleted = repo::rules::delete_rule(pool, team_id, rule_id).await?;
     if !deleted {
         return Err(AppError::NotFound("Rule not found".to_string()));
     }
+    broadcaster
+        .to_team(team_id, WsEvent::RuleDeleted { team_id, rule_id })
+        .await;
+
     Ok(())
+}
+
+#[derive(Serialize)]
+pub struct ExecutionResponse {
+    pub id: Uuid,
+    pub rule_name: String,
+    pub reaction_type: String,
+    pub status: String,
+    pub error: Option<String>,
+    pub executed_at: i64,
+}
+
+pub async fn list_recent_executions(
+    pool: &PgPool,
+    team_id: Uuid,
+) -> Result<Vec<ExecutionResponse>, AppError> {
+    let rows = repo::rules::list_recent_executions(pool, team_id, 20).await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| ExecutionResponse {
+            id: r.id,
+            rule_name: r.rule_name,
+            reaction_type: r.reaction_type,
+            status: r.status,
+            error: r.error,
+            executed_at: r.executed_at.timestamp(),
+        })
+        .collect())
 }

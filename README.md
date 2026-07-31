@@ -252,15 +252,21 @@ Requires the AppIndicator GNOME extension (preinstalled on Ubuntu 24.04).
 
 ### Native OS notifications
 
-Three triggers, fired from a central hook (`client/src/lib/useNotifications.ts`):
+Three required triggers plus extended notifications, all fired from a
+central hook (`client/src/lib/useNotifications.ts`):
 
 - Incident assigned to the current user (`incident_assigned`)
 - Incident escalated to critical severity (`incident_escalated`)
 - Release blocked by a linked incident (`release_state_changed`)
+- All release state changes (started, completed, cancelled, blocked)
+- Private message received (`private_message_received`)
+- Promotion to Manager (`member_role_changed`)
+- Rule triggered or failed (`rule_triggered`, `rule_failed`)
 
-Notifications use the browser `Notification` API from within the WebKitGTK webview, dispatched uniformly on web and desktop through `platform.ts`.
+On desktop, notifications are dispatched via the system `notify-send` command, called from the embedded Rust server (`tiny_http`) through a `/__notify` endpoint. This bypasses a documented GNOME 46+ bug (tauri-apps/tauri#14095, tauri-apps/plugins-workspace#2566) where notifications emitted from a webview are silently dropped regardless of the emission channel (Tauri plugin, browser API, or custom command).
+The `notify-send` approach works reliably because GNOME recognizes it as a system-level emitter.
 
-**Known limitation.** On GNOME 46+, notifications emitted from a webview may not display even though the API returns success. This is a documented environment bug (tauri-apps/tauri#14095, tauri-apps/plugins-workspace#2566), independent of application code. Verified by logs showing successful emission on every trigger.
+Notifications are desktop-only by design.
 
 ### Building the AppImage
 
@@ -430,6 +436,7 @@ All endpoints return errors in a uniform shape:
 | GET | `/teams/{team_id}/rules/{id}` | member | Single rule |
 | PATCH | `/teams/{team_id}/rules/{id}` | Manager | Partial update |
 | DELETE | `/teams/{team_id}/rules/{id}` | Manager | 204 |
+| GET | `/teams/{team_id}/rules/executions` | member | 20 most recent rule executions for this team |
 
 ### Service connections
 
@@ -463,7 +470,6 @@ Full DDL lives in `server/migrations/`. Nineteen tables in seven blocks:
 
 **Automation**: `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`. `service_connections` stores AES-256-GCM-encrypted tokens. `rules` separates filterable columns from JSONB payloads.
 
-**Audit**: `audit_log`. No foreign keys (survives deletions). Append-only.
 
 ### Conventions
 
@@ -515,11 +521,37 @@ Dot-notation paths matched against the payload. All must match (AND). `{}` match
 | `vigil_validate_release_step` | vigil | Advances a release step |
 | `discord_message` | discord | Posts a message to a Discord webhook URL |
 
-### Service connections
+### Testing the rule engine locally
 
-Connected per-user via `POST /me/services/{service}`. Tokens encrypted AES-256-GCM at rest, decrypted just-in-time inside reactions. Never logged, never returned.
+The rule engine can be tested without a real GitHub webhook by simulating one with `curl`. The HMAC signature is computed locally using the same `WEBHOOK_SECRET` as the server.
 
-**Known limitation.** GitHub tokens are stored but not consumed at runtime: the webhook receiver authenticates via a global `WEBHOOK_SECRET` (HMAC), not per-user tokens.
+**Prerequisites:** a rule must be active in the target team, matching `github` / `workflow_run` with filter `workflow_run.conclusion: failure`.
+
+```bash
+# Read the webhook secret from .env
+SECRET=$(grep WEBHOOK_SECRET .env | cut -d= -f2)
+
+# Simulated GitHub CI failure payload
+PAYLOAD='{"action":"completed","workflow_run":{"name":"Build","conclusion":"failure","html_url":"https://github.com/test/run/1"},"repository":{"name":"vigil","full_name":"haja/vigil"}}'
+
+# Compute HMAC-SHA256 signature
+SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '"'"'{print "sha256="$2}'"'"')
+
+# Send the simulated webhook
+curl -X POST http://localhost:8080/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-Hub-Signature-256: $SIGNATURE" \
+  -H "X-GitHub-Event: workflow_run" \
+  -d "$PAYLOAD"
+```
+
+Expected: `202 Accepted`. If a matching rule exists, an incident is created in the rule's team and a `rule_triggered` event is broadcast via WebSocket. If the rule also targets Discord, a message is sent to the configured channel.
+
+For a live demo with a real GitHub repository, expose the server via `ngrok http 8080` and configure the resulting URL as a webhook in the repository settings (Settings > Webhooks, secret = `WEBHOOK_SECRET`, content type = `application/json`, events = Workflow runs).
+
+### Rule execution history
+
+Every rule execution (success or failure) is persisted in the `rule_executions` table with the delivery ID, status, error message (if any), and timestamp. The 20 most recent executions per team are exposed via `GET /teams/{team_id}/rules/executions` and displayed in the "Recent activity" panel of the rules page. New executions also arrive in real time via `rule_triggered` / `rule_failed` WebSocket events.
 
 ---
 

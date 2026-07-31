@@ -136,12 +136,18 @@ export function ReleaseDetailClient() {
     if (lastEvent.team_id !== teamId) return;
 
     if (
+      lastEvent.type === "member_role_changed" &&
+      lastEvent.user_id === user?.id
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRole(lastEvent.new_role as string);
+    }
+
+    if (
       lastEvent.type === "release_state_changed" &&
       lastEvent.release_id === releaseId
     ) {
       // Re-fetch to get full updated state
-
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRelease();
     }
 

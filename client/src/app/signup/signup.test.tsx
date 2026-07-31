@@ -27,6 +27,7 @@ vi.mock("@/lib/api", () => {
 });
 
 import SignupPage from "./page";
+import { ApiError } from "@/lib/api";
 
 describe("SignupPage", () => {
   beforeEach(() => {
@@ -164,5 +165,49 @@ describe("SignupPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();
     });
+  });
+
+  it("shows email-taken error on 409", async () => {
+    mockSignup.mockRejectedValueOnce(
+      new ApiError(409, "conflict", "Email taken"),
+    );
+
+    render(<SignupPage />);
+    fireEvent.change(screen.getByLabelText(/name/i), {
+      target: { value: "Alice" },
+    });
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "alice@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/already in use/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("shows password-too-short error on 422", async () => {
+    mockSignup.mockRejectedValueOnce(
+      new ApiError(422, "validation", "Too short"),
+    );
+
+    render(<SignupPage />);
+    fireEvent.change(screen.getByLabelText(/name/i), {
+      target: { value: "Alice" },
+    });
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "alice@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/^password$/i), {
+      target: { value: "short" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign up/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/at least 8/i)).toBeInTheDocument(),
+    );
   });
 });
