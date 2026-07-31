@@ -1,4 +1,5 @@
 use axum::extract::FromRequestParts;
+use axum::extract::Path;
 use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
 use axum::{Json, extract::State, http::StatusCode};
@@ -84,6 +85,29 @@ pub async fn me(user: AuthUser) -> Json<UserResponse> {
         language: user.language,
         created_at: user.created_at.timestamp(),
     })
+}
+
+pub async fn get_user_public(
+    State(state): State<AppState>,
+    _auth_user: AuthUser,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT id, display_name
+        FROM users
+        WHERE id = $1
+        "#,
+        user_id,
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("user not found".into()))?;
+
+    Ok(Json(serde_json::json!({
+        "id": row.id,
+        "display_name": row.display_name,
+    })))
 }
 
 #[derive(Debug, Clone)]

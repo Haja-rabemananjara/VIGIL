@@ -23,7 +23,11 @@ interface AboutResponse {
     services: {
       name: string;
       actions: { name: string; description: string }[];
-      reactions: { name: string; description: string; payload_example: string; }[];
+      reactions: {
+        name: string;
+        description: string;
+        payload_example: string;
+      }[];
     }[];
   };
 }
@@ -92,8 +96,7 @@ export function RuleFormDialog({
 
   const triggerServices =
     about?.server.services.filter((s) => s.actions.length > 0) ?? [];
-  const events =
-    triggerServices.find((s) => s.name === service)?.actions ?? [];
+  const events = triggerServices.find((s) => s.name === service)?.actions ?? [];
   const reactions =
     about?.server.services.flatMap((s) =>
       s.reactions.map((r) => ({ ...r, service: s.name })),
@@ -231,8 +234,9 @@ export function RuleFormDialog({
               onChange={(e) => {
                 const kind = e.target.value;
                 setReactionType(kind);
-                const example = reactions.find((r) => r.name === kind)
-                  ?.payload_example;
+                const example = reactions.find(
+                  (r) => r.name === kind,
+                )?.payload_example;
                 if (example && isPristinePayload(payload)) {
                   setPayload(formatJson(example));
                 }
@@ -242,7 +246,7 @@ export function RuleFormDialog({
               <option value="">...</option>
               {reactions.map((r) => (
                 <option key={r.name} value={r.name}>
-                  {r.service}  {r.name}
+                  {r.service} {r.name}
                 </option>
               ))}
             </select>

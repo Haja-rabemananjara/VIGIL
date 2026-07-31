@@ -10,8 +10,10 @@ import { useAuth } from "@/stores/auth";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useVigilSocket } from "@/stores/socket";
-import { ConnectionIndicator } from "./ConnectionIndicator"
+import { ConnectionIndicator } from "./ConnectionIndicator";
 import { useNotifications } from "@/lib/useNotifications";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { useRouter } from "next/router";
 
 interface AppShellProps {
   children: ReactNode;
@@ -30,9 +32,9 @@ export function AppShell({ children }: AppShellProps) {
 
   const pathname = usePathname();
   const [teams, setTeams] = useState<TeamView[]>([]);
-  const { status } = useVigilSocket();
+  const { status, lastEvent } = useVigilSocket();
+  const { user } = useAuth();
 
-  // Active team id read from the URL: /teams/{id}/...
   const activeTeamId = pathname?.startsWith("/teams/")
     ? pathname.split("/")[2]
     : null;
@@ -41,8 +43,35 @@ export function AppShell({ children }: AppShellProps) {
     if (!token) return;
     api<TeamView[]>("/teams", { token })
       .then(setTeams)
-      .catch(() => { });
+      .catch(() => {});
   }, [token]);
+
+  useEffect(() => {
+    if (!lastEvent) return;
+
+    if (
+      (lastEvent.type === "member_kicked" ||
+        lastEvent.type === "member_banned") &&
+      (lastEvent.user_id as string) === user?.id
+    ) {
+      const removedTeamId = lastEvent.team_id as string;
+
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTeams((prev) => {
+        const remaining = prev.filter((t) => t.id !== removedTeamId);
+
+        if (activeTeamId === removedTeamId) {
+          if (remaining.length > 0) {
+            window.location.href = `/teams/${remaining[0].id}/incidents`;
+          } else {
+            window.location.href = "/onboarding";
+          }
+        }
+
+        return remaining;
+      });
+    }
+  }, [lastEvent, user?.id, activeTeamId]);
 
   return (
     <div className="flex h-screen flex-col">

@@ -141,6 +141,12 @@ async fn handle_socket(mut socket: WebSocket, state: AppState, user_id: uuid::Uu
                                         watchers,
                                     }).await;
                                 }
+                                WsClientMessage::Typing { recipient_id } => {
+                                    state.broadcaster.to_user(
+                                        recipient_id,
+                                        WsEvent::UserTyping { from: user_id },
+                                    );
+                                }
                             }
                         }
                     }

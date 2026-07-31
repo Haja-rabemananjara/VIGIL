@@ -11,22 +11,18 @@ export function isDesktop(): boolean {
  * Trigger a notification visible to the user.
  */
 export async function notify(title: string, body: string): Promise<void> {
-  console.log("[notify] called", { title });
   if (typeof window === "undefined") return;
 
-  // web
-  if (!("Notification" in window)) {
-    console.log("[notify] Notification API absente");
-    return;
-  }
-  console.log("[notify] permission:", Notification.permission);
-  if (Notification.permission === "default") {
-    const p = await Notification.requestPermission();
-    console.log("[notify] after request:", p);
-  }
-  if (Notification.permission === "granted") {
-    new Notification(title, { body });
-    console.log("[notify] sent via browser API");
+  if (!isDesktop()) return;
+
+  try {
+    await fetch("http://localhost:9527/__notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, body }),
+    });
+  } catch (e) {
+    console.error("[notify] native error:", e);
   }
 }
 

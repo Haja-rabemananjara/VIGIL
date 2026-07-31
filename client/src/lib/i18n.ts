@@ -2,14 +2,18 @@ type Dictionary = Record<string, string>;
 
 const en: Dictionary = {
   "app.name": "VIGIL",
-  "common.loading": "Loading...",
-  "common.error": "Something went wrong",
+  "action.back": "Back",
   "action.cancel": "Cancel",
   "action.close": "Close",
   "action.confirm": "Confirm",
   "action.copied": "Copied!",
   "action.copy": "Copy",
   "action.create": "Create",
+  "action.edit": "Edit",
+  "action.save": "Save",
+  "common.loading": "Loading...",
+  "common.error": "Something went wrong",
+  "reactions.add": "React",
 
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",
@@ -29,6 +33,8 @@ const en: Dictionary = {
   "auth.error.invalidCredentials": "Invalid email or password",
   "auth.error.emailTaken": "This email is already in use",
   "auth.error.passwordTooShort": "Password must be at least 8 characters",
+  "auth.showPassword": "Show password",
+  "auth.hidePassword": "Hide password",
 
   "incident.state.open": "Open",
   "incident.state.acknowledged": "Acknowledged",
@@ -45,39 +51,6 @@ const en: Dictionary = {
   "app.shell.members": "Members",
   "app.shell.releases": "Releases",
   "app.shell.rules": "Rules",
-
-  "user.profile": "Profile",
-  "user.services": "Connected services",
-
-  "onboarding.welcome": "Welcome",
-  "onboarding.subtitle": "You're not part of any team yet. Get started below.",
-  "onboarding.create.title": "Create a team",
-  "onboarding.create.desc": "Start a new workspace and invite your teammates.",
-  "onboarding.create.action": "Create a team",
-  "onboarding.join.title": "Join a team",
-  "onboarding.join.desc": "Have an invitation code? Join an existing team.",
-  "onboarding.join.action": "Enter a code",
-  "onboarding.myTeams": "Your teams",
-  "onboarding.myTeams.desc": "Incident management will be available in a future update.",
-
-  "teams.create.dialogTitle": "Create a new team",
-  "teams.create.dialogDesc": "Give your team a name to get started.",
-  "teams.create.nameLabel": "Team name",
-  "teams.create.namePlaceholder": "e.g. Team front",
-  "teams.create.error.empty": "Team name is required",
-
-  "teams.join.dialogTitle": "Join a team",
-  "teams.join.dialogDesc": "Enter the invitation code shared by your team manager.",
-  "teams.join.codeLabel": "Invitation code",
-  "teams.join.codePlaceholder": "e.g. A7X9K2MP",
-  "teams.join.submit": "Join",
-  "teams.join.error.empty": "Invitation code is required",
-  "teams.join.success": "You joined the team!",
-
-  "teams.invite.dialogTitle": "Invite to team",
-  "teams.invite.dialogDesc": "Share this code with people you want to invite.",
-  "teams.invite.generate": "Generate code",
-  "teams.invite.button": "Invite",
 
   "incidents.title": "Incidents",
   "incidents.empty": "No incidents yet.",
@@ -109,22 +82,11 @@ const en: Dictionary = {
   "incidents.create.severityLabel": "Severity",
   "incidents.create.error.emptyTitle": "Title is required",
 
-  "timeline.empty": "No entries yet.",
-  "timeline.composer.placeholder": "Add a note to the timeline…",
-  "timeline.composer.submit": "Post",
-  "timeline.system": "System",
-  "timeline.edited": "edited",
-
   "incidents.assign.dialogTitle": "Assign responder",
-  "incidents.assign.dialogDesc": "Select a team member to assign to this incident.",
+  "incidents.assign.dialogDesc":
+    "Select a team member to assign to this incident.",
   "incidents.assign.submit": "Assign",
   "incidents.assign.noEligible": "No eligible responders in this team.",
-
-  "ws.connected": "Connected",
-  "ws.connecting": "Connecting…",
-  "ws.disconnected": "Disconnected",
-
-  "presence.watching": "Watching now:",
 
   "members.title": "Team members",
   "members.you": "(you)",
@@ -139,13 +101,57 @@ const en: Dictionary = {
   "members.invite": "Invite",
 
   "members.transfer.title": "Transfer Manager role",
-  "members.transfer.desc": "Are you sure you want to transfer the Manager role to {name}? You will become a Responder.",
+  "members.transfer.desc":
+    "Are you sure you want to transfer the Manager role to {name}? You will become a Responder.",
   "members.transfer.confirm": "Transfer",
 
   "members.leave.title": "Leave team",
-  "members.leave.desc": "Are you sure you want to leave this team? You can rejoin later with a new invitation code.",
+  "members.leave.desc":
+    "Are you sure you want to leave this team? You can rejoin later with a new invitation code.",
   "members.leave.confirm": "Leave",
-  "members.leave.managerError": "You must transfer the Manager role before leaving.",
+  "members.leave.managerError":
+    "You must transfer the Manager role before leaving.",
+
+  "members.kick.title": "Kick member",
+  "members.kick.desc":
+    "Remove {name} from the team. They can rejoin later with a new invitation code.",
+  "members.kick.confirm": "Kick",
+
+  "members.ban": "Ban",
+  "members.ban.title": "Ban {name}",
+  "members.ban.desc": "Ban this member from rejoining the team.",
+  "members.ban.duration": "Duration",
+  "members.ban.duration.7d": "7 days",
+  "members.ban.duration.30d": "30 days",
+  "members.ban.duration.90d": "90 days",
+  "members.ban.duration.permanent": "Permanent",
+  "members.ban.duration.custom": "Custom",
+  "members.ban.customDate": "Ban expires at",
+  "members.ban.reason": "Reason (optional)",
+  "members.ban.reason.placeholder": "e.g. Repeated spam",
+  "members.ban.confirm": "Ban member",
+  "members.ban.error.pastDate": "Ban expiry must be in the future",
+  "members.message": "Message",
+
+  "messages.title": "Messages",
+  "messages.empty": "No messages yet. Say hi!",
+  "messages.composer.placeholder": "Write a message...",
+  "messages.send": "Send",
+  "messages.typing": "is typing...",
+
+  "onboarding.welcome": "Welcome",
+  "onboarding.subtitle": "You're not part of any team yet. Get started below.",
+  "onboarding.create.title": "Create a team",
+  "onboarding.create.desc": "Start a new workspace and invite your teammates.",
+  "onboarding.create.action": "Create a team",
+  "onboarding.join.title": "Join a team",
+  "onboarding.join.desc": "Have an invitation code? Join an existing team.",
+  "onboarding.join.action": "Enter a code",
+  "onboarding.myTeams": "Your teams",
+  "onboarding.myTeams.desc":
+    "Incident management will be available in a future update.",
+
+  "presence.watching": "Watching now:",
 
   "release.state.created": "Created",
   "release.state.in_progress": "In Progress",
@@ -177,7 +183,8 @@ const en: Dictionary = {
   "release.actions.start": "Start Release",
   "release.actions.cancel": "Cancel Release",
   "release.cancel.title": "Cancel this release?",
-  "release.cancel.desc": "This will cancel \"{name}\". This action cannot be undone.",
+  "release.cancel.desc":
+    'This will cancel "{name}". This action cannot be undone.',
   "release.cancel.confirm": "Yes, cancel",
   "release.blocked.banner": "This release is blocked by an active incident.",
   "release.info.created": "Created:",
@@ -200,27 +207,31 @@ const en: Dictionary = {
   "rules.trigger": "When",
   "rules.reaction": "Then",
   "rules.delete.title": "Delete this rule?",
-  "rules.delete.desc": "\"{name}\" will stop running. This cannot be undone.",
+  "rules.delete.desc": '"{name}" will stop running. This cannot be undone.',
   "rules.delete.confirm": "Delete",
   "rules.managerOnly": "Only the Manager can create or edit rules.",
 
   "rules.activity.title": "Recent activity",
-  "rules.activity.empty": "Nothing yet. Rule executions show up here in real time.",
+  "rules.activity.empty":
+    "Nothing yet. Rule executions show up here in real time.",
   "rules.activity.ok": "Ran",
   "rules.activity.failed": "Failed",
 
   "rules.form.createTitle": "New rule",
   "rules.form.editTitle": "Edit rule",
-  "rules.form.desc": "Pick a trigger and a reaction. Both lists come from the server.",
+  "rules.form.desc":
+    "Pick a trigger and a reaction. Both lists come from the server.",
   "rules.form.nameLabel": "Name",
   "rules.form.namePlaceholder": "e.g. CI failure -> critical incident",
   "rules.form.serviceLabel": "Trigger service",
   "rules.form.eventLabel": "Trigger event",
   "rules.form.filtersLabel": "Filters (JSON)",
-  "rules.form.filtersHelp": "Dot-notation paths matched against the event payload, all must match. Example: {\"workflow_run.conclusion\": \"failure\"}. Leave {} to match everything.",
+  "rules.form.filtersHelp":
+    'Dot-notation paths matched against the event payload, all must match. Example: {"workflow_run.conclusion": "failure"}. Leave {} to match everything.',
   "rules.form.reactionLabel": "Reaction",
   "rules.form.payloadLabel": "Reaction payload (JSON)",
-  "rules.form.payloadHelp": "Prefilled from the reaction's example. Use {{path.to.field}} to inject values from the event.",
+  "rules.form.payloadHelp":
+    "Prefilled from the reaction's example. Use {{path.to.field}} to inject values from the event.",
   "rules.form.enabledLabel": "Enabled",
   "rules.form.save": "Save",
   "rules.form.error.emptyName": "Name is required",
@@ -230,7 +241,8 @@ const en: Dictionary = {
   "rules.form.error.badPayload": "Payload must be valid JSON",
 
   "services.title": "Connected services",
-  "services.subtitle": "Connect third-party services so your rules can use them.",
+  "services.subtitle":
+    "Connect third-party services so your rules can use them.",
   "services.connected": "Connected",
   "services.notConnected": "Not connected",
   "services.tokenLabel": "Token or webhook URL",
@@ -238,10 +250,43 @@ const en: Dictionary = {
   "services.connect": "Connect",
   "services.disconnect": "Disconnect",
   "services.disconnect.title": "Disconnect {service}?",
-  "services.disconnect.desc": "Rules using {service} will stop working until you reconnect.",
+  "services.disconnect.desc":
+    "Rules using {service} will stop working until you reconnect.",
   "services.empty": "No connectable services available.",
   "services.error.emptyToken": "A token is required",
 
+  "teams.create.dialogTitle": "Create a new team",
+  "teams.create.dialogDesc": "Give your team a name to get started.",
+  "teams.create.nameLabel": "Team name",
+  "teams.create.namePlaceholder": "e.g. Team front",
+  "teams.create.error.empty": "Team name is required",
+
+  "teams.join.dialogTitle": "Join a team",
+  "teams.join.dialogDesc":
+    "Enter the invitation code shared by your team manager.",
+  "teams.join.codeLabel": "Invitation code",
+  "teams.join.codePlaceholder": "e.g. A7X9K2MP",
+  "teams.join.submit": "Join",
+  "teams.join.error.empty": "Invitation code is required",
+  "teams.join.success": "You joined the team!",
+
+  "teams.invite.dialogTitle": "Invite to team",
+  "teams.invite.dialogDesc": "Share this code with people you want to invite.",
+  "teams.invite.generate": "Generate code",
+  "teams.invite.button": "Invite",
+
+  "timeline.empty": "No entries yet.",
+  "timeline.composer.placeholder": "Add a note to the timeline…",
+  "timeline.composer.submit": "Post",
+  "timeline.system": "System",
+  "timeline.edited": "edited",
+
+  "user.profile": "Profile",
+  "user.services": "Connected services",
+
+  "ws.connected": "Connected",
+  "ws.connecting": "Connecting…",
+  "ws.disconnected": "Disconnected",
 };
 
 const dict: Dictionary = en;

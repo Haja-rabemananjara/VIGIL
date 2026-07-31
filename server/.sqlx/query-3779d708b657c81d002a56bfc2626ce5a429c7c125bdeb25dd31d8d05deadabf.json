@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, sender_id, recipient_id, content, created_at\n        FROM private_messages\n        WHERE LEAST(sender_id, recipient_id) = LEAST($1::uuid, $2::uuid)\n          AND GREATEST(sender_id, recipient_id) = GREATEST($1::uuid, $2::uuid)\n          AND ($3::timestamptz IS NULL OR created_at < $3)\n        ORDER BY created_at ASC\n        LIMIT $4\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "sender_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "recipient_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3779d708b657c81d002a56bfc2626ce5a429c7c125bdeb25dd31d8d05deadabf"
+}

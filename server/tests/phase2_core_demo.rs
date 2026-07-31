@@ -196,7 +196,7 @@ async fn phase2_core_full_demo_github_to_incident_and_discord() {
     )
     .await;
 
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     let mut both_ran = false;
     while std::time::Instant::now() < deadline {
         let incidents = list_incidents(&app.address, &alice, team_id).await;

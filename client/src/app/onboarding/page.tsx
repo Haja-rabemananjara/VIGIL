@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { RequireAuth } from "@/components/RequireAuth";
+import { UserMenu } from "@/components/UserMenu";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -23,8 +26,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
-import { UserMenu } from "@/components/UserMenu";
 
 interface TeamView {
   id: string;
@@ -33,19 +34,12 @@ interface TeamView {
   created_at: string;
 }
 
-interface InvitationView {
-  id: string;
-  code: string;
-  expires_at: string | null;
-  max_uses: number | null;
-  uses: number;
-}
-
 export default function OnboardingPage() {
   const { user, token } = useAuth();
   const router = useRouter();
 
-  const [teams, setTeams] = useState<TeamView[]>([]);
+  const [hasTeams, setHasTeams] = useState(false);
+  const [firstTeamId, setFirstTeamId] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -57,21 +51,26 @@ export default function OnboardingPage() {
   const [joinError, setJoinError] = useState("");
   const [joinLoading, setJoinLoading] = useState(false);
 
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteTeamId, setInviteTeamId] = useState<string | null>(null);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  // Fetch existing teams on mount.
   useEffect(() => {
     if (!token) return;
     api<TeamView[]>("/teams", { token })
-      .then(setTeams)
+      .then((teams) => {
+        if (teams.length > 0) {
+          setHasTeams(true);
+          const lastTeamId = localStorage.getItem("vigil_last_team");
+          const match = teams.find((t) => t.id === lastTeamId);
+          setFirstTeamId(match?.id ?? teams[0].id);
+        }
+      })
       .catch(() => {});
   }, [token]);
 
-  // Create team
+  function handleBack() {
+    if (firstTeamId) {
+      router.push(`/teams/${firstTeamId}/incidents`);
+    }
+  }
+
   function handleCreateOpenChange(next: boolean) {
     setCreateOpen(next);
     if (!next) {
@@ -94,19 +93,15 @@ export default function OnboardingPage() {
         token,
         body: { name: trimmed },
       });
-      setTeams((prev) => [...prev, team]);
       handleCreateOpenChange(false);
       router.push(`/teams/${team.id}/incidents`);
     } catch (e) {
-      setCreateError(
-        e instanceof ApiError ? e.message : "Something went wrong",
-      );
+      setCreateError(e instanceof ApiError ? e.message : t("common.error"));
     } finally {
       setCreateLoading(false);
     }
   }
 
-  // Join team
   function handleJoinOpenChange(next: boolean) {
     setJoinOpen(next);
     if (!next) {
@@ -129,74 +124,36 @@ export default function OnboardingPage() {
         team_name: string;
         role: string;
       }>("/teams/join", { method: "POST", token, body: { code: trimmed } });
-      // Add the new team to the local list
-      setTeams((prev) => [
-        ...prev,
-        {
-          id: result.team_id,
-          name: result.team_name,
-          role: result.role,
-          created_at: new Date().toISOString(),
-        },
-      ]);
       handleJoinOpenChange(false);
       router.push(`/teams/${result.team_id}/incidents`);
     } catch (e) {
-      if (e instanceof ApiError) {
-        setJoinError(e.message);
-      } else {
-        setJoinError("Something went wrong");
-      }
+      setJoinError(e instanceof ApiError ? e.message : t("common.error"));
     } finally {
       setJoinLoading(false);
     }
   }
 
-  // Invite (generate code)
-  function handleInviteOpenChange(next: boolean) {
-    setInviteOpen(next);
-    if (!next) {
-      setInviteCode(null);
-      setInviteTeamId(null);
-      setCopied(false);
-    }
-  }
-
-  function openInviteDialog(teamId: string) {
-    setInviteTeamId(teamId);
-    setInviteOpen(true);
-  }
-
-  async function handleGenerateCode() {
-    if (!inviteTeamId) return;
-    setInviteLoading(true);
-    try {
-      const invitation = await api<InvitationView>(
-        `/teams/${inviteTeamId}/invitations`,
-        { method: "POST", token },
-      );
-      setInviteCode(invitation.code);
-    } catch {
-      // If it fails, the user can retry
-    } finally {
-      setInviteLoading(false);
-    }
-  }
-
-  async function handleCopyCode() {
-    if (!inviteCode) return;
-    await navigator.clipboard.writeText(inviteCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   return (
     <RequireAuth>
       <header className="flex h-14 items-center justify-between border-b px-6">
-        <h1 className="text-lg font-semibold">{t("app.name")}</h1>
+        <div className="flex items-center gap-3">
+          {hasTeams && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t("action.back")}
+            </Button>
+          )}
+          <h1 className="text-lg font-semibold">{t("app.name")}</h1>
+        </div>
         <UserMenu />
       </header>
-      <main className="flex min-h-screen items-center justify-center">
+
+      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-6">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
             <h1 className="text-2xl font-semibold">
@@ -207,49 +164,7 @@ export default function OnboardingPage() {
             </p>
           </div>
 
-          {/* Existing teams */}
-          {teams.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("onboarding.myTeams")}</CardTitle>
-                <CardDescription>
-                  {t("onboarding.myTeams.desc")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {teams.map((team) => (
-                  <div
-                    key={team.id}
-                    className="flex items-center justify-between rounded-md border px-4 py-2"
-                  >
-                    <button
-                      onClick={() => router.push(`/teams/${team.id}/incidents`)}
-                      className="cursor-pointer"
-                    >
-                      <span className="font-medium hover:underline">
-                        {team.name}
-                      </span>
-                      <span className="ml-2 text-sm text-muted-foreground">
-                        ({team.role})
-                      </span>
-                    </button>
-                    {team.role === "manager" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openInviteDialog(team.id)}
-                      >
-                        {t("teams.invite.button")}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
           <div className="grid gap-4">
-            {/* Create a team */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("onboarding.create.title")}</CardTitle>
@@ -262,7 +177,6 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
 
-            {/* Join a team */}
             <Card>
               <CardHeader>
                 <CardTitle>{t("onboarding.join.title")}</CardTitle>
@@ -282,7 +196,6 @@ export default function OnboardingPage() {
         </div>
       </main>
 
-      {/* Create team dialog */}
       <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
         <DialogContent>
           <DialogHeader>
@@ -314,13 +227,12 @@ export default function OnboardingPage() {
               {t("action.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createLoading}>
-              {createLoading ? "…" : t("action.create")}
+              {createLoading ? "..." : t("action.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Join team dialog */}
       <Dialog open={joinOpen} onOpenChange={handleJoinOpenChange}>
         <DialogContent>
           <DialogHeader>
@@ -350,49 +262,7 @@ export default function OnboardingPage() {
               {t("action.cancel")}
             </Button>
             <Button onClick={handleJoin} disabled={joinLoading}>
-              {joinLoading ? "…" : t("teams.join.submit")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Invite dialog */}
-      <Dialog open={inviteOpen} onOpenChange={handleInviteOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("teams.invite.dialogTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("teams.invite.dialogDesc")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {!inviteCode ? (
-              <Button
-                onClick={handleGenerateCode}
-                disabled={inviteLoading}
-                className="w-full"
-              >
-                {inviteLoading ? "…" : t("teams.invite.generate")}
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={inviteCode}
-                  readOnly
-                  className="font-mono text-lg tracking-widest"
-                />
-                <Button variant="outline" onClick={handleCopyCode}>
-                  {copied ? t("action.copied") : t("action.copy")}
-                </Button>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleInviteOpenChange(false)}
-            >
-              {t("action.close")}
+              {joinLoading ? "..." : t("teams.join.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>

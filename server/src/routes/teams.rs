@@ -31,4 +31,16 @@ pub fn routes() -> Router<AppState> {
             post(handlers::teams::transfer_manager),
         )
         .route("/teams/{team_id}/leave", post(handlers::teams::leave_team))
+        .route(
+            "/teams/{team_id}/members/{user_id}/kick",
+            post(handlers::teams::kick_member),
+        )
+        .route(
+            "/teams/{team_id}/members/{user_id}/ban",
+            post(handlers::teams::ban_member),
+        )
+        .route(
+            "/teams/{team_id}/bans/{user_id}",
+            axum::routing::delete(handlers::teams::unban_member),
+        )
 }

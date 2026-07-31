@@ -351,11 +351,32 @@ Sent once after a successful handshake. Not broadcast.
 **Trigger:** The engine fails to execute a reaction. Each rule runs in isolation; a failure in one never affects others.
 **Delivery:** team.
 
----
+### `rule_created`
 
-## Planned events (extended scope, not yet implemented)
+```json
+{ "type": "rule_created", "team_id": "uuid", "rule_id": "uuid" }
+```
 
-These events are defined by the subject but not yet wired in the backend. Their payloads are specified here for future implementation.
+**Trigger:** Manager creates a rule.
+**Delivery:** team.
+
+### `rule_updated`
+
+```json
+{ "type": "rule_updated", "team_id": "uuid", "rule_id": "uuid" }
+```
+
+**Trigger:** Manager updates a rule.
+**Delivery:** team.
+
+### `rule_deleted`
+
+```json
+{ "type": "rule_deleted", "team_id": "uuid", "rule_id": "uuid" }
+```
+
+**Trigger:** Manager deletes a rule.
+**Delivery:** team.
 
 ### `member_kicked`
 
@@ -363,12 +384,13 @@ These events are defined by the subject but not yet wired in the backend. Their 
 {
   "type": "member_kicked",
   "team_id": "uuid",
-  "member_id": "uuid",
+  "user_id": "uuid",
   "by": "uuid"
 }
 ```
 
-**Delivery:** team (including the kicked member, so their client can react).
+**Trigger:** Manager kicks a member via `POST /teams/{team_id}/members/{user_id}/kick`.
+**Delivery:** team + targeted to the kicked user (via `to_user`, since their membership is already deactivated when the broadcast fires).
 
 ### `member_banned`
 
@@ -376,14 +398,32 @@ These events are defined by the subject but not yet wired in the backend. Their 
 {
   "type": "member_banned",
   "team_id": "uuid",
-  "member_id": "uuid",
-  "until": 1718000000,
+  "user_id": "uuid",
+  "expires_at": 1718000000,
   "by": "uuid"
 }
 ```
 
-`until` is `null` for permanent bans.
-**Delivery:** team.
+| Field | Type | Description |
+|-------|------|-------------|
+| `expires_at` | int or null | Unix seconds. `null` for permanent bans |
+
+**Trigger:** Manager bans a member via `POST /teams/{team_id}/members/{user_id}/ban`.
+**Delivery:** team + targeted to the banned user (via `to_user`).
+
+### `member_joined`
+
+```json
+{ 
+  "type": "member_joined",
+  "team_id": "uuid",
+  "user_id": "uuid",
+  "display_name": "Bob",
+  "role": "observer"
+}
+```
+- **Trigger**: User joins a team via `POST /teams/join`
+- **Recipients**: All team members
 
 ### `timeline_entry_edited`
 
@@ -398,7 +438,46 @@ These events are defined by the subject but not yet wired in the backend. Their 
 }
 ```
 
+**Trigger:** Author edits their own timeline entry via `PATCH /timeline/{entry_id}`.
 **Delivery:** team.
+
+---
+
+### `reaction_added`
+
+```json
+{
+  "type": "reaction_added",
+  "team_id": "uuid",
+  "incident_id": "uuid",
+  "entry_id": "uuid",
+  "emoji": "+1",
+  "user_id": "uuid"
+}
+```
+
+**Trigger:** User adds a reaction via `POST /timeline/{entry_id}/reactions`.
+**Delivery:** team.
+
+---
+
+### `reaction_removed`
+
+```json
+{
+  "type": "reaction_removed",
+  "team_id": "uuid",
+  "incident_id": "uuid",
+  "entry_id": "uuid",
+  "emoji": "+1",
+  "user_id": "uuid"
+}
+```
+
+**Trigger:** User removes their reaction via `DELETE /timeline/{entry_id}/reactions/{emoji}`.
+**Delivery:** team.
+
+---
 
 ### `private_message_received`
 
@@ -413,23 +492,8 @@ These events are defined by the subject but not yet wired in the backend. Their 
 }
 ```
 
-**Delivery:** bilateral (sender + recipient only).
-
-### `reaction_added` / `reaction_removed`
-
-```json
-{
-  "type": "reaction_added",
-  "team_id": "uuid",
-  "incident_id": "uuid",
-  "entry_id": "uuid",
-  "emoji": "+1",
-  "by": "uuid"
-}
-```
-
-Available emojis: `+1`, `-1`, `eyes`, `warning`, `check`, `fire`.
-**Delivery:** team.
+**Trigger:** User sends a DM via `POST /messages/{user_id}`.
+**Delivery:** bilateral (sender + recipient only, via two `to_user` calls). No `team_id` field.
 
 ---
 
@@ -450,12 +514,15 @@ Available emojis: `+1`, `-1`, `eyes`, `warning`, `check`, `fire`.
 | `release_incident_unlinked` | team | yes |
 | `rule_triggered` | team | yes |
 | `rule_failed` | team | yes |
-| `member_kicked` | team | planned |
-| `member_banned` | team | planned |
-| `timeline_entry_edited` | team | planned |
-| `private_message_received` | bilateral | planned |
-| `reaction_added` | team | planned |
-| `reaction_removed` | team | planned |
+| `member_kicked` | team + targeted | yes |
+| `member_banned` | team + targeted | yes |
+| `timeline_entry_edited` | team | yes |
+| `private_message_received` | bilateral | yes |
+| `reaction_added` | team | yes |
+| `reaction_removed` | team | yes |
+| `rule_created` | team | yes |
+| `rule_updated` | team | yes |
+| `rule_deleted` | team | yes |
 
 ---
 
@@ -465,4 +532,10 @@ Available emojis: `+1`, `-1`, `eyes`, `warning`, `check`, `fire`.
 |---------|-------------|-----------|
 | User assigned to an incident | `incident_assigned` | `assigned_to` = current user |
 | Incident reaches critical | `incident_escalated` | `new_severity` = `critical` |
-| Release blocked | `release_state_changed` | `new_state` = `blocked` |
+| Release state changed | `release_state_changed` | all states except `created` |
+| Private message received | `private_message_received` | `from` ≠ current user |
+| Promoted to Manager | `member_role_changed` | `user_id` = current user, `new_role` = `manager` |
+| Rule executed | `rule_triggered` | always |
+| Rule failed | `rule_failed` | always |
+
+Notifications are desktop-only, dispatched via `notify-send` through the embedded HTTP server. The web client does not emit notifications.

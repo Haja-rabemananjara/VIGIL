@@ -32,11 +32,11 @@ interface Member {
 }
 
 interface Execution {
-    key: string;
-    ruleName: string;
-    reactionType: string
-    error: string | null;
-    at: number;
+  key: string;
+  ruleName: string;
+  reactionType: string;
+  error: string | null;
+  at: number;
 }
 
 export function RulesClient() {
@@ -57,16 +57,34 @@ export function RulesClient() {
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-
     Promise.all([
       api<Rule[]>(`/teams/${teamId}/rules`, { token }),
       api<Member[]>(`/teams/${teamId}/members`, { token }),
+      api<
+        {
+          id: string;
+          rule_name: string;
+          reaction_type: string;
+          status: string;
+          error: string | null;
+          executed_at: number;
+        }[]
+      >(`/teams/${teamId}/rules/executions`, { token }),
     ])
-      .then(([fetchedRules, members]) => {
+      .then(([fetchedRules, members, fetchedExecs]) => {
         if (cancelled) return;
         setRules(fetchedRules);
         setIsManager(
           members.find((m) => m.user_id === user?.id)?.role === "manager",
+        );
+        setExecutions(
+          fetchedExecs.map((e) => ({
+            key: e.id,
+            ruleName: e.rule_name,
+            reactionType: e.reaction_type,
+            error: e.error,
+            at: e.executed_at * 1000,
+          })),
         );
       })
       .catch(() => {
@@ -75,30 +93,43 @@ export function RulesClient() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-
     return () => {
       cancelled = true;
     };
   }, [token, teamId, user?.id]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!lastEvent) return;
-    if (lastEvent.type !== "rule_triggered" && lastEvent.type !== "rule_failed") {
+
+    if (
+      lastEvent.type === "rule_created" ||
+      lastEvent.type === "rule_updated" ||
+      lastEvent.type === "rule_deleted"
+    ) {
+      if (lastEvent.team_id === teamId) {
+        api<Rule[]>(`/teams/${teamId}/rules`, { token: token! })
+          .then(setRules)
+          .catch(() => {});
+      }
       return;
     }
-    if (lastEvent.team_id !== teamId) return;
 
-    // The event carries everything we display, so no refetch here.
-    const entry: Execution = {
-      key: `${lastEvent.rule_id as string}-${Date.now()}`,
-      ruleName: lastEvent.rule_name as string,
-      reactionType: lastEvent.reaction_type as string,
-      error: lastEvent.type === "rule_failed" ? (lastEvent.error as string) : null,
-      at: Date.now(),
-    };
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setExecutions((prev) => [entry, ...prev].slice(0, 20));
-  }, [lastEvent, teamId]);
+    if (
+      lastEvent.type === "rule_triggered" ||
+      lastEvent.type === "rule_failed"
+    ) {
+      const entry: Execution = {
+        key: `${lastEvent.rule_id as string}-${Date.now()}`,
+        ruleName: lastEvent.rule_name as string,
+        reactionType: lastEvent.reaction_type as string,
+        error:
+          lastEvent.type === "rule_failed" ? (lastEvent.error as string) : null,
+        at: Date.now(),
+      };
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExecutions((prev) => [entry, ...prev].slice(0, 20));
+    }
+  }, [lastEvent, teamId, token]);
 
   function handleSaved(saved: Rule) {
     setRules((prev) => {
@@ -190,14 +221,18 @@ export function RulesClient() {
                             : "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                         }
                       >
-                        {rule.enabled ? t("rules.enabled") : t("rules.disabled")}
+                        {rule.enabled
+                          ? t("rules.enabled")
+                          : t("rules.disabled")}
                       </span>
                     </div>
                     <p className="truncate text-sm text-muted-foreground">
                       <span className="font-medium">{t("rules.trigger")}</span>{" "}
                       {rule.trigger_service}.{rule.trigger_event}
                       {" : "}
-                      <span className="font-medium">{t("rules.reaction")}</span>{" "}
+                      <span className="font-medium">
+                        {t("rules.reaction")}
+                      </span>{" "}
                       {rule.reaction_type}
                     </p>
                   </div>
@@ -220,7 +255,9 @@ export function RulesClient() {
                         variant="outline"
                         onClick={() => handleToggle(rule)}
                       >
-                        {rule.enabled ? t("rules.disabled") : t("rules.enabled")}
+                        {rule.enabled
+                          ? t("rules.disabled")
+                          : t("rules.enabled")}
                       </Button>
                       <Button
                         size="sm"
@@ -243,7 +280,7 @@ export function RulesClient() {
           </p>
         )}
 
-                <div className="space-y-2 pt-4">
+        <div className="space-y-2 pt-4">
           <h2 className="text-sm font-medium">{t("rules.activity.title")}</h2>
           {executions.length === 0 ? (
             <p className="text-sm text-muted-foreground">

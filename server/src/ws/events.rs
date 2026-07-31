@@ -45,6 +45,13 @@ pub enum WsEvent {
         watchers: Vec<Uuid>,
     },
 
+    MemberJoined {
+        team_id: Uuid,
+        user_id: Uuid,
+        display_name: String,
+        role: String,
+    },
+
     MemberRoleChanged {
         team_id: Uuid,
         user_id: Uuid,
@@ -56,6 +63,19 @@ pub enum WsEvent {
         team_id: Uuid,
         release_id: Uuid,
         new_state: String,
+    },
+
+    MemberKicked {
+        team_id: Uuid,
+        user_id: Uuid,
+        by: Uuid,
+    },
+
+    MemberBanned {
+        team_id: Uuid,
+        user_id: Uuid,
+        expires_at: Option<i64>,
+        by: Uuid,
     },
 
     ReleaseIncidentLinked {
@@ -84,12 +104,64 @@ pub enum WsEvent {
         rule_name: String,
         reaction_type: String,
     },
+
     RuleFailed {
         team_id: Uuid,
         rule_id: Uuid,
         rule_name: String,
         reaction_type: String,
         error: String,
+    },
+
+    RuleCreated {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    RuleUpdated {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    RuleDeleted {
+        team_id: Uuid,
+        rule_id: Uuid,
+    },
+
+    TimelineEntryEdited {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        new_content: String,
+        edited_at: i64,
+    },
+
+    ReactionAdded {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        emoji: String,
+        user_id: Uuid,
+    },
+
+    ReactionRemoved {
+        team_id: Uuid,
+        incident_id: Uuid,
+        entry_id: Uuid,
+        emoji: String,
+        user_id: Uuid,
+    },
+
+    PrivateMessageReceived {
+        from: Uuid,
+        to: Uuid,
+        message_id: Uuid,
+        content: String,
+        at: i64,
+    },
+
+    UserTyping {
+        from: Uuid,
     },
 }
 
@@ -105,5 +177,8 @@ pub enum WsClientMessage {
         resource_type: String,
         resource_id: Uuid,
         team_id: Uuid,
+    },
+    Typing {
+        recipient_id: Uuid,
     },
 }

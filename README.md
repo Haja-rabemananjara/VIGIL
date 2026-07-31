@@ -16,6 +16,8 @@ VIGIL is a collaborative operational control room that handles both realities of
 | Persistence        | **PostgreSQL**          | Chosen -- see below  |
 | Real-time          | **WebSockets**          | Imposed              |
 | Containerization   | **Docker Compose**      | Imposed              |
+| Test coverage (server) | `cargo-llvm-cov` (LLVM engine) |
+| Test coverage (client) | Vitest 4 + `@vitest/coverage-v8` |
 
 ### Why Tauri over Electron
 
@@ -43,34 +45,34 @@ The project is a monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The cl
 
 ```
                         ┌──────────────────────────────┐
-                        │     External services          │
-                        │  (GitHub, GitLab, webhooks)    │
-                        └───────────────┬─────────────────┘
+                        │     External services        │
+                        │  (GitHub, GitLab, webhooks)  │
+                        └───────────────┬──────────────┘
                                         │ POST /webhooks/{service}
                                         ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│                  VIGIL Application Server (Rust / Axum)              │
-│                                                                       │
-│   routes/   =>   handlers/    =>   services/    =>   domain/           │
-│  (wiring)      (parse/format)   (business logic)  (pure rules)      │
-│                                        │                              │
-│                                        ▼                              │
-│                                    repo/ (sqlx)                       │
-│                                        │                              │
-│                                        ▼                              │
-│                              PostgreSQL (19 tables)                  │
-│                                                                       │
-│   services/ also call  ──────────►  ws/broadcaster                   │
-│                                      to_team() / to_user()           │
-└──────────────────────────────────┬──────────────────────────────────┘
+│                  VIGIL Application Server (Rust / Axum)            │
+│                                                                    │
+│   routes/   =>   handlers/    =>   services/    =>   domain/       │
+│  (wiring)      (parse/format)   (business logic)  (pure rules)     │
+│                                        │                           │
+│                                        ▼                           │
+│                                    repo/ (sqlx)                    │
+│                                        │                           │
+│                                        ▼                           │
+│                              PostgreSQL (19 tables)                │
+│                                                                    │
+│   services/ also call  ──────────►  ws/broadcaster                 │
+│                                      to_team() / to_user()         │
+└──────────────────────────────────┬─────────────────────────────────┘
                                     │  REST (writes) + WebSocket (truth)
                      ┌──────────────┴───────────────┐
                      ▼                               ▼
            ┌───────────────────┐          ┌──────────────────────┐
-           │    Web client        │          │    Desktop client       │
-           │    Next.js, CSR       │          │    Tauri, standalone    │
-           │    :8081               │          │    embeds the same      │
-           │                        │          │    static export        │
+           │    Web client     │          │    Desktop client    │
+           │    Next.js, CS    │          │    Tauri, standalone │
+           │    :8081          │          │    embeds the same   │
+           │                   │          │    static export     │
            └───────────────────┘          └──────────────────────┘
 ```
 **Core principle**: writes go up via REST, truth comes back down via WebSocket. A client never trusts its own HTTP response to update its UI -- it waits for the broadcast, exactly like every other connected client.
@@ -86,6 +88,8 @@ The project is a monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The cl
 | Repo | `server/src/repo/` | The only layer that touches SQL (via `sqlx`) |
 | WebSocket | `server/src/ws/` | Broadcaster (transport only). Services decide what and to whom |
 | Hooks | `server/src/hooks/` | Rule engine: registry, matcher, templating, reactions |
+- **Server tests** : `server/tests/` (integration), `server/src/**/tests` (unit)
+- **Client tests** : `client/src/**/*.test.{ts,tsx}` (co-located with source files)
 
 The crate is split into `lib.rs` (declares modules, re-exports core types) and a thin `main.rs` (wires config, pool, router). This split lets integration tests import the application as a library and spin up real instances against disposable databases.
 
@@ -164,12 +168,60 @@ Adminer (database UI) is available at `http://localhost:8888`.
 
 ### Running tests
 
+#### Server (Rust)
+
+Run all backend tests (unit + integration):
+
 ```bash
-cd server
-cargo test
+cd server && cargo test
 ```
 
-Each test spins up its own disposable database (via `spawn_app()` in `tests/common/mod.rs`), runs all migrations, and tears it down afterward. Full isolation, safe to run in parallel.
+Run a specific test file:
+
+```bash
+cargo test --test timeline
+cargo test --test reactions
+cargo test --test messages
+```
+
+Test infrastructure uses a shared PostgreSQL template database (`vigil_test_template`) via `OnceLock<Mutex<bool>>` + `CREATE DATABASE ... TEMPLATE`, reducing per-test setup from ~40s to ~500ms. Parallelism is capped at 4 threads (`.cargo/config.toml`) to avoid PostgreSQL connection saturation.
+
+**+90 tests** covering: authentication, teams, incidents lifecycle, releases lifecycle, timeline editing, emoji reactions, private messages, moderation (kick/ban/unban), rule engine, webhook pipeline, WebSocket event delivery.
+
+#### Client (TypeScript / Vitest)
+
+Run all frontend tests:
+
+```bash
+cd client && npm test -- --run
+```
+
+Run in watch mode during development:
+
+```bash
+cd client && npm test
+```
+
+Frontend tests follow the project guideline: **utilities + critical components**. Page integrators (>300 lines) that orchestrate already-tested components are excluded from coverage measurement but are indirectly validated by the backend integration test suite.
+
+#### Coverage reports
+
+Generate both reports:
+
+```bash
+# Server : HTML report in docs/coverage/html/
+cd server && cargo llvm-cov --html --output-dir ../docs/coverage --ignore-run-fail -- --test-threads=2
+
+# Client : HTML report in docs/client-coverage/
+cd client && npm test -- --run --coverage
+```
+
+| Component | Tool | Current coverage | Threshold |
+|-----------|------|-----------------|-----------|
+| Server | `cargo-llvm-cov` | **88.52%** line coverage | 70% |
+| Client | `@vitest/coverage-v8` | **70.90%** | 70% |
+
+Reports are committed in `docs/coverage/` (server) and `docs/client-coverage/` (client).
 
 ### Linting and formatting
 
@@ -177,6 +229,7 @@ Each test spins up its own disposable database (via `spawn_app()` in `tests/comm
 cargo fmt --check
 cargo clippy
 cd client && npx eslint . && npx prettier --check .
+npx prettier --write .
 ```
 
 ---
@@ -199,15 +252,21 @@ Requires the AppIndicator GNOME extension (preinstalled on Ubuntu 24.04).
 
 ### Native OS notifications
 
-Three triggers, fired from a central hook (`client/src/lib/useNotifications.ts`):
+Three required triggers plus extended notifications, all fired from a
+central hook (`client/src/lib/useNotifications.ts`):
 
 - Incident assigned to the current user (`incident_assigned`)
 - Incident escalated to critical severity (`incident_escalated`)
 - Release blocked by a linked incident (`release_state_changed`)
+- All release state changes (started, completed, cancelled, blocked)
+- Private message received (`private_message_received`)
+- Promotion to Manager (`member_role_changed`)
+- Rule triggered or failed (`rule_triggered`, `rule_failed`)
 
-Notifications use the browser `Notification` API from within the WebKitGTK webview, dispatched uniformly on web and desktop through `platform.ts`.
+On desktop, notifications are dispatched via the system `notify-send` command, called from the embedded Rust server (`tiny_http`) through a `/__notify` endpoint. This bypasses a documented GNOME 46+ bug (tauri-apps/tauri#14095, tauri-apps/plugins-workspace#2566) where notifications emitted from a webview are silently dropped regardless of the emission channel (Tauri plugin, browser API, or custom command).
+The `notify-send` approach works reliably because GNOME recognizes it as a system-level emitter.
 
-**Known limitation.** On GNOME 46+, notifications emitted from a webview may not display even though the API returns success. This is a documented environment bug (tauri-apps/tauri#14095, tauri-apps/plugins-workspace#2566), independent of application code. Verified by logs showing successful emission on every trigger.
+Notifications are desktop-only by design.
 
 ### Building the AppImage
 
@@ -300,6 +359,7 @@ All endpoints return errors in a uniform shape:
 | POST | `/auth/signin` | none | Returns `{ token, user }`. 401 if invalid |
 | GET | `/me` | session | Current user info |
 | POST | `/auth/signout` | session | Deletes the session. 204 |
+| GET | `/users/{user_id}` | session | Public profile: `{ id, display_name }` |
 
 ### Teams
 
@@ -314,6 +374,9 @@ All endpoints return errors in a uniform shape:
 | POST | `/teams/{team_id}/leave` | member | Manager without transfer gets 409 |
 | POST | `/teams/{team_id}/invitations` | Manager | Returns `{ code }` |
 | POST | `/teams/join` | session | Body: `{ code }`. Joins as Observer. Banned user gets 403 |
+| POST | `/teams/{team_id}/members/{user_id}/kick` | Manager | Removes member. History preserved. 204 |
+| POST | `/teams/{team_id}/members/{user_id}/ban` | Manager | Body: `{ expires_at?, reason? }`. Kicks + bans. `expires_at` in Unix seconds, null = permanent. 204 |
+| DELETE | `/teams/{team_id}/bans/{user_id}` | Manager | Lifts active ban. 204. 404 if no active ban |
 
 ### Incidents
 
@@ -327,6 +390,23 @@ All endpoints return errors in a uniform shape:
 | POST | `/teams/{team_id}/incidents/{id}/assign` | Manager | Body: `{ user_id }`. Target must be Responder+ |
 | POST | `/teams/{team_id}/incidents/{id}/timeline` | Responder+ | Body: `{ content }`. Max 2000 chars |
 | GET | `/teams/{team_id}/incidents/{id}/timeline` | member | Chronological entries |
+| PATCH | `/timeline/{entry_id}` | session | Author only. Body: `{ content }`. System entries not editable (422). Manager on another's entry gets 403 |
+| GET | `/teams/{team_id}/incidents/{id}/reactions` | member | All reactions for all timeline entries of this incident, grouped by entry and emoji |
+
+### Reactions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/reactions/available` | session | Fixed server set: `+1`, `-1`, `eyes`, `warning`, `check`, `fire` |
+| POST | `/timeline/{entry_id}/reactions` | session | Body: `{ emoji }`. 409 if already reacted with same emoji. Only on incident timeline entries |
+| DELETE | `/timeline/{entry_id}/reactions/{emoji}` | session | Remove own reaction. 404 if not found |
+
+### Private messages
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/messages/{user_id}` | session | Body: `{ content }`. Max 2000 chars. Must share at least one team (403). Cannot message self (422) |
+| GET | `/messages/{user_id}` | session | Bilateral conversation history. Paginated: `?before=&limit=`. Must share at least one team (403) |
 
 ### Releases
 
@@ -356,6 +436,7 @@ All endpoints return errors in a uniform shape:
 | GET | `/teams/{team_id}/rules/{id}` | member | Single rule |
 | PATCH | `/teams/{team_id}/rules/{id}` | Manager | Partial update |
 | DELETE | `/teams/{team_id}/rules/{id}` | Manager | 204 |
+| GET | `/teams/{team_id}/rules/executions` | member | 20 most recent rule executions for this team |
 
 ### Service connections
 
@@ -389,7 +470,6 @@ Full DDL lives in `server/migrations/`. Nineteen tables in seven blocks:
 
 **Automation**: `service_connections`, `rules`, `rule_executions`, `webhook_deliveries`. `service_connections` stores AES-256-GCM-encrypted tokens. `rules` separates filterable columns from JSONB payloads.
 
-**Audit**: `audit_log`. No foreign keys (survives deletions). Append-only.
 
 ### Conventions
 
@@ -441,11 +521,37 @@ Dot-notation paths matched against the payload. All must match (AND). `{}` match
 | `vigil_validate_release_step` | vigil | Advances a release step |
 | `discord_message` | discord | Posts a message to a Discord webhook URL |
 
-### Service connections
+### Testing the rule engine locally
 
-Connected per-user via `POST /me/services/{service}`. Tokens encrypted AES-256-GCM at rest, decrypted just-in-time inside reactions. Never logged, never returned.
+The rule engine can be tested without a real GitHub webhook by simulating one with `curl`. The HMAC signature is computed locally using the same `WEBHOOK_SECRET` as the server.
 
-**Known limitation.** GitHub tokens are stored but not consumed at runtime: the webhook receiver authenticates via a global `WEBHOOK_SECRET` (HMAC), not per-user tokens.
+**Prerequisites:** a rule must be active in the target team, matching `github` / `workflow_run` with filter `workflow_run.conclusion: failure`.
+
+```bash
+# Read the webhook secret from .env
+SECRET=$(grep WEBHOOK_SECRET .env | cut -d= -f2)
+
+# Simulated GitHub CI failure payload
+PAYLOAD='{"action":"completed","workflow_run":{"name":"Build","conclusion":"failure","html_url":"https://github.com/test/run/1"},"repository":{"name":"vigil","full_name":"haja/vigil"}}'
+
+# Compute HMAC-SHA256 signature
+SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '"'"'{print "sha256="$2}'"'"')
+
+# Send the simulated webhook
+curl -X POST http://localhost:8080/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-Hub-Signature-256: $SIGNATURE" \
+  -H "X-GitHub-Event: workflow_run" \
+  -d "$PAYLOAD"
+```
+
+Expected: `202 Accepted`. If a matching rule exists, an incident is created in the rule's team and a `rule_triggered` event is broadcast via WebSocket. If the rule also targets Discord, a message is sent to the configured channel.
+
+For a live demo with a real GitHub repository, expose the server via `ngrok http 8080` and configure the resulting URL as a webhook in the repository settings (Settings > Webhooks, secret = `WEBHOOK_SECRET`, content type = `application/json`, events = Workflow runs).
+
+### Rule execution history
+
+Every rule execution (success or failure) is persisted in the `rule_executions` table with the delivery ID, status, error message (if any), and timestamp. The 20 most recent executions per team are exposed via `GET /teams/{team_id}/rules/executions` and displayed in the "Recent activity" panel of the rules page. New executions also arrive in real time via `rule_triggered` / `rule_failed` WebSocket events.
 
 ---
 
@@ -489,6 +595,46 @@ Public discovery endpoint. Clients build their rule form UI entirely from this r
 - `server.token`: SHA-256 of `STUDENT_FIRSTNAME + STUDENT_LOGIN + "VIGIL2026"`, computed at startup
 - `connectable`: whether a user can attach a token to this service
 - `payload_example`: well-formed example, used to prefill the rule form textarea
+
+---
+
+## Security Audit
+
+### Commands
+
+```bash
+# Rust dependencies
+cd server && cargo audit
+
+# Node dependencies
+cd client && npm audit
+```
+
+Running dependency audits regularly is important to catch known vulnerabilities early. Even when all findings are false positives for your use-case, documenting the analysis demonstrates security awareness and helps future contributors understand the risk posture.
+
+### Rust (`cargo audit`)
+
+1 medium-severity advisory and 2 warnings, all on transitive
+dependencies not used directly by VIGIL:
+
+- **rsa** (RUSTSEC-2023-0071, medium 5.9) : Marvin Attack timing
+  sidechannel. VIGIL uses AES-256-GCM and SHA-256, never RSA. Pulled
+  transitively. No upstream fix available.
+- **anyhow** (RUSTSEC-2026-0190) : unsoundness in `downcast_mut()`.
+  VIGIL uses `thiserror`, not `anyhow`. Transitive dependency only.
+- **spin** : yanked version, transitive. No security impact.
+
+### Node (`npm audit`)
+
+12 high-severity advisories, none applicable in production:
+
+- **next** (9 advisories) : all relate to Server Actions, SSR
+  middleware, or the Image Optimization API. VIGIL uses
+  `output: 'export'` (static CSR); no Next.js server runs in
+  production. Static files are served by nginx.
+- **postcss** / **sharp** : transitive Next.js dependencies used at
+  build time only, never exposed at runtime.
+- **brace-expansion to eslint** : development tooling only.
 
 ---
 
@@ -539,6 +685,10 @@ Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 - **Expired invitation codes return 410.** 404 means "check your spelling", 410 means "ask the Manager for a new code".
 
 - **Blocked release returns 409.** Not 422, because the release itself is valid -- an external condition prevents progress.
+
+- **Kick and ban broadcast to the target via `to_user`.** When a member is kicked or banned, the broadcaster sends the event to remaining team members via `to_team` AND directly to the target via `to_user`. This is necessary because `to_team` resolves recipients from active memberships, and the target is already deactivated at broadcast time. Without the direct send, the target's client would never learn it was removed.
+
+- **Ban expiry is checked at join time, not by a background job.** Temporary bans have an `expires_at` timestamp. Rather than running a cron to clean up expired bans, the `POST /teams/join` endpoint checks `expires_at > now()` in its query. An expired ban is simply invisible to the join check. This eliminates operational complexity (no scheduler, no missed runs) at the cost of leaving stale rows in `team_bans`, acceptable since they are never displayed and the partial unique index only covers `status = 'active'`.
 
 ---
 

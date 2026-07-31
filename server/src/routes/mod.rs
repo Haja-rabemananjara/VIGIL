@@ -1,6 +1,8 @@
 pub mod about;
 pub mod auth;
 pub mod incidents;
+pub mod messages;
+pub mod reactions;
 pub mod releases;
 pub mod rules;
 pub mod service_connections;
@@ -23,4 +25,6 @@ pub fn router() -> Router<AppState> {
         .merge(webhooks::routes())
         .merge(service_connections::routes())
         .merge(about::routes())
+        .merge(reactions::routes())
+        .merge(messages::routes())
 }

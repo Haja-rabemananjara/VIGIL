@@ -9,10 +9,7 @@ import {
   ReleaseStateBadge,
   type ReleaseState,
 } from "@/components/ReleaseStateBadge";
-import {
-  ReleaseStepper,
-  type ReleaseStep,
-} from "@/components/ReleaseStepper";
+import { ReleaseStepper, type ReleaseStep } from "@/components/ReleaseStepper";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,7 +75,7 @@ export function ReleaseDetailClient() {
   const [validating, setValidating] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-    // Link incident dialog
+  // Link incident dialog
   const [linkOpen, setLinkOpen] = useState(false);
   const [teamIncidents, setTeamIncidents] = useState<IncidentRow[]>([]);
   const [linkLoading, setLinkLoading] = useState(false);
@@ -110,10 +107,9 @@ export function ReleaseDetailClient() {
   // Fetch role
   useEffect(() => {
     if (!token || !user) return;
-    api<{ user_id: string; role: string }[]>(
-      `/teams/${teamId}/members`,
-      { token },
-    )
+    api<{ user_id: string; role: string }[]>(`/teams/${teamId}/members`, {
+      token,
+    })
       .then((members) => {
         const me = members.find((m) => m.user_id === user.id);
         setRole(me?.role ?? null);
@@ -140,18 +136,24 @@ export function ReleaseDetailClient() {
     if (lastEvent.team_id !== teamId) return;
 
     if (
+      lastEvent.type === "member_role_changed" &&
+      lastEvent.user_id === user?.id
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRole(lastEvent.new_role as string);
+    }
+
+    if (
       lastEvent.type === "release_state_changed" &&
       lastEvent.release_id === releaseId
     ) {
       // Re-fetch to get full updated state
-
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchRelease();
     }
 
     if (
       (lastEvent.type === "release_state_changed" ||
-      lastEvent.type === "release_step_validated") &&
+        lastEvent.type === "release_step_validated") &&
       lastEvent.release_id === releaseId
     ) {
       fetchRelease();
@@ -163,13 +165,15 @@ export function ReleaseDetailClient() {
     ) {
       const affectedReleaseId = lastEvent.release_id as string;
       if (affectedReleaseId === releaseId) {
-        api<ReleaseDetail>(`/teams/${teamId}/releases/${releaseId}`, { token: token! })
+        api<ReleaseDetail>(`/teams/${teamId}/releases/${releaseId}`, {
+          token: token!,
+        })
           .then(setRelease)
           .catch(() => {});
       }
     }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastEvent, teamId, releaseId]);
 
   // Actions
@@ -219,7 +223,7 @@ export function ReleaseDetailClient() {
     }
   }
 
-   // Link/Unlink
+  // Link/Unlink
   async function openLinkDialog() {
     setLinkOpen(true);
     try {
@@ -231,9 +235,7 @@ export function ReleaseDetailClient() {
       const linkedIds = new Set(
         release?.linked_incidents?.map((li: LinkedIncident) => li.id) ?? [],
       );
-      setTeamIncidents(
-        data.incidents.filter((inc) => !linkedIds.has(inc.id)),
-      );
+      setTeamIncidents(data.incidents.filter((inc) => !linkedIds.has(inc.id)));
     } catch {
       /* keep dialog open with empty list */
     }
@@ -344,51 +346,52 @@ export function ReleaseDetailClient() {
         )}
 
         {/* Linked incidents */}
-        {release.linked_incidents?.length > 0 && release.status !== "blocked" && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-4 w-4" />
-                {t("release.linked.title")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {release.linked_incidents.map((li: LinkedIncident) => (
-                <div
-                  key={li.id}
-                  className="flex items-center justify-between rounded-md border px-3 py-2"
-                >
-                  <button
-                    onClick={() =>
-                      router.push(`/teams/${teamId}/incidents/${li.id}`)
-                    }
-                    className="text-sm font-medium hover:underline"
+        {release.linked_incidents?.length > 0 &&
+          release.status !== "blocked" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4" />
+                  {t("release.linked.title")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {release.linked_incidents.map((li: LinkedIncident) => (
+                  <div
+                    key={li.id}
+                    className="flex items-center justify-between rounded-md border px-3 py-2"
                   >
-                    {li.title}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <StateBadge state={li.status as IncidentState} />
-                    <SeverityBadge severity={li.severity as Severity} />
-                    {isManager && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleUnlinkIncident(li.id)}
-                        disabled={unlinkLoading === li.id}
-                        className="relative group"
-                      >
-                        <Unlink className="h-3.5 w-3.5" />
-                        <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 scale-0 rounded bg-gray-800 px-2 py-1 text-xs text-white transition-all group-hover:scale-100 z-10">
-                          {t("release.unlink")}
-                        </span>
-                      </Button>
-                    )}
+                    <button
+                      onClick={() =>
+                        router.push(`/teams/${teamId}/incidents/${li.id}`)
+                      }
+                      className="text-sm font-medium hover:underline"
+                    >
+                      {li.title}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <StateBadge state={li.status as IncidentState} />
+                      <SeverityBadge severity={li.severity as Severity} />
+                      {isManager && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUnlinkIncident(li.id)}
+                          disabled={unlinkLoading === li.id}
+                          className="relative group"
+                        >
+                          <Unlink className="h-3.5 w-3.5" />
+                          <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 scale-0 rounded bg-gray-800 px-2 py-1 text-xs text-white transition-all group-hover:scale-100 z-10">
+                            {t("release.unlink")}
+                          </span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
         {/* Action error */}
         {actionError && (
@@ -464,10 +467,7 @@ export function ReleaseDetailClient() {
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title={t("release.cancel.title")}
-        description={t("release.cancel.desc").replace(
-          "{name}",
-          release.title,
-        )}
+        description={t("release.cancel.desc").replace("{name}", release.title)}
         confirmLabel={t("release.cancel.confirm")}
         destructive
         onConfirm={handleCancel}

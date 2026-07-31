@@ -19,6 +19,7 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<Rule>), AppError> {
     let rule = services::rules::create_rule(
         &state.pool,
+        state.broadcaster.clone(),
         &state.action_catalog,
         &state.registry,
         team_id,
@@ -55,6 +56,7 @@ pub async fn update(
 ) -> Result<Json<Rule>, AppError> {
     let rule = services::rules::update_rule(
         &state.pool,
+        state.broadcaster.clone(),
         &state.action_catalog,
         &state.registry,
         team_id,
@@ -65,11 +67,20 @@ pub async fn update(
     Ok(Json(rule))
 }
 
+pub async fn list_executions(
+    State(state): State<AppState>,
+    _member: crate::extractors::TeamMember,
+    Path(team_id): Path<Uuid>,
+) -> Result<Json<Vec<services::rules::ExecutionResponse>>, AppError> {
+    let executions = services::rules::list_recent_executions(&state.pool, team_id).await?;
+    Ok(Json(executions))
+}
+
 pub async fn delete(
     State(state): State<AppState>,
     RequireManager(_member): RequireManager,
     Path((team_id, rule_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, AppError> {
-    services::rules::delete_rule(&state.pool, team_id, rule_id).await?;
+    services::rules::delete_rule(&state.pool, state.broadcaster.clone(), team_id, rule_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

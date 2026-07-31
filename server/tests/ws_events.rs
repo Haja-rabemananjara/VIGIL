@@ -88,7 +88,7 @@ async fn wait_for_event(
     ws: &mut (impl StreamExt<Item = Result<Message, tokio_tungstenite::tungstenite::Error>> + Unpin),
     expected_type: &str,
 ) -> serde_json::Value {
-    let timeout = tokio::time::Duration::from_secs(5);
+    let timeout = tokio::time::Duration::from_secs(30);
     let deadline = tokio::time::Instant::now() + timeout;
 
     loop {

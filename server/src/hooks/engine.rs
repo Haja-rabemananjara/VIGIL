@@ -56,11 +56,11 @@ pub async fn evaluate(
     );
 
     for rule in rules {
-        evaluate_one(ctx, &rule, payload).await;
+        evaluate_one(ctx, &rule, payload, delivery_id).await;
     }
 }
 
-async fn evaluate_one(ctx: &EngineContext<'_>, rule: &Rule, payload: &Value) {
+async fn evaluate_one(ctx: &EngineContext<'_>, rule: &Rule, payload: &Value, delivery_id: Uuid) {
     if !matcher::matches(payload, &rule.trigger_filters) {
         tracing::debug!(
             rule_id = %rule.id,
@@ -104,6 +104,15 @@ async fn evaluate_one(ctx: &EngineContext<'_>, rule: &Rule, payload: &Value) {
                 reaction_type = %rule.reaction_type,
                 "Rule executed successfully"
             );
+            let _ = repo::rules::insert_execution(
+                ctx.pool,
+                Uuid::new_v4(),
+                rule.id,
+                delivery_id,
+                "success",
+                None,
+            )
+            .await;
             broadcast_triggered(ctx.broadcaster, rule).await;
         }
         Err(err) => {
@@ -115,6 +124,15 @@ async fn evaluate_one(ctx: &EngineContext<'_>, rule: &Rule, payload: &Value) {
                 error = %error,
                 "Rule execution failed"
             );
+            let _ = repo::rules::insert_execution(
+                ctx.pool,
+                Uuid::new_v4(),
+                rule.id,
+                delivery_id,
+                "failure",
+                Some(&error),
+            )
+            .await;
             broadcast_failed(ctx.broadcaster, rule, &error).await;
         }
     }

@@ -440,3 +440,58 @@ pub async fn get_timeline(
         .map(TimelineEntryResponse::from_row)
         .collect())
 }
+
+pub async fn edit_timeline_entry(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    entry_id: Uuid,
+    caller_id: Uuid,
+    new_content: String,
+) -> Result<TimelineEntryResponse, AppError> {
+    if new_content.trim().is_empty() {
+        return Err(AppError::Validation("content cannot be empty".into()));
+    }
+    if new_content.len() > TIMELINE_MAX_LENGTH {
+        return Err(AppError::Validation(format!(
+            "content exceeds {TIMELINE_MAX_LENGTH} characters"
+        )));
+    }
+
+    let entry = repo::incidents::find_timeline_entry(pool, entry_id)
+        .await?
+        .ok_or_else(|| AppError::NotFound("timeline entry not found".into()))?;
+
+    if entry.kind == "system" {
+        return Err(AppError::Validation(
+            "system entries cannot be edited".into(),
+        ));
+    }
+
+    if entry.author_id != caller_id {
+        return Err(AppError::Forbidden(
+            "only the author can edit this entry".into(),
+        ));
+    }
+
+    let updated =
+        repo::incidents::update_timeline_entry_content(pool, entry_id, &new_content).await?;
+
+    let incident = repo::incidents::find_incident(pool, entry.incident_id)
+        .await?
+        .ok_or_else(|| AppError::Internal("parent incident not found".into()))?;
+
+    broadcaster
+        .to_team(
+            incident.team_id,
+            WsEvent::TimelineEntryEdited {
+                team_id: incident.team_id,
+                incident_id: entry.incident_id,
+                entry_id,
+                new_content: new_content.clone(),
+                edited_at: updated.edited_at.unwrap().timestamp(),
+            },
+        )
+        .await;
+
+    Ok(TimelineEntryResponse::from_row(updated))
+}

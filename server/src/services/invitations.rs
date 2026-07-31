@@ -2,10 +2,13 @@ use chrono::{Duration, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::domain::invitation::generate_invite_code;
 use crate::domain::team::Role;
 use crate::error::AppError;
 use crate::repo;
+use crate::{
+    domain::invitation::generate_invite_code,
+    ws::{Broadcaster, WsEvent},
+};
 
 use serde::Serialize;
 
@@ -49,7 +52,12 @@ pub async fn create_invitation(
     })
 }
 
-pub async fn join_team(pool: &PgPool, user_id: Uuid, code: &str) -> Result<JoinResult, AppError> {
+pub async fn join_team(
+    pool: &PgPool,
+    broadcaster: Broadcaster,
+    user_id: Uuid,
+    code: &str,
+) -> Result<JoinResult, AppError> {
     let invitation = match repo::invitations::find_valid_invitation_by_code(pool, code).await? {
         Some(inv) => inv,
         None => {
@@ -97,6 +105,25 @@ pub async fn join_team(pool: &PgPool, user_id: Uuid, code: &str) -> Result<JoinR
     let team = repo::teams::find_team_by_id(pool, team_id)
         .await?
         .ok_or_else(|| AppError::Internal("team not found after join".into()))?;
+
+    let joiner = sqlx::query_scalar!(
+        r#"SELECT display_name AS "display_name!" FROM users WHERE id = $1"#,
+        user_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    broadcaster
+        .to_team(
+            team_id,
+            WsEvent::MemberJoined {
+                team_id,
+                user_id,
+                display_name: joiner,
+                role: "observer".into(),
+            },
+        )
+        .await;
 
     Ok(JoinResult {
         team_id,

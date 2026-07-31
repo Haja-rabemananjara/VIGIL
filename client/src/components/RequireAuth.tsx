@@ -13,7 +13,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     if (!isLoading && !user) {
       router.replace("/signin");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, user]);
 
   if (isLoading || !user) {

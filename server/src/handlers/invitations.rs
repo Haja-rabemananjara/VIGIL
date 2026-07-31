@@ -28,7 +28,13 @@ pub async fn join_team(
     user: AuthUser,
     Json(body): Json<JoinRequest>,
 ) -> Result<(StatusCode, Json<services::invitations::JoinResult>), AppError> {
-    let result = services::invitations::join_team(&state.pool, user.id, &body.code).await?;
+    let result = services::invitations::join_team(
+        &state.pool,
+        state.broadcaster.clone(),
+        user.id,
+        &body.code,
+    )
+    .await?;
 
     Ok((StatusCode::CREATED, Json(result)))
 }

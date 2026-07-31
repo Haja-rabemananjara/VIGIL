@@ -10,11 +10,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 
 export type ReleaseState =
-  | "created"
-  | "in_progress"
-  | "completed"
-  | "cancelled"
-  | "blocked";
+  "created" | "in_progress" | "completed" | "cancelled" | "blocked";
 
 interface StateConfig {
   icon: LucideIcon;
@@ -55,7 +51,10 @@ interface ReleaseStateBadgeProps {
   className?: string;
 }
 
-export function ReleaseStateBadge({ state, className }: ReleaseStateBadgeProps) {
+export function ReleaseStateBadge({
+  state,
+  className,
+}: ReleaseStateBadgeProps) {
   const { icon: Icon, label, className: variantClass } = config[state];
   return (
     <span
