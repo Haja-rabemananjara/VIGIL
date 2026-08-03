@@ -48,9 +48,11 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <UserIcon className="mr-2 h-4 w-4" aria-hidden="true" />
-          <span>{t("user.profile")}</span>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/profile">
+            <UserIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+            <span>{t("user.profile")}</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings/services">

@@ -37,6 +37,7 @@ interface AuthContextValue {
   isLoading: boolean;
   language: Language;
   changeLanguage: (lang: Language) => void;
+  updateUser: (patch: Partial<User>) => void;
   signup: (
     email: string,
     password: string,
@@ -61,9 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const [language, setLang] = useState<Language>("en");
+
   const changeLanguage = useCallback((lang: Language) => {
     setLanguage(lang);
     setLang(lang);
+  }, []);
+
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
   }, []);
 
   useEffect(() => {
@@ -150,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         language,
         changeLanguage,
+        updateUser,
         signup,
         signin,
         signout,

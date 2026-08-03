@@ -145,6 +145,8 @@
 
   "presence.watching": "Watching now:",
 
+  "profile.newPassword": "New password",
+
   "release.state.created": "Created",
   "release.state.in_progress": "In Progress",
   "release.state.completed": "Completed",

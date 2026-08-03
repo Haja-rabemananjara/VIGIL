@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 /** Subset of /about.json */
 interface AboutResponse {
@@ -39,6 +41,8 @@ export function ServicesClient() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<string | null>(null);
   const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
+
+  const router = useRouter();
 
   useEffect(() => {
     if (!token) return;
@@ -120,6 +124,15 @@ export function ServicesClient() {
   return (
     <>
       <div className="mx-auto max-w-2xl space-y-4 p-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="gap-1.5"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t("action.back")}
+        </Button>
         <div>
           <h1 className="text-2xl font-semibold">{t("services.title")}</h1>
           <p className="text-sm text-muted-foreground">
