@@ -29,6 +29,7 @@ export default defineConfig({
         "src/app/teams/[teamId]/releases/[releaseId]/client.tsx",
         "src/app/messages/[userId]/page.tsx",
         "src/app/settings/services/page.tsx",
+        "src/app/settings/profile/page.tsx",
         "src/app/teams/[teamId]/page.tsx",
         "src/app/teams/[teamId]/incidents/page.tsx",
         "src/app/teams/[teamId]/incidents/[incidentId]/page.tsx",

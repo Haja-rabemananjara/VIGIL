@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { api, ApiError } from "@/lib/api";
+import { ServicesClient } from "./client";
 
-// Mock api
 vi.mock("@/lib/api", () => ({
   api: vi.fn(),
   ApiError: class ApiError extends Error {
@@ -16,16 +17,17 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-// Mock auth store
 const mockUseAuth = vi.fn(() => ({ token: "test-token" }));
 vi.mock("@/stores/auth", () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-import { api, ApiError } from "@/lib/api";
-import { ServicesClient } from "./client";
-
 const mockApi = vi.mocked(api);
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: vi.fn(), push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/settings/services",
+}));
 
 const mockAbout = {
   server: {
@@ -50,7 +52,6 @@ describe("ServicesClient", () => {
   });
 
   it("shows a loading state initially", () => {
-    // Never resolve so we stay in loading
     mockApi.mockImplementation(() => new Promise(() => {}));
     render(<ServicesClient />);
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
@@ -83,7 +84,6 @@ describe("ServicesClient", () => {
       expect(screen.getByText("github")).toBeInTheDocument();
       expect(screen.getByText("discord")).toBeInTheDocument();
     });
-    // vigil is not connectable, must not appear
     expect(screen.queryByText("vigil")).not.toBeInTheDocument();
   });
 
@@ -91,7 +91,6 @@ describe("ServicesClient", () => {
     mockApi.mockResolvedValueOnce(mockAbout).mockResolvedValueOnce([]);
     render(<ServicesClient />);
     await waitFor(() => {
-      // "Not connected" appears twice (github + discord)
       const labels = screen.getAllByText(/not connected/i);
       expect(labels.length).toBe(2);
     });
