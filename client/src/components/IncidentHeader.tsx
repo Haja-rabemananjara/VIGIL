@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StateBadge, type IncidentState } from "@/components/StateBadge";
 import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
-import { t } from "@/lib/i18n";
+import { t, type TranslationKey } from "@/lib/i18n";
 
 interface Incident {
   title: string;
@@ -27,11 +27,11 @@ interface Props {
   onOpenAssign: () => void;
 }
 
-const TRANSITION_LABELS: Record<IncidentState, string> = {
+const TRANSITION_LABELS: Record<IncidentState, TranslationKey> = {
   acknowledged: "incidents.detail.acknowledge",
   escalated: "incidents.detail.escalate",
   resolved: "incidents.detail.resolve",
-  open: "incidents.detail.reopen",
+  open: "incident.state.open",
 };
 
 function formatDate(ts: number): string {

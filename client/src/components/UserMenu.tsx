@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Plug, User as UserIcon } from "lucide-react";
+import { LogOut, Plug, User as UserIcon, Languages } from "lucide-react";
 import { useAuth } from "@/stores/auth";
 import {
   DropdownMenu,
@@ -18,6 +18,9 @@ export function UserMenu() {
   const { user, signout } = useAuth();
 
   if (!user) return null;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { language, changeLanguage } = useAuth();
 
   const initials = user.display_name
     .split(/\s+/)
@@ -54,6 +57,12 @@ export function UserMenu() {
             <Plug className="mr-2 h-4 w-4" aria-hidden="true" />
             <span>{t("user.services")}</span>
           </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => changeLanguage(language === "en" ? "fr" : "en")}
+        >
+          <Languages className="mr-2 h-4 w-4" aria-hidden="true" />
+          <span>{language === "en" ? "Français" : "English"}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signout()}>

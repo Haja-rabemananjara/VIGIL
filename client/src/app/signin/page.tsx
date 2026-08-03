@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/stores/auth";
@@ -17,10 +17,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { postLoginDestination } from "@/lib/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Languages } from "lucide-react";
 
 export default function SigninPage() {
-  const { signin } = useAuth();
+  const { signin, language, changeLanguage } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -28,6 +28,13 @@ export default function SigninPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,7 +57,17 @@ export default function SigninPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
+    <main className="relative flex min-h-screen items-center justify-center p-4">
+      {mounted && (
+        <button
+          type="button"
+          onClick={() => changeLanguage(language === "en" ? "fr" : "en")}
+          className="absolute top-4 right-4 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <Languages className="h-4 w-4" />
+          {language === "en" ? "FR" : "EN"}
+        </button>
+      )}
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>{t("auth.signin.title")}</CardTitle>

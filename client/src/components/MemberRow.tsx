@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { t } from "@/lib/i18n";
+import { t, TranslationKey } from "@/lib/i18n";
 import { MessageCircle } from "lucide-react";
 
 export interface MemberView {
@@ -49,7 +49,7 @@ export function MemberRow({
           )}
         </span>
         <span className="ml-2 text-sm text-muted-foreground">
-          {t(`members.role.${member.role}`)}
+          {t(`members.role.${member.role}` as TranslationKey)}
         </span>
       </div>
 

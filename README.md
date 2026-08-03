@@ -699,18 +699,14 @@ Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 - Release title: 200 characters
 - Release steps: 1 to 20
 - Step name: 100 characters
-- Available reaction emojis: `+1`, `-1`, `eyes`, `warning`, `check`, `fire`
-- Invitation code: 8 characters, human-safe alphabet (no 0/O, 1/I/L)
+- Available reaction emojis:   "+1": "👍", "-1": "👎", eyes: "👀", warning: "⚠️", check: "✅", fire: "🔥",
+- Invitation code: 8 characters, human-safe alphabet (no 0/O, 1/I/L to limit confusion)
 
 ---
 
 ## Known limitations
 
-- **`find_membership` takes `&PgPool`, not `&mut PgConnection`.** Prevents use inside a transaction. The transfer service calls it before `pool.begin()`, introducing a theoretical TOCTOU race. Guarded by the `promoted == false` check.
-
 - **Test helpers are duplicated across test files.** `register_and_login`, `create_team_and_invite` are copy-pasted. Extracting into `tests/common/` deferred.
-
-- **Start does not check existing links.** Starting a release with already-linked unresolved incidents transitions to `in_progress` without auto-blocking. The next incident resolution triggers the check.
 
 ---
 

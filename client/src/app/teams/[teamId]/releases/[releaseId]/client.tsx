@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
-import { t } from "@/lib/i18n";
+import { getLanguage, t } from "@/lib/i18n";
 import {
   ReleaseStateBadge,
   type ReleaseState,
@@ -14,7 +14,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVigilSocket } from "@/stores/socket";
-import { ShieldAlert } from "lucide-react";
+import { ArrowLeft, ShieldAlert } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -293,8 +293,9 @@ export function ReleaseDetailClient() {
         {/* Back link */}
         <button
           onClick={() => router.push(`/teams/${teamId}/releases`)}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="flex text-sm text-muted-foreground hover:text-foreground"
         >
+          <ArrowLeft className="h-4 w-4 mr-0.5" />
           {t("releases.title")}
         </button>
 
@@ -438,24 +439,32 @@ export function ReleaseDetailClient() {
           <CardContent className="space-y-1 py-4 text-sm text-muted-foreground">
             <p>
               {t("release.info.created")}{" "}
-              {new Date(release.created_at * 1000).toLocaleString()}
+              {new Date(release.created_at * 1000).toLocaleString(
+                getLanguage(),
+              )}
             </p>
             {release.started_at && (
               <p>
                 {t("release.info.started")}{" "}
-                {new Date(release.started_at * 1000).toLocaleString()}
+                {new Date(release.started_at * 1000).toLocaleString(
+                  getLanguage(),
+                )}
               </p>
             )}
             {release.completed_at && (
               <p>
                 {t("release.info.completed")}{" "}
-                {new Date(release.completed_at * 1000).toLocaleString()}
+                {new Date(release.completed_at * 1000).toLocaleString(
+                  getLanguage(),
+                )}
               </p>
             )}
             {release.cancelled_at && (
               <p>
                 {t("release.info.cancelled")}{" "}
-                {new Date(release.cancelled_at * 1000).toLocaleString()}
+                {new Date(release.cancelled_at * 1000).toLocaleString(
+                  getLanguage(),
+                )}
               </p>
             )}
           </CardContent>

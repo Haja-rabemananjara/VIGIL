@@ -9,6 +9,12 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api";
+import {
+  setLanguage,
+  getLanguage,
+  initLanguage,
+  type Language,
+} from "@/lib/i18n";
 
 const TOKEN_STORAGE_KEY = "vigil_token";
 
@@ -29,6 +35,8 @@ interface AuthContextValue {
   user: User | null;
   token: string | null;
   isLoading: boolean;
+  language: Language;
+  changeLanguage: (lang: Language) => void;
   signup: (
     email: string,
     password: string,
@@ -52,6 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => readStoredToken() !== null,
   );
 
+  const [language, setLang] = useState<Language>("en");
+  const changeLanguage = useCallback((lang: Language) => {
+    setLanguage(lang);
+    setLang(lang);
+  }, []);
+
+  useEffect(() => {
+    initLanguage();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLang(getLanguage());
+  }, []);
+
   useEffect(() => {
     if (!token) return;
 
@@ -59,7 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     api<User>("/me", { token })
       .then((u) => {
-        if (!cancelled) setUser(u);
+        if (!cancelled) {
+          const stored = localStorage.getItem("vigil_language");
+          if (!stored) {
+            setLanguage(u.language as "en" | "fr");
+            setLang(u.language as "en" | "fr");
+          }
+          setUser(u);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -85,6 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
     setToken(res.token);
+    const stored = localStorage.getItem("vigil_language");
+    if (!stored) {
+      setLanguage(res.user.language as "en" | "fr");
+      setLang(res.user.language as "en" | "fr");
+    }
     setUser(res.user);
   }, []);
 
@@ -112,7 +144,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoading, signup, signin, signout }}
+      value={{
+        user,
+        token,
+        isLoading,
+        language,
+        changeLanguage,
+        signup,
+        signin,
+        signout,
+      }}
     >
       {children}
     </AuthContext.Provider>
