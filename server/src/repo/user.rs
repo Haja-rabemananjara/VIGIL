@@ -56,3 +56,29 @@ pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx::E
     .fetch_optional(pool)
     .await
 }
+
+pub async fn update_profile(
+    pool: &PgPool,
+    user_id: Uuid,
+    display_name: Option<&str>,
+    password_hash: Option<&str>,
+    language: Option<&str>,
+) -> Result<User, sqlx::Error> {
+    sqlx::query_as!(
+        User,
+        r#"
+        UPDATE users
+        SET display_name = COALESCE($2, display_name),
+            password_hash = COALESCE($3, password_hash),
+            language = COALESCE($4, language)
+        WHERE id = $1
+        RETURNING id, email, password_hash, display_name, language, created_at
+        "#,
+        user_id,
+        display_name,
+        password_hash,
+        language,
+    )
+    .fetch_one(pool)
+    .await
+}

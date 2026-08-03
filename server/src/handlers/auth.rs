@@ -215,3 +215,29 @@ pub async fn signout(
     repo::session::delete_by_token_hash(&state.pool, &session.token_hash).await?;
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateProfileRequest {
+    pub display_name: Option<String>,
+    pub password: Option<String>,
+    pub language: Option<String>,
+}
+
+pub async fn update_profile(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<UpdateProfileRequest>,
+) -> Result<Json<UserResponse>, AppError> {
+    let updated = services::profile::update_profile(
+        &state.pool,
+        user.id,
+        services::profile::UpdateProfileRequest {
+            display_name: body.display_name,
+            password: body.password,
+            language: body.language,
+        },
+    )
+    .await?;
+
+    Ok(Json(updated.into()))
+}

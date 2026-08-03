@@ -42,7 +42,6 @@ async fn signup_rejects_duplicate_email_case_insensitive_with_409() {
         .unwrap();
     assert_eq!(first.status().as_u16(), 201);
 
-    // Different casing → must still collide.
     let second = client
         .post(&url)
         .json(&serde_json::json!({
