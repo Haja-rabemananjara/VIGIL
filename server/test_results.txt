@@ -1,0 +1,266 @@
+   Compiling server v0.1.0 (/home/haja/Projects/VIGIL/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5m 32s
+     Running unittests src/lib.rs (target/debug/deps/server-1ddd71adfcd4e75a)
+
+running 58 tests
+test config::tests::kickoff_token_matches_expected_recipe ... ok
+test config::tests::kickoff_token_different_inputs_differ ... ok
+test config::tests::kickoff_token_is_stable ... ok
+test crypto::tests::decrypt_fails_on_tampered_ciphertext ... ok
+test crypto::tests::decrypt_fails_with_wrong_key ... ok
+test crypto::tests::encrypt_decrypt_roundtrip ... ok
+test crypto::tests::parse_key_from_hex_invalid_chars ... ok
+test crypto::tests::encrypt_produces_different_ciphertexts_for_same_plaintext ... ok
+test crypto::tests::parse_key_from_hex_wrong_length ... ok
+test crypto::tests::parse_key_from_hex_valid ... ok
+test domain::incidents::tests::severity_roundtrip ... ok
+test domain::incidents::tests::invalid_transitions ... ok
+test domain::team::tests::role_hierarchy ... ok
+test domain::incidents::tests::status_roundtrip ... ok
+test domain::incidents::tests::valid_transitions ... ok
+test hooks::actions::tests::contains_matches_registered_pairs_only ... ok
+test hooks::actions::tests::registered_actions_are_findable ... ok
+test hooks::actions::tests::empty_catalog_has_no_actions ... ok
+test hooks::matcher::tests::boolean_values_match ... ok
+test hooks::actions::tests::registration_order_is_preserved ... ok
+test hooks::matcher::tests::deep_nesting_works ... ok
+test hooks::matcher::tests::all_filters_must_match ... ok
+test hooks::matcher::tests::empty_filters_match_anything ... ok
+test hooks::matcher::tests::full_github_workflow_run_scenario ... ok
+test hooks::matcher::tests::full_github_workflow_run_wrong_repo_does_not_match ... ok
+test hooks::matcher::tests::nested_path_mismatch ... ok
+test hooks::matcher::tests::nested_path_match ... ok
+test hooks::matcher::tests::missing_key_does_not_match ... ok
+test hooks::matcher::tests::nested_path_missing_intermediate ... ok
+test hooks::matcher::tests::non_object_filters_are_treated_as_empty ... ok
+test hooks::matcher::tests::number_values_match ... ok
+test hooks::matcher::tests::top_level_string_match ... ok
+test hooks::matcher::tests::one_bad_filter_fails_the_whole_match ... ok
+test hooks::matcher::tests::top_level_string_mismatch ... ok
+test hooks::matcher::tests::type_mismatch_does_not_match ... ok
+test hooks::registry::tests::duplicate_registration_replaces ... ok
+test hooks::registry::tests::all_returns_every_registered_executor ... ok
+test hooks::registry::tests::empty_registry_finds_nothing ... ok
+test hooks::registry::tests::registered_reaction_is_findable_by_kind ... ok
+test hooks::templating::tests::boolean_context_stringifies ... ok
+test hooks::templating::tests::empty_placeholder_treated_as_missing ... ok
+test hooks::templating::tests::missing_nested_path_leaves_placeholder_literal ... ok
+test hooks::templating::tests::full_vigil_create_incident_reaction ... ok
+test hooks::templating::tests::missing_path_leaves_placeholder_literal ... ok
+test hooks::templating::tests::multiple_placeholders_in_one_string ... ok
+test hooks::templating::tests::nested_array_template_is_walked ... ok
+test hooks::templating::tests::nested_placeholder_substitutes ... ok
+test hooks::templating::tests::non_string_values_pass_through ... ok
+test hooks::templating::tests::number_context_stringifies ... ok
+test hooks::templating::tests::nested_object_template_is_walked ... ok
+test hooks::templating::tests::placeholder_with_spaces_substitutes ... ok
+test hooks::templating::tests::plain_string_passes_through ... ok
+test hooks::templating::tests::top_level_placeholder_substitutes ... ok
+test hooks::templating::tests::unclosed_placeholder_kept_literal ... ok
+test services::about::tests::actions_are_grouped_by_service ... ok
+test services::about::tests::current_time_is_populated ... ok
+test services::about::tests::empty_catalog_and_registry_produce_no_services ... ok
+test services::about::tests::connectable_reflects_service_name_enum ... ok
+
+test result: ok. 58 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (target/debug/deps/server-dc6a7cbff5b4c8eb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/about_e2e.rs (target/debug/deps/about_e2e-b87045c802170836)
+
+running 7 tests
+test about_exposes_correct_kickoff_token has been running for over 60 seconds
+test about_is_public_no_auth_required has been running for over 60 seconds
+test about_lists_registered_github_actions has been running for over 60 seconds
+test about_lists_registered_vigil_and_discord_reactions has been running for over 60 seconds
+test about_exposes_correct_kickoff_token ... ok
+test about_lists_registered_github_actions ... ok
+test about_is_public_no_auth_required ... ok
+test about_lists_registered_vigil_and_discord_reactions ... ok
+test every_reaction_exposes_a_valid_json_payload_example ... ok
+test about_marks_third_parties_connectable_and_vigil_not ... ok
+test about_returns_expected_top_level_shape ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 332.69s
+
+     Running tests/assign.rs (target/debug/deps/assign-12087c9cce76a978)
+
+running 5 tests
+test cannot_assign_non_member ... ok
+test observer_cannot_assign ... ok
+test cannot_assign_observer ... ok
+test manager_can_assign_responder ... ok
+test reassignment_replaces_previous ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 45.73s
+
+     Running tests/audit.rs (target/debug/deps/audit-0af9e0abeb06f176)
+
+running 6 tests
+test audit_log_empty_initially ... ok
+test ban_creates_audit_entry ... ok
+test kick_creates_audit_entry ... ok
+test observer_cannot_read_audit ... ok
+test audit_respects_pagination ... ok
+test role_change_creates_audit_entry ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 36.65s
+
+     Running tests/auth_me.rs (target/debug/deps/auth_me-9721f68805239083)
+
+running 3 tests
+test me_with_invalid_token_returns_401 ... ok
+test me_without_token_returns_401 ... ok
+test me_returns_user_info ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.66s
+
+     Running tests/auth_signin.rs (target/debug/deps/auth_signin-d197f8b9d77a8dea)
+
+running 4 tests
+test signin_expired_token_is_rejected ... ok
+test signin_unknown_email_returns_401 ... ok
+test signin_wrong_password_returns_401 ... ok
+test signin_returns_token_and_user ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.29s
+
+     Running tests/auth_signout.rs (target/debug/deps/auth_signout-3711db04a3ded1df)
+
+running 2 tests
+test signout_without_token_returns_401 ... ok
+test signout_returns_204_and_invalidates_token ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.60s
+
+     Running tests/auth_signup.rs (target/debug/deps/auth_signup-3f4b307700dd137d)
+
+running 3 tests
+test signup_rejects_short_password_with_422 ... ok
+test signup_returns_201_and_never_exposes_the_hash ... ok
+test signup_rejects_duplicate_email_case_insensitive_with_409 ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.70s
+
+     Running tests/discord_reaction_e2e.rs (target/debug/deps/discord_reaction_e2e-587639a03785b8e4)
+
+running 3 tests
+test rule_without_discord_connection_fails_gracefully ... ok
+test github_ci_failure_sends_discord_message ... ok
+test discord_5xx_response_surfaces_as_rule_failure ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.95s
+
+     Running tests/health.rs (target/debug/deps/health-1f738a16245443bb)
+
+running 2 tests
+test health_returns_200_and_version ... ok
+test unknown_route_returns_404 ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.20s
+
+     Running tests/incidents.rs (target/debug/deps/incidents-f56b845060f49864)
+
+running 10 tests
+test get_incident_detail ... ok
+test create_incident_invalid_severity_returns_422 ... ok
+test list_incidents_filter_by_status ... ok
+test incident_from_other_team_returns_404 ... ok
+test list_incidents_returns_all_for_team ... ok
+test manager_can_create_incident ... ok
+test non_member_cannot_see_incidents ... ok
+test observer_can_list_incidents ... ok
+test observer_cannot_create_incident ... ok
+test responder_cannot_create_incident ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.15s
+
+     Running tests/invitations.rs (target/debug/deps/invitations-27811da4f02c0d8e)
+
+running 6 tests
+test invalid_code_returns_404 ... ok
+test manager_can_create_invitation ... ok
+test already_member_returns_409 ... ok
+test banned_user_cannot_join_returns_403 ... ok
+test user_can_join_team_with_valid_code ... ok
+test non_manager_cannot_create_invitation ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.26s
+
+     Running tests/leave.rs (target/debug/deps/leave-3eb35156c2c68e53)
+
+running 4 tests
+test manager_cannot_leave_without_transfer ... ok
+test observer_can_leave ... ok
+test responder_can_leave ... ok
+test left_member_can_rejoin_with_new_code ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.47s
+
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-c84a8f07fd67067d)
+
+running 9 tests
+test acknowledged_to_escalated_with_severity has been running for over 60 seconds
+test acknowledged_to_resolved_shortcut has been running for over 60 seconds
+test invalid_transition_returns_422 has been running for over 60 seconds
+test observer_cannot_transition has been running for over 60 seconds
+test invalid_transition_returns_422 ... ok
+test acknowledged_to_resolved_shortcut ... ok
+test acknowledged_to_escalated_with_severity ... ok
+test observer_cannot_transition ... ok
+test open_to_acknowledged ... ok
+test open_to_escalated_skipping_acknowledged_returns_422 ... ok
+test severity_can_be_updated_independently ... ok
+test unknown_status_returns_422 ... ok
+test responder_can_acknowledge ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 136.41s
+
+     Running tests/messages.rs (target/debug/deps/messages-57c7f0a449ead87b)
+
+running 8 tests
+test cannot_message_yourself ... ok
+test cannot_message_without_shared_team ... ok
+test empty_content_returns_422 ... ok
+test conversation_is_bilateral ... ok
+test kicked_member_cannot_message ... ok
+test send_message_happy_path ... ok
+test too_long_content_returns_422 ... ok
+test third_party_cannot_read_conversation ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 57.93s
+
+     Running tests/moderation.rs (target/debug/deps/moderation-5c9539ffe9579c52)
+
+running 7 tests
+test cannot_kick_yourself ... ok
+test ban_with_past_expiry_returns_422 ... ok
+test cannot_ban_the_manager ... ok
+test manager_can_kick_observer ... ok
+test permanent_ban_blocks_join_forever has been running for over 60 seconds
+test temporary_ban_expires_naturally has been running for over 60 seconds
+test unban_allows_rejoin has been running for over 60 seconds
+test temporary_ban_expires_naturally ... FAILED
+test permanent_ban_blocks_join_forever ... ok
+test unban_allows_rejoin ... ok
+
+failures:
+
+---- temporary_ban_expires_naturally stdout ----
+[2m2026-08-04T18:50:27.667869Z[0m [33m WARN[0m [2msqlx::query[0m[2m:[0m slow statement: execution time exceeded alert threshold [3msummary[0m[2m=[0m"CREATE DATABASE \"vigil_test_78df42d66a674cdeb984ddc6c8078442\" TEMPLATE …" [3mdb.statement[0m[2m=[0m"\n\nCREATE DATABASE \"vigil_test_78df42d66a674cdeb984ddc6c8078442\" TEMPLATE \"vigil_test_template\"\n" [3mrows_affected[0m[2m=[0m0 [3mrows_returned[0m[2m=[0m0 [3melapsed[0m[2m=[0m38.394686528s [3melapsed_secs[0m[2m=[0m38.394686528 [3mslow_threshold[0m[2m=[0m1s
+
+thread 'temporary_ban_expires_naturally' (81735) panicked at tests/common/mod.rs:123:10:
+called `Result::unwrap()` on an `Err` value: PoolTimedOut
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    temporary_ban_expires_naturally
+
+test result: FAILED. 6 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 146.04s
+
+error: test failed, to rerun pass `--test moderation`

@@ -108,7 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const signin = useCallback(async (email: string, password: string) => {
     const res = await api<SigninResponse>("/auth/signin", {

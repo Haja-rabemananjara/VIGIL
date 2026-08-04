@@ -15,6 +15,7 @@ const mockUser = {
   email: "alice@example.com",
   display_name: "Alice",
   language: "en",
+  avatar_seed: null,
   created_at: 1718000000,
 };
 
@@ -103,8 +104,8 @@ describe("AuthProvider", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("alice@example.com");
+      expect(screen.getByTestId("token").textContent).toBe("new-token");
     });
-    expect(screen.getByTestId("token").textContent).toBe("new-token");
     expect(localStorage.getItem("vigil_token")).toBe("new-token");
   });
 
@@ -138,6 +139,7 @@ describe("AuthProvider", () => {
     });
 
     await waitFor(() => {
+      expect(screen.getByTestId("user").textContent).toBe("alice@example.com");
       expect(screen.getByTestId("token").textContent).toBe("signup-token");
     });
   });

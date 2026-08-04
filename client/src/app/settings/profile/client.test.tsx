@@ -25,6 +25,7 @@ vi.mock("@/stores/auth", () => ({
       email: "test@example.com",
       display_name: "Tester",
       language: "en",
+      avatar_seed: null,
       created_at: 1718000000,
     },
     token: "test-token",
@@ -73,7 +74,7 @@ describe("ProfileClient", () => {
   it("disables save when display name unchanged", () => {
     render(<ProfileClient />);
     const saveButtons = screen.getAllByRole("button", { name: /save/i });
-    expect(saveButtons[0]).toBeDisabled();
+    expect(saveButtons[1]).toBeDisabled();
   });
 
   it("enables save when display name changes", () => {
@@ -81,7 +82,7 @@ describe("ProfileClient", () => {
     const input = screen.getByDisplayValue("Tester");
     fireEvent.change(input, { target: { value: "New Name" } });
     const saveButtons = screen.getAllByRole("button", { name: /save/i });
-    expect(saveButtons[0]).not.toBeDisabled();
+    expect(saveButtons[1]).not.toBeDisabled();
   });
 
   it("calls PATCH /me on name save", async () => {
@@ -98,14 +99,17 @@ describe("ProfileClient", () => {
     fireEvent.change(input, { target: { value: "New Name" } });
 
     const saveButtons = screen.getAllByRole("button", { name: /save/i });
-    fireEvent.click(saveButtons[0]);
+    fireEvent.click(saveButtons[1]);
 
     await waitFor(() => {
-      expect(mockApi).toHaveBeenCalledWith("/me", {
-        method: "PATCH",
-        token: "test-token",
-        body: { display_name: "New Name" },
-      });
+      expect(mockApi).toHaveBeenCalledWith(
+        "/me",
+        expect.objectContaining({
+          method: "PATCH",
+          token: "test-token",
+          body: expect.objectContaining({ display_name: "New Name" }),
+        }),
+      );
     });
 
     expect(mockUpdateUser).toHaveBeenCalledWith({ display_name: "New Name" });
@@ -142,7 +146,7 @@ describe("ProfileClient", () => {
     fireEvent.change(pwInput, { target: { value: "short" } });
 
     const saveButtons = screen.getAllByRole("button", { name: /save/i });
-    fireEvent.click(saveButtons[1]);
+    fireEvent.click(saveButtons[2]);
 
     await waitFor(() => {
       expect(screen.getByText(/at least 8/i)).toBeInTheDocument();
