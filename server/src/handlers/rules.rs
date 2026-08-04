@@ -9,6 +9,7 @@ use crate::domain::rules::{CreateRuleInput, Rule, UpdateRuleInput};
 use crate::error::AppError;
 use crate::extractors::RequireManager;
 use crate::services;
+use crate::services::rules::RuleContext;
 use crate::state::AppState;
 
 pub async fn create(
@@ -17,16 +18,13 @@ pub async fn create(
     Path(team_id): Path<Uuid>,
     Json(input): Json<CreateRuleInput>,
 ) -> Result<(StatusCode, Json<Rule>), AppError> {
-    let rule = services::rules::create_rule(
-        &state.pool,
-        state.broadcaster.clone(),
-        &state.action_catalog,
-        &state.registry,
-        team_id,
-        member.user_id,
-        input,
-    )
-    .await?;
+    let ctx = RuleContext {
+        pool: &state.pool,
+        broadcaster: state.broadcaster.clone(),
+        catalog: &state.action_catalog,
+        registry: &state.registry,
+    };
+    let rule = services::rules::create_rule(&ctx, team_id, member.user_id, input).await?;
     Ok((StatusCode::CREATED, Json(rule)))
 }
 
@@ -54,16 +52,13 @@ pub async fn update(
     Path((team_id, rule_id)): Path<(Uuid, Uuid)>,
     Json(input): Json<UpdateRuleInput>,
 ) -> Result<Json<Rule>, AppError> {
-    let rule = services::rules::update_rule(
-        &state.pool,
-        state.broadcaster.clone(),
-        &state.action_catalog,
-        &state.registry,
-        team_id,
-        rule_id,
-        input,
-    )
-    .await?;
+    let ctx = RuleContext {
+        pool: &state.pool,
+        broadcaster: state.broadcaster.clone(),
+        catalog: &state.action_catalog,
+        registry: &state.registry,
+    };
+    let rule = services::rules::update_rule(&ctx, team_id, rule_id, _member.user_id, input).await?;
     Ok(Json(rule))
 }
 
@@ -81,6 +76,12 @@ pub async fn delete(
     RequireManager(_member): RequireManager,
     Path((team_id, rule_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, AppError> {
-    services::rules::delete_rule(&state.pool, state.broadcaster.clone(), team_id, rule_id).await?;
+    let ctx = RuleContext {
+        pool: &state.pool,
+        broadcaster: state.broadcaster.clone(),
+        catalog: &state.action_catalog,
+        registry: &state.registry,
+    };
+    services::rules::delete_rule(&ctx, team_id, rule_id, _member.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

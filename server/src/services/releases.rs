@@ -8,9 +8,11 @@ use crate::domain::releases::{
 };
 use crate::error::AppError;
 use crate::repo;
+use crate::services::audit;
 use crate::ws::{Broadcaster, WsEvent};
 use repo::releases;
 use repo::releases::get_release_by_id;
+use serde_json::json;
 use sqlx::PgPool;
 
 pub async fn create_release(
@@ -222,6 +224,7 @@ pub async fn start_release(
     broadcaster: Broadcaster,
     release_id: Uuid,
     team_id: Uuid,
+    actor_id: Uuid,
 ) -> Result<ReleaseResponse, AppError> {
     let row = fetch_release_for_team(pool, release_id, team_id).await?;
 
@@ -253,6 +256,17 @@ pub async fn start_release(
             },
         )
         .await;
+
+    audit::record(
+        pool,
+        team_id,
+        actor_id,
+        "release_started",
+        "release",
+        release_id,
+        json!({}),
+    )
+    .await;
 
     build_full_response(pool, release_id, row).await
 }
@@ -355,6 +369,7 @@ pub async fn cancel_release(
     broadcaster: Broadcaster,
     release_id: Uuid,
     team_id: Uuid,
+    actor_id: Uuid,
 ) -> Result<ReleaseResponse, AppError> {
     let row = fetch_release_for_team(pool, release_id, team_id).await?;
 
@@ -387,6 +402,17 @@ pub async fn cancel_release(
             },
         )
         .await;
+
+    audit::record(
+        pool,
+        team_id,
+        actor_id,
+        "release_cancelled",
+        "release",
+        release_id,
+        json!({}),
+    )
+    .await;
 
     build_full_response(pool, release_id, updated).await
 }

@@ -10,13 +10,18 @@ use crate::repo::{
     self,
     rules::{NewRule, RulePatch},
 };
+use crate::services::audit;
 use crate::ws::{Broadcaster, WsEvent};
 
+pub struct RuleContext<'a> {
+    pub pool: &'a PgPool,
+    pub broadcaster: Broadcaster,
+    pub catalog: &'a ActionCatalog,
+    pub registry: &'a ReactionRegistry,
+}
+
 pub async fn create_rule(
-    pool: &PgPool,
-    broadcaster: Broadcaster,
-    catalog: &ActionCatalog,
-    registry: &ReactionRegistry,
+    ctx: &RuleContext<'_>,
     team_id: Uuid,
     actor_id: Uuid,
     input: CreateRuleInput,
@@ -27,14 +32,17 @@ pub async fn create_rule(
         ));
     }
 
-    if !registry.contains(&input.reaction.reaction_type) {
+    if !ctx.registry.contains(&input.reaction.reaction_type) {
         return Err(AppError::Validation(format!(
             "Unknown reaction: {}",
             input.reaction.reaction_type
         )));
     }
 
-    if !catalog.contains(&input.trigger.service, &input.trigger.event) {
+    if !ctx
+        .catalog
+        .contains(&input.trigger.service, &input.trigger.event)
+    {
         return Err(AppError::Validation(format!(
             "Unknown trigger: {}.{}",
             input.trigger.service, input.trigger.event
@@ -53,7 +61,7 @@ pub async fn create_rule(
     };
 
     let rule = repo::rules::insert_rule(
-        pool,
+        ctx.pool,
         NewRule {
             id: Uuid::new_v4(),
             team_id,
@@ -69,7 +77,7 @@ pub async fn create_rule(
     )
     .await?;
 
-    broadcaster
+    ctx.broadcaster
         .to_team(
             team_id,
             WsEvent::RuleCreated {
@@ -78,6 +86,17 @@ pub async fn create_rule(
             },
         )
         .await;
+
+    audit::record(
+        ctx.pool,
+        team_id,
+        actor_id,
+        "rule_created",
+        "rule",
+        rule.id,
+        json!({ "name": &rule.name }),
+    )
+    .await;
 
     Ok(rule)
 }
@@ -93,16 +112,14 @@ pub async fn get_rule(pool: &PgPool, team_id: Uuid, rule_id: Uuid) -> Result<Rul
 }
 
 pub async fn update_rule(
-    pool: &PgPool,
-    broadcaster: Broadcaster,
-    catalog: &ActionCatalog,
-    registry: &ReactionRegistry,
+    ctx: &RuleContext<'_>,
     team_id: Uuid,
     rule_id: Uuid,
+    actor_id: Uuid,
     input: UpdateRuleInput,
 ) -> Result<Rule, AppError> {
     if let Some(trigger) = &input.trigger
-        && !catalog.contains(&trigger.service, &trigger.event)
+        && !ctx.catalog.contains(&trigger.service, &trigger.event)
     {
         return Err(AppError::Validation(format!(
             "Unknown trigger: {}.{}",
@@ -111,7 +128,7 @@ pub async fn update_rule(
     }
 
     if let Some(reaction) = &input.reaction
-        && !registry.contains(&reaction.reaction_type)
+        && !ctx.registry.contains(&reaction.reaction_type)
     {
         return Err(AppError::Validation(format!(
             "Unknown reaction: {}",
@@ -140,30 +157,52 @@ pub async fn update_rule(
         reaction_payload: payload_value.as_ref(),
     };
 
-    let rule = repo::rules::update_rule(pool, team_id, rule_id, patch)
+    let rule = repo::rules::update_rule(ctx.pool, team_id, rule_id, patch)
         .await?
         .ok_or_else(|| AppError::NotFound("Rule not found".to_string()))?;
 
-    broadcaster
+    ctx.broadcaster
         .to_team(team_id, WsEvent::RuleUpdated { team_id, rule_id })
         .await;
+
+    audit::record(
+        ctx.pool,
+        team_id,
+        actor_id,
+        "rule_updated",
+        "rule",
+        rule.id,
+        json!({ "name": &rule.name }),
+    )
+    .await;
 
     Ok(rule)
 }
 
 pub async fn delete_rule(
-    pool: &PgPool,
-    broadcaster: Broadcaster,
+    ctx: &RuleContext<'_>,
     team_id: Uuid,
     rule_id: Uuid,
+    actor_id: Uuid,
 ) -> Result<(), AppError> {
-    let deleted = repo::rules::delete_rule(pool, team_id, rule_id).await?;
+    let deleted = repo::rules::delete_rule(ctx.pool, team_id, rule_id).await?;
     if !deleted {
         return Err(AppError::NotFound("Rule not found".to_string()));
     }
-    broadcaster
+    ctx.broadcaster
         .to_team(team_id, WsEvent::RuleDeleted { team_id, rule_id })
         .await;
+
+    audit::record(
+        ctx.pool,
+        team_id,
+        actor_id,
+        "rule_deleted",
+        "rule",
+        rule_id,
+        json!({}),
+    )
+    .await;
 
     Ok(())
 }

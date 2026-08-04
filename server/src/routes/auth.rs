@@ -10,7 +10,10 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/auth/signup", post(handlers::auth::signup))
         .route("/auth/signin", post(handlers::auth::signin))
-        .route("/me", get(handlers::auth::me).patch(handlers::auth::update_profile))
+        .route(
+            "/me",
+            get(handlers::auth::me).patch(handlers::auth::update_profile),
+        )
         .route("/users/{user_id}", get(handlers::auth::get_user_public))
         .route("/auth/signout", post(handlers::auth::signout))
 }

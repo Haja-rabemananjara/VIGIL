@@ -26,20 +26,21 @@ pub async fn update_profile(
         }
     }
 
-    if let Some(ref lang) = req.language {
-        if lang != "en" && lang != "fr" {
-            return Err(AppError::Validation(
-                "language must be 'en' or 'fr'".to_string(),
-            ));
-        }
+    if let Some(ref lang) = req.language
+        && lang != "en"
+        && lang != "fr"
+    {
+        return Err(AppError::Validation(
+            "language must be 'en' or 'fr'".to_string(),
+        ));
     }
 
-    if let Some(ref pw) = req.password {
-        if pw.len() < 8 {
-            return Err(AppError::Validation(
-                "password must be at least 8 characters".to_string(),
-            ));
-        }
+    if let Some(ref pw) = req.password
+        && pw.len() < 8
+    {
+        return Err(AppError::Validation(
+            "password must be at least 8 characters".to_string(),
+        ));
     }
 
     let password_hash = match &req.password {

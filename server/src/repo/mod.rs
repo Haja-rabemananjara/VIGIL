@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod incidents;
 pub mod invitations;
 pub mod messages;
