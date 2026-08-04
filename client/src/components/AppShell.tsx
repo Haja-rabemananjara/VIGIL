@@ -142,6 +142,19 @@ export function AppShell({ children }: AppShellProps) {
                       >
                         {t("app.shell.rules")}
                       </Link>
+                      {team.role === "manager" && (
+                        <Link
+                          href={`/teams/${team.id}/audit`}
+                          className={cn(
+                            "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                            pathname?.includes("/audit")
+                              ? "font-medium text-primary"
+                              : "text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          {t("app.shell.audit")}
+                        </Link>
+                      )}
                     </>
                   )}
                 </div>

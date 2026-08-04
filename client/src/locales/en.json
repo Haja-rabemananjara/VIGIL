@@ -13,6 +13,14 @@
   "common.error": "Something went wrong",
   "reactions.add": "React",
 
+  "app.shell.audit": "Audit log",
+  "audit.title": "Audit log",
+  "audit.empty": "No activity recorded yet.",
+  "audit.action": "Action",
+  "audit.actor": "By",
+  "audit.date": "Date",
+  "audit.entity": "Target",
+
   "auth.signin.title": "Sign in to VIGIL",
   "auth.signin.email": "Email",
   "auth.signin.password": "Password",

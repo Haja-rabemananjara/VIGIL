@@ -58,12 +58,16 @@ describe("ProfileClient", () => {
   it("renders language buttons", () => {
     render(<ProfileClient />);
     expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Français" }),
+    ).toBeInTheDocument();
   });
 
   it("renders password section", () => {
     render(<ProfileClient />);
-    expect(document.querySelector('input[type="password"]')).toBeInTheDocument();
+    expect(
+      document.querySelector('input[type="password"]'),
+    ).toBeInTheDocument();
   });
 
   it("disables save when display name unchanged", () => {
@@ -132,7 +136,9 @@ describe("ProfileClient", () => {
 
   it("rejects short password client-side", async () => {
     render(<ProfileClient />);
-    const pwInput = document.querySelector('input[type="password"]') as HTMLInputElement;
+    const pwInput = document.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
     fireEvent.change(pwInput, { target: { value: "short" } });
 
     const saveButtons = screen.getAllByRole("button", { name: /save/i });

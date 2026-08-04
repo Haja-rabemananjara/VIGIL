@@ -264,7 +264,7 @@ pub async fn start_release(
         "release_started",
         "release",
         release_id,
-        json!({}),
+        json!({ "title": &row.title }),
     )
     .await;
 
@@ -410,7 +410,7 @@ pub async fn cancel_release(
         "release_cancelled",
         "release",
         release_id,
-        json!({}),
+        json!({ "title": &updated.title }),
     )
     .await;
 

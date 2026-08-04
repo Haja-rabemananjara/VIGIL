@@ -18,7 +18,7 @@ pub async fn list_audit_log(
     State(state): State<AppState>,
     manager: RequireManager,
     Query(query): Query<AuditQuery>,
-) -> Result<Json<Vec<repo::audit::AuditEntry>>, AppError> {
+) -> Result<Json<Vec<repo::audit::AuditEntryWithActor>>, AppError> {
     let limit = query.limit.unwrap_or(50).min(100);
     let offset = query.offset.unwrap_or(0);
 

@@ -13,6 +13,14 @@
   "common.error": "Une erreur est survenue",
   "reactions.add": "Réagir",
 
+  "app.shell.audit": "Journal d'audit",
+  "audit.title": "Journal d'audit",
+  "audit.empty": "Aucune activité enregistrée.",
+  "audit.action": "Action",
+  "audit.actor": "Par",
+  "audit.date": "Date",
+  "audit.entity": "Cible",
+
   "auth.signin.title": "Connexion à VIGIL",
   "auth.signin.email": "E-mail",
   "auth.signin.password": "Mot de passe",

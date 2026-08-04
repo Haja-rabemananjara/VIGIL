@@ -125,6 +125,13 @@ pub async fn change_member_role(
         )
         .await;
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
     audit::record(
         pool,
         team_id,
@@ -132,7 +139,7 @@ pub async fn change_member_role(
         &format!("member_role_{}", new_role.as_str()),
         "team_member",
         target_user_id,
-        json!({"new_role": new_role.as_str() }),
+        json!({ "target_name": target_name, "new_role": new_role.as_str() }),
     )
     .await;
 
@@ -207,6 +214,13 @@ pub async fn transfer_manager(
         )
         .await;
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
     audit::record(
         pool,
         team_id,
@@ -214,7 +228,7 @@ pub async fn transfer_manager(
         "manager_transferred",
         "team_member",
         target_user_id,
-        json!({}),
+        json!({ "target_name": target_name }),
     )
     .await;
 
@@ -291,6 +305,13 @@ pub async fn kick_member(
     broadcaster.to_team(team_id, event.clone()).await;
     broadcaster.to_user(target_user_id, event);
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
     audit::record(
         pool,
         team_id,
@@ -298,7 +319,7 @@ pub async fn kick_member(
         "member_kicked",
         "team_member",
         target_user_id,
-        json!({}),
+        json!({ "target_name": target_name }),
     )
     .await;
 
@@ -354,6 +375,13 @@ pub async fn ban_member(
     broadcaster.to_team(team_id, event.clone()).await;
     broadcaster.to_user(target_user_id, event);
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
     audit::record(
         pool,
         team_id,
@@ -362,6 +390,7 @@ pub async fn ban_member(
         "team_member",
         target_user_id,
         json!({
+            "target_name": target_name,
             "expires_at": expires_at.map(|t| t.timestamp()),
             "reason": reason,
         }),
@@ -382,6 +411,13 @@ pub async fn unban_member(
         return Err(AppError::NotFound("no active ban found".into()));
     }
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
     audit::record(
         pool,
         team_id,
@@ -389,7 +425,7 @@ pub async fn unban_member(
         "member_unbanned",
         "team_member",
         target_user_id,
-        json!({}),
+        json!({ "target_name": target_name }),
     )
     .await;
 

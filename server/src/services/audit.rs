@@ -33,7 +33,7 @@ pub async fn list_for_team(
     team_id: Uuid,
     limit: i64,
     offset: i64,
-) -> Result<Vec<repo::audit::AuditEntry>, crate::error::AppError> {
+) -> Result<Vec<repo::audit::AuditEntryWithActor>, crate::error::AppError> {
     let entries = repo::audit::list_for_team(pool, team_id, limit, offset).await?;
     Ok(entries)
 }
