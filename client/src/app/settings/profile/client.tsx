@@ -12,6 +12,52 @@ import { Label } from "@/components/ui/label";
 import type { User } from "@/stores/auth";
 import { Eye, EyeOff, Check, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { UserAvatar } from "@/components/UserAvatar";
+
+const AVATAR_SEEDS = [
+  "avatar-01",
+  "avatar-02",
+  "avatar-03",
+  "avatar-04",
+  "avatar-05",
+  "avatar-06",
+  "avatar-07",
+  "avatar-08",
+  "avatar-09",
+  "avatar-10",
+  "avatar-11",
+  "avatar-12",
+  "avatar-13",
+  "avatar-14",
+  "avatar-15",
+  "avatar-16",
+  "avatar-17",
+  "avatar-18",
+  "avatar-19",
+  "avatar-20",
+  "avatar-21",
+  "avatar-22",
+  "avatar-23",
+  "avatar-24",
+  "avatar-25",
+  "avatar-26",
+  "avatar-27",
+  "avatar-28",
+  "avatar-29",
+  "avatar-30",
+  "avatar-31",
+  "avatar-32",
+  "avatar-33",
+  "avatar-34",
+  "avatar-35",
+  "avatar-36",
+  "avatar-37",
+  "avatar-38",
+  "avatar-39",
+  "avatar-40",
+  "avatar-41",
+  "avatar-42",
+];
 
 export function ProfileClient() {
   const { user, token, language, changeLanguage, updateUser } = useAuth();
@@ -28,6 +74,12 @@ export function ProfileClient() {
   const [pwPending, setPwPending] = useState(false);
 
   const [langPending, setLangPending] = useState(false);
+
+  const [selectedSeed, setSelectedSeed] = useState<string | null>(
+    user?.avatar_seed ?? null,
+  );
+  const [avatarPending, setAvatarPending] = useState(false);
+  const [avatarSuccess, setAvatarSuccess] = useState(false);
 
   if (!user) return null;
 
@@ -84,6 +136,25 @@ export function ProfileClient() {
     }
   }
 
+  async function handleAvatarSave() {
+    setAvatarPending(true);
+    setAvatarSuccess(false);
+    try {
+      await api<User>("/me", {
+        method: "PATCH",
+        token,
+        body: { avatar_seed: selectedSeed },
+      });
+      updateUser({ avatar_seed: selectedSeed });
+      setAvatarSuccess(true);
+      setTimeout(() => setAvatarSuccess(false), 2000);
+    } catch {
+      // silent
+    } finally {
+      setAvatarPending(false);
+    }
+  }
+
   async function handleLanguageChange(lang: Language) {
     setLangPending(true);
     try {
@@ -114,6 +185,58 @@ export function ProfileClient() {
         <h1 className="text-2xl font-semibold">{t("user.profile")}</h1>
         <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
+
+      {/* Avatar */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Avatar</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <UserAvatar
+              seed={selectedSeed}
+              displayName={user.display_name}
+              size={64}
+            />
+            <div className="text-sm text-muted-foreground">
+              {selectedSeed
+                ? t("profile.avatarSelected" as TranslationKey)
+                : t("profile.avatarDefault" as TranslationKey)}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {AVATAR_SEEDS.map((seed) => (
+              <button
+                key={seed}
+                type="button"
+                onClick={() => setSelectedSeed(seed)}
+                className={`rounded-full p-0.5 transition-all ${
+                  selectedSeed === seed
+                    ? "ring-2 ring-primary ring-offset-2"
+                    : "hover:ring-2 hover:ring-muted-foreground hover:ring-offset-1"
+                }`}
+              >
+                <UserAvatar seed={seed} displayName="" size={40} />
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleAvatarSave}
+              disabled={avatarPending || selectedSeed === user.avatar_seed}
+            >
+              {avatarSuccess ? <Check className="h-4 w-4" /> : t("action.save")}
+            </Button>
+            {selectedSeed && (
+              <Button variant="outline" onClick={() => setSelectedSeed(null)}>
+                {t("profile.removeAvatar" as TranslationKey)}
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Display name */}
       <Card>

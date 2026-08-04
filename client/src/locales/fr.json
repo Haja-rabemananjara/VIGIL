@@ -152,7 +152,11 @@
   "onboarding.myTeams.desc": "La gestion des incidents sera disponible dans une prochaine mise à jour.",
 
   "presence.watching": "En observation :",
+
   "profile.newPassword": "Nouveau mot de passe",
+  "profile.avatarSelected": "Avatar personnalisé sélectionné",
+  "profile.avatarDefault": "Affichage de vos initiales",
+  "profile.removeAvatar": "Supprimer l'avatar",
 
   "release.state.created": "Créée",
   "release.state.in_progress": "En cours",

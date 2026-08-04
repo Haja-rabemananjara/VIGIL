@@ -154,6 +154,9 @@
   "presence.watching": "Watching now:",
 
   "profile.newPassword": "New password",
+  "profile.avatarSelected": "Custom avatar selected",
+  "profile.avatarDefault": "Showing your initials",
+  "profile.removeAvatar": "Remove avatar",
 
   "release.state.created": "Created",
   "release.state.in_progress": "In Progress",

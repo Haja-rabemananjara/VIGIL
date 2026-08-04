@@ -23,6 +23,7 @@ export interface User {
   email: string;
   display_name: string;
   language: string;
+  avatar_seed: string | null;
   created_at: number;
 }
 
@@ -107,9 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token]);
 
   const signin = useCallback(async (email: string, password: string) => {
     const res = await api<SigninResponse>("/auth/signin", {

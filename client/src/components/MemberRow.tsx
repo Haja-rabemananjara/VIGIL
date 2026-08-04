@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { t, TranslationKey } from "@/lib/i18n";
 import { MessageCircle } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export interface MemberView {
   user_id: string;
   display_name: string;
   email: string;
   role: string;
+  avatar_seed: string | null;
   joined_at: string;
 }
 
@@ -39,18 +41,25 @@ export function MemberRow({
 
   return (
     <div className="flex items-center justify-between rounded-md border px-4 py-3">
-      <div>
-        <span className="font-medium">
-          {member.display_name}
-          {isMe && (
-            <span className="ml-1 text-sm text-muted-foreground">
-              {t("members.you")}
-            </span>
-          )}
-        </span>
-        <span className="ml-2 text-sm text-muted-foreground">
-          {t(`members.role.${member.role}` as TranslationKey)}
-        </span>
+      <div className="flex items-center gap-3">
+        <UserAvatar
+          seed={member.avatar_seed}
+          displayName={member.display_name}
+          size={32}
+        />
+        <div>
+          <span className="font-medium">
+            {member.display_name}
+            {isMe && (
+              <span className="ml-1 text-sm text-muted-foreground">
+                {t("members.you")}
+              </span>
+            )}
+          </span>
+          <span className="ml-2 text-sm text-muted-foreground">
+            {t(`members.role.${member.role}` as TranslationKey)}
+          </span>
+        </div>
       </div>
 
       <div className="flex gap-2">

@@ -11,6 +11,7 @@ pub struct MemberView {
     pub display_name: String,
     pub email: String,
     pub role: String,
+    pub avatar_seed: Option<String>,
     pub joined_at: String,
 }
 
@@ -83,6 +84,7 @@ pub async fn list_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<MemberView
             display_name: r.display_name,
             email: r.email,
             role: r.role,
+            avatar_seed: r.avatar_seed,
             joined_at: r.joined_at.to_rfc3339(),
         })
         .collect())

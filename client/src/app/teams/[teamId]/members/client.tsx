@@ -82,6 +82,7 @@ export function MembersClient() {
         display_name: lastEvent.display_name as string,
         email: "",
         role: lastEvent.role as string,
+        avatar_seed: null,
         joined_at: new Date().toISOString(),
       };
       setMembers((prev) => {

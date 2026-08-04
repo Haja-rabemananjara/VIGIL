@@ -10,9 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { t } from "@/lib/i18n";
 import Link from "next/link";
+import { UserAvatar } from "./UserAvatar";
 
 export function UserMenu() {
   const { user, signout } = useAuth();
@@ -22,19 +22,15 @@ export function UserMenu() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { language, changeLanguage } = useAuth();
 
-  const initials = user.display_name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
-        <Avatar className="h-9 w-9 cursor-pointer">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          seed={user.avatar_seed}
+          displayName={user.display_name}
+          size={36}
+          className="cursor-pointer"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">

@@ -10,6 +10,7 @@ pub struct UpdateProfileRequest {
     pub display_name: Option<String>,
     pub password: Option<String>,
     pub language: Option<String>,
+    pub avatar_seed: Option<Option<String>>,
 }
 
 pub async fn update_profile(
@@ -50,12 +51,15 @@ pub async fn update_profile(
 
     let display_name = req.display_name.as_deref().map(|n| n.trim());
 
+    let avatar_seed = req.avatar_seed.as_ref().map(|opt| opt.as_deref());
+
     let user = repo::user::update_profile(
         pool,
         user_id,
         display_name,
         password_hash.as_deref(),
         req.language.as_deref(),
+        avatar_seed,
     )
     .await
     .map_err(|e| {

@@ -9,6 +9,7 @@ pub struct User {
     pub password_hash: String,
     pub display_name: String,
     pub language: String,
+    pub avatar_seed: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -24,7 +25,7 @@ pub async fn insert_user(
         r#"
         INSERT INTO users (id, email, password_hash, display_name)
         VALUES ($1, $2, $3, $4)
-        RETURNING id, email, password_hash, display_name, language, created_at
+        RETURNING id, email, password_hash, display_name, language, avatar_seed, created_at
         "#,
         id,
         email,
@@ -38,7 +39,7 @@ pub async fn insert_user(
 pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as!(
         User,
-        r#"SELECT id, email, password_hash, display_name, language, created_at
+        r#"SELECT id, email, password_hash, display_name, language, avatar_seed, created_at
            FROM users WHERE email = $1"#,
         email,
     )
@@ -49,7 +50,7 @@ pub async fn find_by_email(pool: &PgPool, email: &str) -> Result<Option<User>, s
 pub async fn find_by_id(pool: &PgPool, id: Uuid) -> Result<Option<User>, sqlx::Error> {
     sqlx::query_as!(
         User,
-        r#"SELECT id, email, password_hash, display_name, language, created_at
+        r#"SELECT id, email, password_hash, display_name, language, avatar_seed, created_at
            FROM users WHERE id = $1"#,
         id,
     )
@@ -63,6 +64,7 @@ pub async fn update_profile(
     display_name: Option<&str>,
     password_hash: Option<&str>,
     language: Option<&str>,
+    avatar_seed: Option<Option<&str>>,
 ) -> Result<User, sqlx::Error> {
     sqlx::query_as!(
         User,
@@ -70,14 +72,17 @@ pub async fn update_profile(
         UPDATE users
         SET display_name = COALESCE($2, display_name),
             password_hash = COALESCE($3, password_hash),
-            language = COALESCE($4, language)
+            language = COALESCE($4, language),
+            avatar_seed = CASE WHEN $6 THEN $5 ELSE avatar_seed END
         WHERE id = $1
-        RETURNING id, email, password_hash, display_name, language, created_at
+        RETURNING id, email, password_hash, display_name, language, avatar_seed, created_at
         "#,
         user_id,
         display_name,
         password_hash,
         language,
+        avatar_seed.flatten(),
+        avatar_seed.is_some(),
     )
     .fetch_one(pool)
     .await

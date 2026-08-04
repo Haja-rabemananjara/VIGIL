@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, team_id, actor_id, action, entity_type, entity_id, metadata, created_at\n        FROM audit_log\n        WHERE team_id = $1\n        ORDER BY created_at DESC\n        LIMIT $2 OFFSET $3\n        ",
+  "query": "\n        SELECT a.id, a.team_id, a.actor_id,\n               u.display_name AS actor_name,\n               a.action, a.entity_type, a.entity_id, a.metadata, a.created_at\n        FROM audit_log a\n        LEFT JOIN users u ON u.id = a.actor_id\n        WHERE a.team_id = $1\n        ORDER BY a.created_at DESC\n        LIMIT $2 OFFSET $3\n        ",
   "describe": {
     "columns": [
       {
@@ -20,26 +20,31 @@
       },
       {
         "ordinal": 3,
-        "name": "action",
+        "name": "actor_name",
         "type_info": "Text"
       },
       {
         "ordinal": 4,
-        "name": "entity_type",
+        "name": "action",
         "type_info": "Text"
       },
       {
         "ordinal": 5,
+        "name": "entity_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
         "name": "entity_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "metadata",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -59,8 +64,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "8e485767a78b217e583f8c348c177f01065320fcd249eb34a467521453ac6685"
+  "hash": "56eb4e7923219f15808dfd794abae21228f0272a04bd03f0c37f0f254079b6c9"
 }
