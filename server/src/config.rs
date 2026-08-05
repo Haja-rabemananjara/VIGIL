@@ -10,6 +10,8 @@ pub struct Config {
     pub student_firstname: String,
     pub student_login: String,
     pub kickoff_token: String,
+    pub github_client_id: Option<String>,
+    pub github_client_secret: Option<String>,
 }
 
 impl Config {
@@ -36,6 +38,9 @@ impl Config {
             std::env::var("STUDENT_LOGIN").map_err(|_| "STUDENT_LOGIN must be set")?;
         let kickoff_token = compute_kickoff_token(&student_firstname, &student_login);
 
+        let github_client_id = std::env::var("GITHUB_CLIENT_ID").ok();
+        let github_client_secret = std::env::var("GITHUB_CLIENT_SECRET").ok();
+
         Ok(Self {
             database_url,
             server_host,
@@ -45,6 +50,8 @@ impl Config {
             student_firstname,
             student_login,
             kickoff_token,
+            github_client_id,
+            github_client_secret,
         })
     }
 }

@@ -41,6 +41,8 @@
   "auth.error.passwordTooShort": "Password must be at least 8 characters",
   "auth.showPassword": "Show password",
   "auth.hidePassword": "Hide password",
+  "auth.or": "or",
+  "auth.github": "Sign in with GitHub",
 
   "incident.state.open": "Open",
   "incident.state.acknowledged": "Acknowledged",

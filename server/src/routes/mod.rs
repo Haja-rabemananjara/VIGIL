@@ -10,6 +10,7 @@ pub mod service_connections;
 pub mod teams;
 pub mod webhooks;
 pub mod ws;
+pub mod oauth;
 
 use crate::state::AppState;
 use axum::{Router, routing::get};
@@ -29,4 +30,5 @@ pub fn router() -> Router<AppState> {
         .merge(reactions::routes())
         .merge(messages::routes())
         .merge(audit::routes())
+        .merge(oauth::routes())
 }
