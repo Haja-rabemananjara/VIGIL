@@ -340,20 +340,51 @@ Full codebase navigation is in the README.
 
 ---
 
+## Adding an audit-logged action
+
+Governance actions are recorded in the `audit_log` table via `services::audit::record()`. The call is fire-and-forget: errors are logged but never block the action.
+
+### 1. Call `audit::record()` in the service
+
+After the action succeeds and after any WS broadcast, add:
+
+```rust
+use crate::services::audit;
+use serde_json::json;
+
+audit::record(
+    pool,
+    team_id,
+    actor_id,
+    "action_name",   
+    "entity_type",
+    target_entity_id,
+    json!({ "target_name": name, "extra": "context" }),
+).await;
+```
+
+### 2. Include meaningful metadata
+
+Store names and context at write time, not just UUIDs. The actor's display name is resolved via JOIN at read time, but target names should be in `metadata` because the target may be deleted later.
+
+Good: `json!({ "target_name": "Alice", "new_role": "responder" })`
+Bad: `json!({})`
+
+### 3. No new endpoint needed
+
+All audit entries are read via the existing
+`GET /teams/{team_id}/audit` endpoint.
+
+**Files modified: 1** (the service file where the action lives).
+
+---
+
 ## General conventions
 
 ### Adding a user-facing string
 
-Never hardcode text in a component. Add a key to the `en` dictionary in
-`client/src/lib/i18n.ts` (convention: `scope.subscope.element`, e.g.
-`auth.signin.title`) and read it with `t("your.key")`. A missing key
-renders as the key itself, making the omission visible. The FR dictionary
-plugs in as a second dictionary with no component changes.
+Never hardcode text in a component. Add a key to the `en` dictionary in `client/src/lib/i18n.ts` (convention: `scope.subscope.element`, e.g. `auth.signin.title`) and read it with `t("your.key")`. A missing key renders as the key itself, making the omission visible. The FR dictionary plugs in as a second dictionary with no component changes.
 
 ### Adding a protected page
 
-Create a folder under `client/src/app/` (the folder name is the route).
-Wrap the page content in `<RequireAuth>` to enforce authentication, and
-in `<AppShell>` if it should render inside the app layout. Read auth
-state with `useAuth()`; never read the token from `localStorage`
-directly.
+Create a folder under `client/src/app/` (the folder name is the route). Wrap the page content in `<RequireAuth>` to enforce authentication, and in `<AppShell>` if it should render inside the app layout. Read auth state with `useAuth()`; never read the token from `localStorage` directly.
