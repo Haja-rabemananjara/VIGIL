@@ -495,6 +495,21 @@ Sent once after a successful handshake. Not broadcast.
 **Trigger:** User sends a DM via `POST /messages/{user_id}`.
 **Delivery:** bilateral (sender + recipient only, via two `to_user` calls). No `team_id` field.
 
+### `user_typing`
+
+```json
+{
+  "type": "user_typing",
+  "team_id": "uuid",
+  "incident_id": "uuid",
+  "user_id": "uuid"
+}
+```
+
+**Trigger:** User is typing in the timeline composer. Throttled to one event per 2.5 seconds client-side.
+**Delivery:** team.
+**Note:** The client displays a typing indicator for 3 seconds after receiving this event. No "stopped typing" event; the indicator simply times out.
+
 ---
 
 ## Delivery matrix
@@ -523,6 +538,8 @@ Sent once after a successful handshake. Not broadcast.
 | `rule_created` | team | yes |
 | `rule_updated` | team | yes |
 | `rule_deleted` | team | yes |
+| `user_typing` | team | yes |
+| `member_joined` | team | yes |
 
 ---
 
