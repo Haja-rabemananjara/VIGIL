@@ -3,6 +3,7 @@ pub mod audit;
 pub mod auth;
 pub mod incidents;
 pub mod messages;
+pub mod oauth;
 pub mod reactions;
 pub mod releases;
 pub mod rules;
@@ -10,7 +11,6 @@ pub mod service_connections;
 pub mod teams;
 pub mod webhooks;
 pub mod ws;
-pub mod oauth;
 
 use crate::state::AppState;
 use axum::{Router, routing::get};

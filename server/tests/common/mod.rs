@@ -169,6 +169,8 @@ pub async fn spawn_app() -> TestApp {
         http_client,
         action_catalog,
         kickoff_token,
+        github_client_id,
+        github_client_secret,
     };
 
     let app = routes::router()
