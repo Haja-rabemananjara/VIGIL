@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
-import { t } from "@/lib/i18n";
+import { getLanguage, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -173,7 +173,7 @@ export function ServicesClient() {
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm text-muted-foreground">
                       {t("services.connected")}{" "}
-                      {new Date(connection.created_at * 1000).toLocaleString()}
+                      {new Date(connection.created_at * 1000).toLocaleString(getLanguage())}
                     </p>
                     <Button
                       variant="destructive"

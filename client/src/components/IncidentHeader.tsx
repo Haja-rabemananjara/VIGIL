@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StateBadge, type IncidentState } from "@/components/StateBadge";
 import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
-import { t, type TranslationKey } from "@/lib/i18n";
+import { getLanguage, t, type TranslationKey } from "@/lib/i18n";
 
 interface Incident {
   title: string;
@@ -35,7 +35,7 @@ const TRANSITION_LABELS: Record<IncidentState, TranslationKey> = {
 };
 
 function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleString(undefined, {
+  return new Date(ts * 1000).toLocaleString(getLanguage(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",
