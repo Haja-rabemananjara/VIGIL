@@ -690,6 +690,23 @@ To trigger a failure, change `echo "Build OK"` to `exit 1` and push. The CI fail
 
 **Plan B (demo safety net):** if the network or GitHub is unavailable during the demo, use the simulated webhook command above. It produces the same result without any external dependency.
 
+#### Discord integration
+
+To receive Discord notifications when a rule fires:
+
+1. Create a Discord server (or use an existing one)
+2. In a channel, go to Settings > Integrations > Webhooks > New Webhook
+3. Copy the webhook URL
+4. In VIGIL, go to `/settings/services`, paste the URL in the Discord token field, click Connect
+5. Create a rule with reaction `discord_message`:
+   - **Name**: `CI failure -> Discord alert`
+   - **Trigger**: `github` / `workflow_run`
+   - **Filters**: `{"workflow_run.conclusion": "failure"}`
+   - **Reaction**: `discord_message`
+   - **Payload**: `{"content": "CI broken on {{repository.name}}"}`
+
+Combined with the `vigil_create_incident` rule, a single GitHub CI failure triggers both an incident in VIGIL and a message in Discord. Each rule executes independently -- a Discord failure does not prevent incident creation.
+
 ### Rule execution history
 
 Every rule execution (success or failure) is persisted in the `rule_executions` table with the delivery ID, status, error message (if any), and timestamp. The 20 most recent executions per team are exposed via `GET /teams/{team_id}/rules/executions` and displayed in the "Recent activity" panel of the rules page. New executions also arrive in real time via `rule_triggered` / `rule_failed` WebSocket events.
@@ -836,6 +853,8 @@ Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 - **OAuth2 creates accounts with random passwords.** When a GitHub user signs in for the first time and has no VIGIL account, a new account is created with a random 32-byte password hash. The user can later set a real password via the profile page if they want email/password login too.
 
 - **GitHub email resolution uses two endpoints.** `/user` is tried first; if the email is not public, `/user/emails` is queried for the primary verified email. The `user:email` scope is requested during authorization to ensure access.
+
+- **One rule = one reaction.** A rule maps one trigger to one reaction. To produce multiple effects from a single event (e.g. create an incident AND send a Discord message), create multiple rules matching the same trigger. This ensures failure isolation: a Discord outage never prevents incident creation.
 
 ---
 
