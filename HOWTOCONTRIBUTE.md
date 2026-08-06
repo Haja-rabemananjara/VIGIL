@@ -379,6 +379,49 @@ All audit entries are read via the existing
 
 ---
 
+## Setting up a live webhook demo
+
+The rule engine demo requires GitHub to reach the local VIGIL server.
+Ngrok creates a secure tunnel for this purpose.
+
+### Prerequisites
+
+- A free ngrok account (https://dashboard.ngrok.com/signup)
+- ngrok installed and authenticated (`ngrok config add-authtoken`)
+- A GitHub repository with a simple workflow (any `.github/workflows/*.yml`)
+
+### Steps
+
+1. Start the VIGIL server (`cargo run`)
+2. Start ngrok (`ngrok http 8080`)
+3. Copy the ngrok URL
+4. Configure the webhook on the GitHub repository (Settings > Webhooks)
+5. Create a matching rule in VIGIL (team > Rules > New rule)
+6. Trigger the event (push a commit that fails CI)
+
+The ngrok URL changes on every restart with the free plan, so the webhook URL in GitHub settings must be updated each session. If you have a fixed ngrok URL (free static domain), it persists across restarts.
+
+### Fallback
+
+If ngrok or GitHub is unavailable, simulate the webhook locally:
+
+```bash
+SECRET=$(grep WEBHOOK_SECRET .env | cut -d= -f2)
+PAYLOAD='{"action":"completed","workflow_run":{"name":"Build","conclusion":"failure","html_url":"https://github.com/test/run/1"},"repository":{"name":"vigil","full_name":"haja/vigil"}}'
+SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '"'"'{print "sha256="$2}'"'"')
+curl -X POST http://localhost:8080/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-Hub-Signature-256: $SIGNATURE" \
+  -H "X-GitHub-Event: workflow_run" \
+  -d "$PAYLOAD"
+```
+
+This produces the same result without any network dependency.
+
+**Files modified: 0** (infrastructure only, no code changes).
+
+---
+
 ## General conventions
 
 ### Adding a user-facing string
