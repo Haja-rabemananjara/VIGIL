@@ -588,23 +588,21 @@ Dot-notation paths matched against the payload. All must match (AND). `{}` match
 | `vigil_validate_release_step` | vigil | Advances a release step |
 | `discord_message` | discord | Posts a message to a Discord webhook URL |
 
-### Testing the rule engine locally
+### Testing the rule engine
 
-The rule engine can be tested without a real GitHub webhook by simulating one with `curl`. The HMAC signature is computed locally using the same `WEBHOOK_SECRET` as the server.
+The rule engine can be tested in two ways: simulated (curl) or live (real GitHub webhook).
 
-**Prerequisites:** a rule must be active in the target team, matching `github` / `workflow_run` with filter `workflow_run.conclusion: failure`.
+#### Simulated webhook (no network needed)
+
+Compute the HMAC signature locally and send a fake payload:
 
 ```bash
-# Read the webhook secret from .env
 SECRET=$(grep WEBHOOK_SECRET .env | cut -d= -f2)
 
-# Simulated GitHub CI failure payload
 PAYLOAD='{"action":"completed","workflow_run":{"name":"Build","conclusion":"failure","html_url":"https://github.com/test/run/1"},"repository":{"name":"vigil","full_name":"haja/vigil"}}'
 
-# Compute HMAC-SHA256 signature
 SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | awk '"'"'{print "sha256="$2}'"'"')
 
-# Send the simulated webhook
 curl -X POST http://localhost:8080/webhooks/github \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature-256: $SIGNATURE" \
@@ -612,9 +610,85 @@ curl -X POST http://localhost:8080/webhooks/github \
   -d "$PAYLOAD"
 ```
 
-Expected: `202 Accepted`. If a matching rule exists, an incident is created in the rule's team and a `rule_triggered` event is broadcast via WebSocket. If the rule also targets Discord, a message is sent to the configured channel.
+Expected: `202 Accepted`. If a matching rule exists, an incident is created and a `rule_triggered` event is broadcast via WebSocket.
 
-For a live demo with a real GitHub repository, expose the server via `ngrok http 8080` and configure the resulting URL as a webhook in the repository settings (Settings > Webhooks, secret = `WEBHOOK_SECRET`, content type = `application/json`, events = Workflow runs).
+#### Live webhook with ngrok
+
+For a live demo with a real GitHub repository, expose the server via a tunnel. VIGIL uses [ngrok](https://ngrok.com/) (free tier sufficient).
+
+**Setup (one-time):**
+
+```bash
+# Install ngrok (Ubuntu/Debian)
+curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+  | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null \
+  && echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" \
+  | sudo tee /etc/apt/sources.list.d/ngrok.list \
+  && sudo apt update \
+  && sudo apt install ngrok
+
+# Create a free account at https://dashboard.ngrok.com/signup
+# then authenticate:
+ngrok config add-authtoken YOUR_NGROK_TOKEN
+```
+
+**Running the tunnel:**
+
+```bash
+# Terminal 1: database
+docker compose -f docker-compose.dev.yml start
+
+# Terminal 2: VIGIL server
+cd server && cargo run
+
+# Terminal 3: ngrok tunnel
+ngrok http 8080
+#or
+ngrok http --url=cycle-preflight-affiliate.ngrok-free.dev 8080
+
+# Terminal 4: web client
+cd client && npm run dev
+```
+
+Ngrok displays a public URL (e.g. `https://abc123.ngrok-free.app`). This URL remains stable for the session.
+
+**Configuring the GitHub webhook:**
+
+1. Go to your GitHub repository > Settings > Webhooks > Add webhook
+2. **Payload URL**: `https://YOUR_NGROK_URL/webhooks/github`
+3. **Content type**: `application/json`
+4. **Secret**: the value of `WEBHOOK_SECRET` in your `.env`
+5. **Events**: select "Let me select individual events", check **Workflow runs**
+6. Click "Add webhook"
+
+**Creating the demo rule in VIGIL:**
+
+1. Open VIGIL web client, navigate to a team > Rules > New rule
+2. **Name**: `CI failure -> critical incident`
+3. **Trigger service**: `github`
+4. **Trigger event**: `workflow_run`
+5. **Filters**: `{"workflow_run.conclusion": "failure"}`
+6. **Reaction**: `vigil_create_incident`
+7. **Payload**: `{"title": "CI broken on {{repository.name}}", "severity": "critical"}`
+8. Enable and save
+
+**Triggering a CI failure:**
+
+The test repository needs a GitHub Actions workflow. Minimal `.github/workflows/test.yml`:
+
+```yaml
+name: Build
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Build OK"
+```
+
+To trigger a failure, change `echo "Build OK"` to `exit 1` and push. The CI fails, GitHub sends the webhook, VIGIL creates a critical incident in real time. Revert to `echo "Build OK"` to confirm that successful runs do not create incidents.
+
+**Plan B (demo safety net):** if the network or GitHub is unavailable during the demo, use the simulated webhook command above. It produces the same result without any external dependency.
 
 ### Rule execution history
 
@@ -684,11 +758,8 @@ Running dependency audits regularly is important to catch known vulnerabilities 
 1 medium-severity advisory and 2 warnings, all on transitive
 dependencies not used directly by VIGIL:
 
-- **rsa** (RUSTSEC-2023-0071, medium 5.9) : Marvin Attack timing
-  sidechannel. VIGIL uses AES-256-GCM and SHA-256, never RSA. Pulled
-  transitively. No upstream fix available.
-- **anyhow** (RUSTSEC-2026-0190) : unsoundness in `downcast_mut()`.
-  VIGIL uses `thiserror`, not `anyhow`. Transitive dependency only.
+- **rsa** (RUSTSEC-2023-0071, medium 5.9) : Marvin Attack timing sidechannel. VIGIL uses AES-256-GCM and SHA-256, never RSA. Pulled transitively. No upstream fix available.
+- **anyhow** (RUSTSEC-2026-0190) : unsoundness in `downcast_mut()`. VIGIL uses `thiserror`, not `anyhow`. Transitive dependency only.
 - **spin** : yanked version, transitive. No security impact.
 
 ### Node (`npm audit`)
@@ -720,6 +791,7 @@ Full specification lives in [WEBSOCKET_SPEC.md](./WEBSOCKET_SPEC.md).
 | `STUDENT_LOGIN`     | yes      | Derives the `/about.json` kickoff token                  |
 | `GITHUB_CLIENT_ID`  | no       | GitHub OAuth App client ID (enables "Sign in with GitHub") |
 | `GITHUB_CLIENT_SECRET` | no    | GitHub OAuth App client secret                            |
+| `NGROK_URL`         | no       | Only needed for live webhook demos. Not used by the server directly |
 
 ---
 

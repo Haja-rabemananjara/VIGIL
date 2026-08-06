@@ -1,6 +1,8 @@
 # Usage: docker compose -f docker-compose.dev.yml up -d
 # Stop:  docker compose -f docker-compose.dev.yml down
 # Reset: docker compose -f docker-compose.dev.yml down -v  (destroys data)
+# stop : docker compose -f docker-compose.dev.yml stop
+# Start: docker compose -f docker-compose.dev.yml start
 
 services:
   db:
