@@ -1,4 +1,4 @@
-import { render, screen} from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import GitHubCallbackPage from "./page";
 
@@ -9,7 +9,6 @@ vi.mock("@/lib/api", () => ({
 vi.mock("@/lib/navigation", () => ({
   postLoginDestination: vi.fn(),
 }));
-
 
 vi.mock("@/lib/i18n", () => ({
   t: (key: string) => key,
@@ -30,5 +29,4 @@ describe("GitHubCallbackPage", () => {
 
     expect(screen.getByText("Missing authorization code")).toBeInTheDocument();
   });
-
 });
