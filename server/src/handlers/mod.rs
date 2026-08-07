@@ -1,9 +1,11 @@
 pub mod about;
+pub mod audit;
 pub mod auth;
 pub mod health;
 pub mod incidents;
 pub mod invitations;
 pub mod messages;
+pub mod oauth;
 pub mod reactions;
 pub mod releases;
 pub mod rules;

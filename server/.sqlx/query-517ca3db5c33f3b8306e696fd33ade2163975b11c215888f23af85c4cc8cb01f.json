@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT u.id AS \"user_id!\",\n               u.display_name AS \"display_name!\",\n               u.email AS \"email!\",\n               tm.role AS \"role!\",\n               tm.joined_at AS \"joined_at!\"\n        FROM team_members tm\n        JOIN users u ON u.id = tm.user_id\n        WHERE tm.team_id = $1\n          AND tm.status = 'active'\n        ORDER BY tm.joined_at\n        ",
+  "query": "\n        SELECT u.id AS \"user_id!\",\n               u.display_name AS \"display_name!\",\n               u.email AS \"email!\",\n               tm.role AS \"role!\",\n               u.avatar_seed,\n               tm.joined_at AS \"joined_at!\"\n        FROM team_members tm\n        JOIN users u ON u.id = tm.user_id\n        WHERE tm.team_id = $1\n          AND tm.status = 'active'\n        ORDER BY tm.joined_at\n        ",
   "describe": {
     "columns": [
       {
@@ -25,6 +25,11 @@
       },
       {
         "ordinal": 4,
+        "name": "avatar_seed",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
         "name": "joined_at!",
         "type_info": "Timestamptz"
       }
@@ -39,8 +44,9 @@
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "e02e9744b53c94d7247278036cf31fe08e47ff1b4602c6a2abead10f4bd61b52"
+  "hash": "517ca3db5c33f3b8306e696fd33ade2163975b11c215888f23af85c4cc8cb01f"
 }

@@ -17,6 +17,7 @@ import { IncidentWatchers } from "@/components/IncidentWatchers";
 import { IncidentHeader } from "@/components/IncidentHeader";
 import { AssignDialog } from "@/components/AssignDialog";
 import { TimelineComposer } from "@/components/TimelineComposer";
+import { ArrowLeft } from "lucide-react";
 
 interface Incident {
   id: string;
@@ -382,8 +383,9 @@ export function IncidentDetailClient() {
       <div className="mx-auto max-w-3xl space-y-6 p-6">
         <button
           onClick={() => router.push(`/teams/${teamId}/incidents`)}
-          className="text-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex text-sm text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
+          <ArrowLeft className="h-4 w-4 mr-0.5" />
           {t("incidents.detail.backToList")}
         </button>
 

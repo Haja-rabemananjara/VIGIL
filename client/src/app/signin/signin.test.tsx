@@ -52,7 +52,7 @@ describe("SigninPage", () => {
   it("renders a submit button", () => {
     render(<SigninPage />);
     expect(
-      screen.getByRole("button", { name: /sign in/i }),
+      screen.getByRole("button", { name: /^sign in$/i }),
     ).toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe("SigninPage", () => {
     fireEvent.change(screen.getByLabelText(/^password$/i), {
       target: { value: "password123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(mockSignin).toHaveBeenCalledWith(
@@ -137,7 +137,7 @@ describe("SigninPage", () => {
     fireEvent.change(screen.getByLabelText(/^password$/i), {
       target: { value: "wrong-password" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Invalid email or password")).toBeInTheDocument();
@@ -154,7 +154,7 @@ describe("SigninPage", () => {
     fireEvent.change(screen.getByLabelText(/^password$/i), {
       target: { value: "password123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/error|went wrong|failed/i)).toBeInTheDocument();
@@ -171,7 +171,7 @@ describe("SigninPage", () => {
     fireEvent.change(screen.getByLabelText(/^password$/i), {
       target: { value: "password123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /loading/i })).toBeDisabled();

@@ -85,6 +85,7 @@ pub async fn start(
         state.broadcaster.clone(),
         release_id,
         member.team_id,
+        member.user_id,
     )
     .await?;
 
@@ -131,6 +132,7 @@ pub async fn cancel(
         state.broadcaster.clone(),
         release_id,
         member.team_id,
+        member.user_id,
     )
     .await?;
 

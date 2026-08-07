@@ -75,6 +75,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         http_client,
         action_catalog,
         kickoff_token: config.kickoff_token,
+        github_client_id: config.github_client_id,
+        github_client_secret: config.github_client_secret,
     };
 
     let cors = CorsLayer::new()

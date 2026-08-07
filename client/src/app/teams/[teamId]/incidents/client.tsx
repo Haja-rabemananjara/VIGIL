@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
-import { t } from "@/lib/i18n";
+import { getLanguage, t, TranslationKey } from "@/lib/i18n";
 import { StateBadge, type IncidentState } from "@/components/StateBadge";
 import { SeverityBadge, type Severity } from "@/components/SeverityBadge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ interface IncidentRow {
 
 // Helpers
 function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleDateString(undefined, {
+  return new Date(ts * 1000).toLocaleDateString(getLanguage(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -253,7 +253,7 @@ export function IncidentsClient() {
               <option value="">{t("incidents.filter.all")}</option>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {t(`incident.state.${s}` as TranslationKey)}
                 </option>
               ))}
             </select>
@@ -271,7 +271,7 @@ export function IncidentsClient() {
               <option value="">{t("incidents.filter.all")}</option>
               {SEVERITY_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {t(`incident.severity.${s}` as TranslationKey)}
                 </option>
               ))}
             </select>

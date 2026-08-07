@@ -170,6 +170,7 @@ pub struct MemberRow {
     pub display_name: String,
     pub email: String,
     pub role: String,
+    pub avatar_seed: Option<String>,
     pub joined_at: DateTime<Utc>,
 }
 
@@ -181,6 +182,7 @@ pub async fn list_team_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<Membe
                u.display_name AS "display_name!",
                u.email AS "email!",
                tm.role AS "role!",
+               u.avatar_seed,
                tm.joined_at AS "joined_at!"
         FROM team_members tm
         JOIN users u ON u.id = tm.user_id

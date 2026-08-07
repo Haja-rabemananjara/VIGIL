@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash, display_name, language, created_at\n           FROM users WHERE id = $1",
+  "query": "\n        UPDATE users\n        SET display_name = COALESCE($2, display_name),\n            password_hash = COALESCE($3, password_hash),\n            language = COALESCE($4, language),\n            avatar_seed = CASE WHEN $6 THEN $5 ELSE avatar_seed END\n        WHERE id = $1\n        RETURNING id, email, password_hash, display_name, language, avatar_seed, created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -30,13 +30,23 @@
       },
       {
         "ordinal": 5,
+        "name": "avatar_seed",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool"
       ]
     },
     "nullable": [
@@ -45,8 +55,9 @@
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "0aa1d77346aa02fabb7856a865626b006f7f53e506bc41baee198ebeaa650038"
+  "hash": "2d1d4b60a9746d5c287d3ebe31057a5756957f94f2ec4a2fd30333cb047f1141"
 }

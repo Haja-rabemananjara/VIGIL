@@ -22,12 +22,23 @@ pub struct SignupRequest {
     pub display_name: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct AuthUser {
+    pub id: Uuid,
+    pub email: String,
+    pub display_name: String,
+    pub language: String,
+    pub avatar_seed: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
     pub id: Uuid,
     pub email: String,
     pub display_name: String,
     pub language: String,
+    pub avatar_seed: Option<String>,
     pub created_at: i64,
 }
 
@@ -38,6 +49,7 @@ impl From<User> for UserResponse {
             email: u.email,
             display_name: u.display_name,
             language: u.language,
+            avatar_seed: u.avatar_seed,
             created_at: u.created_at.timestamp(),
         }
     }
@@ -83,6 +95,7 @@ pub async fn me(user: AuthUser) -> Json<UserResponse> {
         email: user.email,
         display_name: user.display_name,
         language: user.language,
+        avatar_seed: user.avatar_seed.clone(),
         created_at: user.created_at.timestamp(),
     })
 }
@@ -108,15 +121,6 @@ pub async fn get_user_public(
         "id": row.id,
         "display_name": row.display_name,
     })))
-}
-
-#[derive(Debug, Clone)]
-pub struct AuthUser {
-    pub id: Uuid,
-    pub email: String,
-    pub display_name: String,
-    pub language: String,
-    pub created_at: DateTime<Utc>,
 }
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -159,6 +163,7 @@ impl FromRequestParts<AppState> for AuthUser {
             email: user.email,
             display_name: user.display_name,
             language: user.language,
+            avatar_seed: user.avatar_seed,
             created_at: user.created_at,
         })
     }
@@ -214,4 +219,32 @@ pub async fn signout(
 ) -> Result<StatusCode, AppError> {
     repo::session::delete_by_token_hash(&state.pool, &session.token_hash).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateProfileRequest {
+    pub display_name: Option<String>,
+    pub password: Option<String>,
+    pub language: Option<String>,
+    pub avatar_seed: Option<Option<String>>,
+}
+
+pub async fn update_profile(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(body): Json<UpdateProfileRequest>,
+) -> Result<Json<UserResponse>, AppError> {
+    let updated = services::profile::update_profile(
+        &state.pool,
+        user.id,
+        services::profile::UpdateProfileRequest {
+            display_name: body.display_name,
+            password: body.password,
+            language: body.language,
+            avatar_seed: body.avatar_seed,
+        },
+    )
+    .await?;
+
+    Ok(Json(updated.into()))
 }

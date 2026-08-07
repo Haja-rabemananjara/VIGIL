@@ -1,129 +1,106 @@
 # UI Guidelines
 
-
-VIGIL is an operational control room. The interface must let an operator read a
-situation, stay consistent across every screen, and be
-usable by keyboard and by color-blind users. This document is the contract the
-jury uses to evaluate those requirements.
+VIGIL is an operational control room. The interface must be readable at a glance, consistent across screens, and usable by keyboard and color-blind users.
 
 ---
 
-## Targeted accessibility level
+## Accessibility
 
-VIGIL targets **WCAG 2.1 AA** as a guiding reference.
+VIGIL targets **WCAG 2.1 AA** as a reference.
 
-- **Keyboard navigation** on all primary actions.
-- **Explicit labels** on every form field (never placeholder-only).
-- **Color is never the only signal**: every state and severity is conveyed by
-  **color + icon + text** simultaneously, so meaning survives for color-blind
-  users and in grayscale.
+- Keyboard navigation on all primary actions
+- Explicit labels on every form field (never placeholder-only)
+- Color is never the only signal: every state and severity uses **color + icon + text**
 
-Verification method: keyboard-only walkthrough of each primary flow, and visual
-inspection of badges in grayscale to confirm icon + text remain sufficient.
+Verified by keyboard-only walkthrough and grayscale inspection of badges.
 
 ---
 
 ## Color palette
 
-Colors are defined as design tokens (CSS variables in
-`client/src/app/globals.css`) and consumed through Tailwind utility classes.
-No component hardcodes a hex value, changing a token updates the whole app.
+Defined as CSS variables in `globals.css`, consumed via Tailwind. No hardcoded hex values.
 
 | Role | Token | Usage |
 |------|-------|-------|
-| **Primary** | `--primary` | Primary actions (submit, confirm), in-progress / acknowledged states |
-| **Success** | `--success` | Resolved incidents, completed steps, positive outcomes |
-| **Warning** | `--warning` | Escalated incidents, high severity, attention-needed states |
-| **Danger** | `--destructive` | Destructive actions (kick, ban, cancel) and `critical` severity only |
-| **Neutral** | `--muted` / `--muted-foreground` | Initial / low-emphasis states (open incident, low severity), secondary text |
+| Primary | `--primary` | Submit, confirm, acknowledged/in-progress states |
+| Success | `--success` | Resolved, completed |
+| Warning | `--warning` | Escalated, high severity |
+| Danger | `--destructive` | Critical severity, destructive actions only |
+| Neutral | `--muted` | Open, low severity, secondary text |
 
-**Usage rule for red (`--destructive`):** reserved for the single most severe
-case in each axis, `critical` severity and irreversible destructive actions.
-Overusing red destroys its signaling power, so it never marks ordinary states.
+Red is reserved for the most severe case in each axis. Overusing it destroys its signal.
 
 ---
 
-## Incident state mapping
+## State mappings
 
-Each incident state has a distinct color, icon, and text label. Rendered by the
-`StateBadge` component (`client/src/components/StateBadge.tsx`).
+### Incident states (`StateBadge`)
 
 | State | Color | Icon | Label |
 |-------|-------|------|-------|
-| `open` | Neutral (gray) | AlertCircle | Open |
+| `open` | Gray | AlertCircle | Open |
 | `acknowledged` | Primary | Clock | Acknowledged |
-| `escalated` | Warning (amber) | AlertTriangle | Escalated |
-| `resolved` | Success (green) | CheckCircle2 | Resolved |
+| `escalated` | Amber | AlertTriangle | Escalated |
+| `resolved` | Green | CheckCircle2 | Resolved |
 
-Rationale: `open` is neutral because it carries no alarm yet; `acknowledged`
-adopts the primary color to signal active handling; `escalated` uses warning
-amber to draw attention; `resolved` uses success green as the positive terminal
-state.
-
----
-
-## Severity mapping
-
-Severity is an axis orthogonal to state. Rendered by the `SeverityBadge`
-component (`client/src/components/SeverityBadge.tsx`).
+### Severity levels (`SeverityBadge`)
 
 | Severity | Color | Icon | Label |
 |----------|-------|------|-------|
-| `low` | Neutral (gray) | ChevronDown | Low |
+| `low` | Gray | ChevronDown | Low |
 | `medium` | Primary | Equal | Medium |
-| `high` | Warning (amber) | ChevronUp | High |
-| `critical` | Danger (red) | Flame | Critical |
+| `high` | Amber | ChevronUp | High |
+| `critical` | Red | Flame | Critical |
 
-Rationale: the chevron direction encodes magnitude (down = low, up = high) for
-an at-a-glance read; `critical` is the only severity allowed to use red.
+### Release states (`ReleaseStateBadge`)
 
----
-
-## Reusable components (v1)
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| `StateBadge` | `components/StateBadge.tsx` | Incident state, color + icon + text |
-| `SeverityBadge` | `components/SeverityBadge.tsx` | Severity level, color + icon + text |
-| `ConfirmDialog` | `components/ConfirmDialog.tsx` | Confirmation for destructive actions |
-| `AppShell` | `components/AppShell.tsx` | Post-login layout: header + sidebar + content |
-| `UserMenu` | `components/UserMenu.tsx` | Header dropdown with identity and sign out |
-
-These build on shadcn/ui primitives (Radix-based) under `components/ui/`.
-The full inventory with all variants is documented in VGL-114.
+| State | Color | Icon | Label |
+|-------|-------|------|-------|
+| `created` | Gray | Circle | Created |
+| `in_progress` | Primary | Play | In Progress |
+| `completed` | Green | CheckCircle2 | Completed |
+| `cancelled` | Gray | XCircle | Cancelled |
+| `blocked` | Red | ShieldAlert | Blocked |
 
 ---
 
-## Information hierarchy
+## Components
 
-- **Title** : page or section heading (`text-2xl` / `text-lg font-semibold`).
-- **Subtitle** : section grouping (`text-sm font-medium text-muted-foreground`).
-- **Body** : default content text.
+| Component | Purpose |
+|-----------|---------|
+| `StateBadge` | Incident state (color + icon + text) |
+| `SeverityBadge` | Severity level (color + icon + text) |
+| `ReleaseStateBadge` | Release state (color + icon + text) |
+| `ConfirmDialog` | Confirmation for destructive actions |
+| `AppShell` | Layout: header + sidebar + content |
+| `UserMenu` | Identity, language toggle, sign out |
+| `UserAvatar` | DiceBear avatar with initials fallback |
+| `ConnectionIndicator` | WebSocket status (color + icon + text) |
 
-Critical actions are visually distinct from secondary ones: primary buttons use
-the primary color, destructive buttons use red, secondary actions are neutral.
-
----
-
-## Dark patterns, identified and avoided
-
-The interface must not manipulate the user. Measures in place:
-
-- **All destructive actions** (kick, ban, transfer Manager, cancel Release) go
-  through `ConfirmDialog`, which **names the affected resource** in its message
-  (e.g. "Kick Alice from the team?"). No destructive action fires on a single
-  unconfirmed click.
-- **No confirmation inversion** : confirm means confirm; the destructive button
-  is clearly labeled and colored red, the cancel button is the safe default.
-- **No hidden critical options** : sign out and other important actions live in
-  predictable, visible locations (the header user menu).
+Built on shadcn/ui (Radix-based) primitives.
 
 ---
 
-## Internationalization readiness
+## Dark patterns avoided
 
-Every user-facing string is resolved through `t()`
-(`client/src/lib/i18n.ts`), never hardcoded in components. This makes the FR/EN
-dictionary swap (VGL-082) a single-file change rather than a screen-by-screen
-rewrite. API values (states, severities) stay in English internally; only their
-displayed labels are translated.
+- All destructive actions go through `ConfirmDialog` naming the affected resource
+- Confirm = confirm, cancel = safe default. No inversion
+- Sign out and critical options in predictable locations (header menu)
+- Audit log is read-only. Moderation does not rewrite the past
+
+---
+
+## i18n
+
+French and English. Dictionaries in `client/src/locales/{en,fr}.json`. `t()` typed with `TranslationKey` (compile-time safety). Language changeable from profile page, header menu, or signin page. Dates localized via `getLanguage()`.
+
+---
+
+## Screenshots
+
+Located in `docs/screenshots/`:
+
+1. **Incident detail** -- StateBadge, SeverityBadge, timeline, watchers, reactions, role-contextual actions
+2. **Release detail** -- ReleaseStateBadge, stepper, blocked banner, confirmation dialog
+
+Both demonstrate the three-signal rule (color + icon + text) and the confirmation dialog pattern.

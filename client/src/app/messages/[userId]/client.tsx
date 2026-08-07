@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/stores/auth";
 import { api } from "@/lib/api";
-import { t } from "@/lib/i18n";
+import { getLanguage, t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { useVigilSocket } from "@/stores/socket";
 import { ArrowLeft } from "lucide-react";
@@ -24,7 +24,7 @@ interface UserInfo {
 }
 
 function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleString(undefined, {
+  return new Date(ts * 1000).toLocaleString(getLanguage(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",

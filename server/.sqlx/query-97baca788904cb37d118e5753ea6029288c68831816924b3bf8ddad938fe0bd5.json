@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, email, password_hash, display_name, language, created_at\n           FROM users WHERE email = $1",
+  "query": "\n        INSERT INTO users (id, email, password_hash, display_name)\n        VALUES ($1, $2, $3, $4)\n        RETURNING id, email, password_hash, display_name, language, avatar_seed, created_at\n        ",
   "describe": {
     "columns": [
       {
@@ -30,12 +30,20 @@
       },
       {
         "ordinal": 5,
+        "name": "avatar_seed",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
+        "Text",
+        "Text",
         "Text"
       ]
     },
@@ -45,8 +53,9 @@
       false,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "e5fd774e91662d9620ca304dfa6e97a189df1404168f0a234ec6cd3e59d7d26d"
+  "hash": "97baca788904cb37d118e5753ea6029288c68831816924b3bf8ddad938fe0bd5"
 }

@@ -157,6 +157,12 @@ pub async fn unban_member(
     manager: RequireManager,
     Path((_team_id, target_user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, AppError> {
-    services::teams::unban_member(&state.pool, manager.0.team_id, target_user_id).await?;
+    services::teams::unban_member(
+        &state.pool,
+        manager.0.team_id,
+        manager.0.user_id,
+        target_user_id,
+    )
+    .await?;
     Ok(StatusCode::NO_CONTENT)
 }

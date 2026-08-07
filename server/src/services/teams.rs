@@ -1,5 +1,7 @@
+use crate::services::audit;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use serde_json::json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -9,6 +11,7 @@ pub struct MemberView {
     pub display_name: String,
     pub email: String,
     pub role: String,
+    pub avatar_seed: Option<String>,
     pub joined_at: String,
 }
 
@@ -81,6 +84,7 @@ pub async fn list_members(pool: &PgPool, team_id: Uuid) -> Result<Vec<MemberView
             display_name: r.display_name,
             email: r.email,
             role: r.role,
+            avatar_seed: r.avatar_seed,
             joined_at: r.joined_at.to_rfc3339(),
         })
         .collect())
@@ -122,6 +126,24 @@ pub async fn change_member_role(
             },
         )
         .await;
+
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
+    audit::record(
+        pool,
+        team_id,
+        manager_id,
+        &format!("member_role_{}", new_role.as_str()),
+        "team_member",
+        target_user_id,
+        json!({ "target_name": target_name, "new_role": new_role.as_str() }),
+    )
+    .await;
 
     Ok(())
 }
@@ -193,6 +215,24 @@ pub async fn transfer_manager(
             },
         )
         .await;
+
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
+    audit::record(
+        pool,
+        team_id,
+        current_manager_id,
+        "manager_transferred",
+        "team_member",
+        target_user_id,
+        json!({ "target_name": target_name }),
+    )
+    .await;
 
     Ok(())
 }
@@ -267,6 +307,24 @@ pub async fn kick_member(
     broadcaster.to_team(team_id, event.clone()).await;
     broadcaster.to_user(target_user_id, event);
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
+    audit::record(
+        pool,
+        team_id,
+        manager_id,
+        "member_kicked",
+        "team_member",
+        target_user_id,
+        json!({ "target_name": target_name }),
+    )
+    .await;
+
     Ok(())
 }
 
@@ -319,17 +377,59 @@ pub async fn ban_member(
     broadcaster.to_team(team_id, event.clone()).await;
     broadcaster.to_user(target_user_id, event);
 
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
+    audit::record(
+        pool,
+        team_id,
+        manager_id,
+        "member_banned",
+        "team_member",
+        target_user_id,
+        json!({
+            "target_name": target_name,
+            "expires_at": expires_at.map(|t| t.timestamp()),
+            "reason": reason,
+        }),
+    )
+    .await;
+
     Ok(())
 }
 
 pub async fn unban_member(
     pool: &PgPool,
     team_id: Uuid,
+    manager_id: Uuid,
     target_user_id: Uuid,
 ) -> Result<(), AppError> {
     let lifted = repo::teams::lift_active_ban(pool, team_id, target_user_id).await?;
     if !lifted {
         return Err(AppError::NotFound("no active ban found".into()));
     }
+
+    let target_name = repo::user::find_by_id(pool, target_user_id)
+        .await
+        .ok()
+        .flatten()
+        .map(|u| u.display_name)
+        .unwrap_or_default();
+
+    audit::record(
+        pool,
+        team_id,
+        manager_id,
+        "member_unbanned",
+        "team_member",
+        target_user_id,
+        json!({ "target_name": target_name }),
+    )
+    .await;
+
     Ok(())
 }

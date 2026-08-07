@@ -14,4 +14,6 @@ pub struct AppState {
     pub http_client: reqwest::Client,
     pub action_catalog: ActionCatalog,
     pub kickoff_token: String,
+    pub github_client_id: Option<String>,
+    pub github_client_secret: Option<String>,
 }

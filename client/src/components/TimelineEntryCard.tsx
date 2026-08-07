@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { t } from "@/lib/i18n";
+import { getLanguage, t } from "@/lib/i18n";
 import { api } from "@/lib/api";
 import { Pencil } from "lucide-react";
 import { displayEmoji } from "@/components/Emoji";
@@ -17,7 +17,7 @@ export interface TimelineEntry {
 }
 
 function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleString(undefined, {
+  return new Date(ts * 1000).toLocaleString(getLanguage(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",
