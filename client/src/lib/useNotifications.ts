@@ -55,6 +55,15 @@ export function useNotifications() {
         }
         break;
       }
+      case "timeline_entry_added": {
+        if (lastEvent.author_id !== user?.id) {
+          notify(
+            "New Timeline Entry",
+            (lastEvent.content as string) || "A new entry was added.",
+          );
+        }
+        break;
+      }
       case "member_role_changed": {
         if (lastEvent.user_id === user?.id) {
           const role = lastEvent.new_role as string;

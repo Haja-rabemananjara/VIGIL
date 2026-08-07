@@ -29,6 +29,8 @@ services:
       MASTER_KEY_HEX: ${MASTER_KEY_HEX}
       STUDENT_FIRSTNAME: ${STUDENT_FIRSTNAME}
       STUDENT_LOGIN: ${STUDENT_LOGIN}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
     depends_on:
       db:
         condition: service_healthy
