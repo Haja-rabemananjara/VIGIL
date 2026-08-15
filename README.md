@@ -31,9 +31,9 @@ VIGIL relies on partial unique indexes (one Manager per team, one active assigne
 
 Layered Monolith with Event-Driven Broadcasting.
 
-
 Monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The client is built with `output: 'export'` (static CSR). Tauri embeds this export, so web and desktop share the same codebase.
 
+```
 External services (GitHub, Discord, webhooks...)
                           │
                           │  POST /webhooks/{service}
@@ -71,9 +71,8 @@ External services (GitHub, Discord, webhooks...)
   │                    │   │    + Notifications OS │
   │   All features     │   │    All features       │
   └────────────────────┘   └───────────────────────┘
-
+```
 **Core principle**: writes go up via REST, truth comes back down via WebSocket.
-
 
 Every layer has a Single Responsibility and can only call the layer below.
 
