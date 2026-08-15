@@ -29,34 +29,49 @@ VIGIL relies on partial unique indexes (one Manager per team, one active assigne
 
 ## Architecture
 
+Layered Monolith with Event-Driven Broadcasting
 Monorepo: `server/` (Rust/Axum) and `client/` (Next.js). The client is built with `output: 'export'` (static CSR). Tauri embeds this export, so web and desktop share the same codebase.
 
-```
-                        ┌──────────────────────────────┐
-                        │     External services        │
-                        │  (GitHub, Discord, webhooks) │
-                        └───────────────┬──────────────┘
-                                        │ POST /webhooks/{service}
-                                        ▼
-┌───────────────────────────────────────────────────────────────┐
-│                  VIGIL Application Server (Rust / Axum)       │
-│                                                               │
-│   routes/ => handlers/ => services/ => domain/                │
-│                                 │                             │
-│                                 ▼                             │
-│                        repo/ (sqlx) => PostgreSQL             │
-│                                                               │
-│   services/ call ──────► ws/broadcaster                       │
-│                           to_team() / to_user()               │
-└──────────────────────────┬────────────────────────────────────┘
-                           │  REST (writes) + WebSocket (truth)
-                    ┌──────┴───────┐
-                    ▼              ▼
-              Web client    Desktop client
-              (Next.js)     (Tauri, standalone)
-```
+External services (GitHub, Discord, webhooks...)
+                          │
+                          │  POST /webhooks/{service}
+                          v
+┌──────────────────────────────────────────────────────────┐
+│           Application Server  (Rust / Axum)              │
+│                                                          │
+│  ┌─────────────────┐   ┌──────────────────────┐          │
+│  │ Webhook Receiver│   │    Hook Engine       │          │
+│  │ HMAC validation ├──>│  (rule evaluation)   │          │
+│  └─────────────────┘   └──────────┬───────────┘          │
+│                                   │                      │
+│  ┌────────────────────────────────v───────────────────┐  │
+│  │                 WS Broadcaster                     │  │
+│  │  - Release / Incident state updates                │  │
+│  │  - Collaborative timeline                          │  │
+│  │  - Presence (who is watching what)                 │  │
+│  │  - Live feed of triggered rules                    │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  routes/ → handlers/ → services/ → domain/ → repo/       │
+│                                                 │        │
+│                                          PostgreSQL      │
+│                                            (sqlx)        │
+└────────────────────────┬─────────────────────────────────┘
+                         │  WebSocket + REST
+            ┌────────────┴────────────┐
+            v                         v
+  ┌────────────────────┐   ┌───────────────────────┐
+  │     Web Client     │   │    Desktop Client     │
+  │   Next.js 16       │   │    Tauri v2           │
+  │   App Router       │   │    standalone         │
+  │   Tailwind v4      │   │                       │
+  │   shadcn/ui Nova   │   │    + Tray icon        │
+  │                    │   │    + Notifications OS │
+  │   All features     │   │    All features       │
+  └────────────────────┘   └───────────────────────┘
 
 **Core principle**: writes go up via REST, truth comes back down via WebSocket.
+Every layer has a Single Responsibility and can only call the layer below.
 
 ### Codebase navigation
 
@@ -146,9 +161,19 @@ cd server && cargo llvm-cov --html --output-dir ../docs/coverage --ignore-run-fa
 cd client && npm test -- --run --coverage
 ```
 
+### Open report
+
+```bash
+# Server: HTML report in docs/coverage/
+xdg-open docs/coverage/html/index.html
+
+# Client
+xdg-open docs/coverage/html/index.html
+```
+
 | Component | Coverage | Threshold |
 |-----------|----------|-----------|
-| Server | **+88%** | 70% |
+| Server | **+81%** | 70% |
 | Client | **+70%** | 70% |
 
 ### Linting

@@ -92,23 +92,6 @@ Rules: never fetch inside a WS handler (use `setState` with event data). Excepti
 
 ---
 
-## Adding an audit-logged action
-
-Call `audit::record()` in the service, after the action succeeds:
-
-```rust
-audit::record(pool, team_id, actor_id, "action_name", "entity_type", target_id,
-    json!({ "target_name": name })).await;
-```
-
-Store names in metadata (not just UUIDs) since targets may be deleted later. The call is fire-and-forget: errors are logged but never block the action.
-
-All entries are read via `GET /teams/{id}/audit`. No new endpoint needed.
-
-**Files modified: 1.**
-
----
-
 ## Live webhook demo
 
 1. Install ngrok: https://ngrok.com/download
