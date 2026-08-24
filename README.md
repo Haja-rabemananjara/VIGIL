@@ -171,7 +171,7 @@ cd client && npm test -- --run --coverage
 xdg-open docs/coverage/html/index.html
 
 # Client
-xdg-open docs/coverage/html/index.html
+xdg-open docs/client-coverage/index.html
 ```
 
 | Component | Coverage | Threshold |
