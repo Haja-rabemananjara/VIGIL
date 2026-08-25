@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_OFFLINE: true
+
+jobs:
+  client:
+    name: client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+      - run: npx eslint .
+      - run: npx prettier --check .
+      - run: npm run build
+      - run: npx vitest run --coverage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-coverage
+          path: client/coverage/
+          retention-days: 14
+
+  server:
+    name: server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vigil
+          POSTGRES_PASSWORD: vigil_test
+          POSTGRES_DB: vigil
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgres://vigil:vigil_test@localhost:5432/vigil
+      WEBHOOK_SECRET: test-secret
+      MASTER_KEY_HEX: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      STUDENT_FIRSTNAME: Test
+      STUDENT_LOGIN: test.login
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/
+            ~/.cargo/git/
+            server/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('server/Cargo.lock') }}
+
+      - run: cargo fmt --check
+      - run: cargo clippy -- -D warnings
+      - run: cargo test --test-threads=2
+
+      - name: Check SQLx prepare is up to date
+        run: cargo sqlx prepare --check
+
+      - name: Generate coverage report
+        run: cargo llvm-cov --html --output-dir coverage --ignore-run-fail -- --test-threads=2
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage
+          path: server/coverage/
+          retention-days: 14
