@@ -172,15 +172,15 @@ jobs:
           name: server-binary
           path: ./artifacts/server/
 
-      - name: Download client coverage
+      - name: Download client
         uses: actions/download-artifact@v4
         with:
           name: client-coverage
-          path: ./artifacts/client-coverage/
+          path: ./artifacts/client/
 
       - name: List artifacts
         run: |
           echo "Server"
           ls -la ./artifacts/server/
           echo "Client Coverage"
-          ls -la ./artifacts/client-coverage/
+          ls -la ./artifacts/client/
