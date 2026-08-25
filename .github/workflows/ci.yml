@@ -124,6 +124,7 @@ jobs:
           name: server-binary
           path: server/target/release/server
           retention-days: 14
+          if-no-files-found: warn
 
   client-build:
     name: "Client: Build & Test"
@@ -156,6 +157,7 @@ jobs:
           name: client-coverage
           path: client/coverage/
           retention-days: 14
+          if-no-files-found: warn
 
   artifacts:
     name: "Artifacts"
