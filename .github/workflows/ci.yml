@@ -76,7 +76,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: vigil
-          POSTGRES_PASSWORD: vigil_test
+          POSTGRES_PASSWORD: vigil_dev
           POSTGRES_DB: vigil
         options: >-
           --health-cmd pg_isready
@@ -87,7 +87,7 @@ jobs:
           - 5432:5432
 
     env:
-      DATABASE_URL: postgres://vigil:vigil_test@localhost:5432/vigil
+      DATABASE_URL: postgres://vigil:vigil_dev@localhost:5432/vigil
       WEBHOOK_SECRET: test-secret
       MASTER_KEY_HEX: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
       STUDENT_FIRSTNAME: Test
