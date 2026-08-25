@@ -2,6 +2,8 @@
 
 Collaborative operational control room for managing **Releases** (planned deployments) and **Incidents** (detected problems) in real time. The two are connected: an active Incident can automatically block an ongoing Release.
 
+[![CI](https://github.com/Haja-rabemananjara/VIGIL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Haja-rabemananjara/VIGIL/actions/workflows/ci.yml)
+
 > Hajatiana Rabemananjara
 
 ---
