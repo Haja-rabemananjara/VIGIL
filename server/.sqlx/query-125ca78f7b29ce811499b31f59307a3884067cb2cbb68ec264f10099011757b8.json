@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM team_service_connections WHERE team_id = $1 AND service = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "125ca78f7b29ce811499b31f59307a3884067cb2cbb68ec264f10099011757b8"
+}

@@ -7,6 +7,7 @@ pub mod releases;
 pub mod rules;
 pub mod service_connections;
 pub mod session;
+pub mod team_connections;
 pub mod teams;
 pub mod user;
 pub mod webhooks;
