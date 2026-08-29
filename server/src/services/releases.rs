@@ -242,31 +242,68 @@ pub async fn start_release(
         .await
         .map_err(|e| AppError::Internal(format!("Failed to update release: {e}")))?;
 
-    releases::get_steps_for_release(pool, release_id)
+    let has_blocker = releases::has_active_blocker(pool, release_id)
         .await
-        .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
+        .map_err(|e| AppError::Internal(format!("Failed to check blockers: {e}")))?;
 
-    broadcaster
-        .to_team(
-            team_id,
-            WsEvent::ReleaseStateChanged {
+    let row = if has_blocker {
+        let blocked =
+            releases::update_release_status(pool, release_id, ReleaseStatus::Blocked.as_str())
+                .await
+                .map_err(|e| AppError::Internal(format!("Failed to block release: {e}")))?;
+
+        broadcaster
+            .to_team(
                 team_id,
-                release_id,
-                new_state: "in_progress".to_string(),
-            },
+                WsEvent::ReleaseStateChanged {
+                    team_id,
+                    release_id,
+                    new_state: "blocked".to_string(),
+                },
+            )
+            .await;
+
+        audit::record(
+            pool,
+            team_id,
+            actor_id,
+            "release_started",
+            "release",
+            release_id,
+            json!({ "title": &blocked.title }),
         )
         .await;
 
-    audit::record(
-        pool,
-        team_id,
-        actor_id,
-        "release_started",
-        "release",
-        release_id,
-        json!({ "title": &row.title }),
-    )
-    .await;
+        blocked
+    } else {
+        broadcaster
+            .to_team(
+                team_id,
+                WsEvent::ReleaseStateChanged {
+                    team_id,
+                    release_id,
+                    new_state: "in_progress".to_string(),
+                },
+            )
+            .await;
+
+        audit::record(
+            pool,
+            team_id,
+            actor_id,
+            "release_started",
+            "release",
+            release_id,
+            json!({ "title": &row.title }),
+        )
+        .await;
+
+        row
+    };
+
+    releases::get_steps_for_release(pool, release_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to fetch steps: {e}")))?;
 
     build_full_response(pool, release_id, row).await
 }

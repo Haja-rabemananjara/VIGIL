@@ -8,9 +8,7 @@ use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 use axum::http::{HeaderValue, Method};
-use server::hooks::reactions::{
-    DiscordMessage, VigilCreateIncident,
-};
+use server::hooks::reactions::{DiscordMessage, VigilCreateIncident};
 use server::hooks::{ActionCatalog, ReactionRegistry};
 use tower_http::cors::CorsLayer;
 

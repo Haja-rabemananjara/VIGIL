@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/stores/auth";
 
 export type Severity = "low" | "medium" | "high" | "critical";
 
@@ -16,35 +17,38 @@ interface SeverityConfig {
   className: string;
 }
 
-const config: Record<Severity, SeverityConfig> = {
-  low: {
-    icon: ChevronDown,
-    label: t("incident.severity.low"),
-    className: "bg-muted text-muted-foreground",
-  },
-  medium: {
-    icon: Equal,
-    label: t("incident.severity.medium"),
-    className: "bg-primary/10 text-primary",
-  },
-  high: {
-    icon: ChevronUp,
-    label: t("incident.severity.high"),
-    className: "bg-warning/10 text-warning",
-  },
-  critical: {
-    icon: Flame,
-    label: t("incident.severity.critical"),
-    className: "bg-destructive/10 text-destructive",
-  },
-};
-
 interface SeverityBadgeProps {
   severity: Severity;
   className?: string;
 }
 
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
+  const { language } = useAuth();
+  void language;
+
+  const config: Record<Severity, SeverityConfig> = {
+    low: {
+      icon: ChevronDown,
+      label: t("incident.severity.low"),
+      className: "bg-muted text-muted-foreground",
+    },
+    medium: {
+      icon: Equal,
+      label: t("incident.severity.medium"),
+      className: "bg-primary/10 text-primary",
+    },
+    high: {
+      icon: ChevronUp,
+      label: t("incident.severity.high"),
+      className: "bg-warning/10 text-warning",
+    },
+    critical: {
+      icon: Flame,
+      label: t("incident.severity.critical"),
+      className: "bg-destructive/10 text-destructive",
+    },
+  };
+
   const { icon: Icon, label, className: variantClass } = config[severity];
   return (
     <span
