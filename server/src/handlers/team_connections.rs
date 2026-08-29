@@ -53,7 +53,7 @@ pub async fn connect(
     // Generate webhook URL only for services that receive incoming webhooks
     let webhook_url = match service.as_str() {
         "github" => {
-            let host = std::env::var("SERVER_HOST")
+            let host = std::env::var("PUBLIC_URL")
                 .unwrap_or_else(|_| "http://localhost:8080".to_string());
             Some(services::team_connections::webhook_url(
                 connection.id,

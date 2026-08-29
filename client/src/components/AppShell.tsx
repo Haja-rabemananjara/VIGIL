@@ -144,6 +144,19 @@ export function AppShell({ children }: AppShellProps) {
                       </Link>
                       {team.role === "manager" && (
                         <Link
+                          href={`/teams/${team.id}/integrations`}
+                          className={cn(
+                            "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
+                            pathname?.includes("/integrations")
+                              ? "font-medium text-primary"
+                              : "text-muted-foreground hover:bg-muted",
+                          )}
+                        >
+                          {t("app.shell.integrations")}
+                        </Link>
+                      )}
+                      {team.role === "manager" && (
+                        <Link
                           href={`/teams/${team.id}/audit`}
                           className={cn(
                             "block rounded-md px-3 py-1.5 pl-6 text-xs transition-colors",
