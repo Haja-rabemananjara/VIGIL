@@ -129,15 +129,6 @@ pub async fn spawn_app() -> TestApp {
             server::hooks::reactions::VigilCreateIncident::new(),
         ))
         .register(std::sync::Arc::new(
-            server::hooks::reactions::VigilEscalateIncident::new(),
-        ))
-        .register(std::sync::Arc::new(
-            server::hooks::reactions::VigilBlockRelease::new(),
-        ))
-        .register(std::sync::Arc::new(
-            server::hooks::reactions::VigilValidateReleaseStep::new(),
-        ))
-        .register(std::sync::Arc::new(
             server::hooks::reactions::DiscordMessage::new(),
         ))
         .build();
