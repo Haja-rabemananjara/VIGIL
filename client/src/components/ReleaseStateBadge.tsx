@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/stores/auth";
 
 export type ReleaseState =
   "created" | "in_progress" | "completed" | "cancelled" | "blocked";
@@ -18,34 +19,6 @@ interface StateConfig {
   className: string;
 }
 
-const config: Record<ReleaseState, StateConfig> = {
-  created: {
-    icon: PackagePlus,
-    label: t("release.state.created"),
-    className: "bg-muted text-muted-foreground",
-  },
-  in_progress: {
-    icon: Play,
-    label: t("release.state.in_progress"),
-    className: "bg-primary/10 text-primary",
-  },
-  completed: {
-    icon: CheckCircle2,
-    label: t("release.state.completed"),
-    className: "bg-success/10 text-success",
-  },
-  cancelled: {
-    icon: XCircle,
-    label: t("release.state.cancelled"),
-    className: "bg-muted text-muted-foreground line-through",
-  },
-  blocked: {
-    icon: ShieldAlert,
-    label: t("release.state.blocked"),
-    className: "bg-destructive/10 text-destructive",
-  },
-};
-
 interface ReleaseStateBadgeProps {
   state: ReleaseState;
   className?: string;
@@ -55,6 +28,37 @@ export function ReleaseStateBadge({
   state,
   className,
 }: ReleaseStateBadgeProps) {
+  const { language } = useAuth();
+  void language;
+
+  const config: Record<ReleaseState, StateConfig> = {
+    created: {
+      icon: PackagePlus,
+      label: t("release.state.created"),
+      className: "bg-muted text-muted-foreground",
+    },
+    in_progress: {
+      icon: Play,
+      label: t("release.state.in_progress"),
+      className: "bg-primary/10 text-primary",
+    },
+    completed: {
+      icon: CheckCircle2,
+      label: t("release.state.completed"),
+      className: "bg-success/10 text-success",
+    },
+    cancelled: {
+      icon: XCircle,
+      label: t("release.state.cancelled"),
+      className: "bg-muted text-muted-foreground line-through",
+    },
+    blocked: {
+      icon: ShieldAlert,
+      label: t("release.state.blocked"),
+      className: "bg-destructive/10 text-destructive",
+    },
+  };
+
   const { icon: Icon, label, className: variantClass } = config[state];
   return (
     <span

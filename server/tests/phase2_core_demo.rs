@@ -47,16 +47,16 @@ async fn create_team(address: &str, token: &str, name: &str) -> Uuid {
     Uuid::parse_str(body["id"].as_str().unwrap()).unwrap()
 }
 
-async fn connect_discord(address: &str, token: &str, webhook_url: &str) {
+async fn connect_discord(address: &str, token: &str, team_id: Uuid, webhook_url: &str) {
     let client = reqwest::Client::new();
     let res = client
-        .post(format!("{address}/me/services/discord"))
+        .post(format!("{address}/teams/{team_id}/connections/discord"))
         .bearer_auth(token)
         .json(&json!({ "token": webhook_url }))
         .send()
         .await
         .unwrap();
-    assert_eq!(res.status(), 200, "discord connection failed");
+    assert_eq!(res.status(), 201, "discord connection failed");
 }
 
 async fn create_rule(
@@ -125,7 +125,7 @@ async fn phase2_core_full_demo_github_to_incident_and_discord() {
 
     let alice = register_and_login(&app.address, "alice@example.com").await;
     let team_id = create_team(&app.address, &alice, "Ops").await;
-    connect_discord(&app.address, &alice, &discord_webhook_url).await;
+    connect_discord(&app.address, &alice, team_id, &discord_webhook_url).await;
 
     create_rule(
         &app.address,

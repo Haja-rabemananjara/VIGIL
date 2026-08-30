@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useVigilSocket } from "@/stores/socket";
 import { useRouteParams } from "@/lib/useRouteParams";
 import { MemberRow, type MemberView } from "@/components/MemberRow";
+import { DateTimePicker } from "@/components/DateTimePicker";
 
 export function MembersClient() {
   const { teamId } = useRouteParams();
@@ -437,11 +438,10 @@ export function MembersClient() {
                 >
                   {t("members.ban.customDate")}
                 </label>
-                <Input
+                <DateTimePicker
                   id="ban-custom-date"
-                  type="datetime-local"
                   value={banCustomDate}
-                  onChange={(e) => setBanCustomDate(e.target.value)}
+                  onChange={(v) => setBanCustomDate(v)}
                 />
               </div>
             )}

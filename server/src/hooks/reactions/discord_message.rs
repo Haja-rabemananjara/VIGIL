@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use serde::Deserialize;
 
 use crate::crypto;
-use crate::domain::service_connections::ServiceName;
 use crate::error::AppError;
 use crate::hooks::{ReactionContext, ReactionExecutor};
 use crate::repo;
@@ -60,16 +59,14 @@ impl ReactionExecutor for DiscordMessage {
             ));
         }
 
-        let connection = repo::service_connections::find_with_token(
+        let connection = repo::team_connections::get_by_team_service_with_token(
             ctx.pool,
-            ctx.rule_created_by,
-            ServiceName::Discord,
+            ctx.team_id,
+            "discord",
         )
         .await?
         .ok_or_else(|| {
-            AppError::Validation(
-                "The rule creator has no Discord connection configured".to_string(),
-            )
+            AppError::Validation("This team has no Discord connection configured".to_string())
         })?;
 
         let webhook_bytes = crypto::decrypt(ctx.master_key, &connection.encrypted_token)?;

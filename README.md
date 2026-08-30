@@ -178,8 +178,8 @@ xdg-open docs/client-coverage/index.html
 
 | Component | Coverage | Threshold |
 |-----------|----------|-----------|
-| Server | **+81%** | 70% |
-| Client | **+70%** | 70% |
+| Server | **+78%** | 70% |
+| Client | **+71%** | 70% |
 
 ### Linting
 

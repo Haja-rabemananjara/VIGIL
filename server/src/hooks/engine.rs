@@ -24,8 +24,14 @@ pub async fn evaluate(
     event: &str,
     payload: &Value,
     delivery_id: Uuid,
+    team_id: Option<Uuid>,
 ) {
-    let rules = match repo::rules::list_matching_rules(ctx.pool, service, event).await {
+    let rules = match team_id {
+        Some(tid) => repo::rules::list_matching_rules_for_team(ctx.pool, tid, service, event).await,
+        None => repo::rules::list_matching_rules(ctx.pool, service, event).await,
+    };
+
+    let rules = match rules {
         Ok(rules) => rules,
         Err(err) => {
             tracing::error!(

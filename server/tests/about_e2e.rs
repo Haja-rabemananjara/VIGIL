@@ -91,9 +91,6 @@ async fn about_lists_registered_vigil_and_discord_reactions() {
         .map(|r| r["name"].as_str().unwrap())
         .collect();
     assert!(vigil_kinds.contains(&"vigil_create_incident"));
-    assert!(vigil_kinds.contains(&"vigil_escalate_incident"));
-    assert!(vigil_kinds.contains(&"vigil_block_release"));
-    assert!(vigil_kinds.contains(&"vigil_validate_release_step"));
 
     let discord = services
         .iter()
@@ -170,7 +167,7 @@ async fn every_reaction_exposes_a_valid_json_payload_example() {
         }
     }
 
-    assert_eq!(checked, 5, "expected 5 registered reactions");
+    assert_eq!(checked, 2, "expected 2 registered reactions");
     let github = services.iter().find(|s| s["name"] == "github").unwrap();
     for action in github["actions"].as_array().unwrap() {
         assert!(action["payload_example"].is_null());

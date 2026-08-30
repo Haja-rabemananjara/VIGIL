@@ -138,20 +138,20 @@ export function ReleasesClient() {
       const eventId = lastEvent.release_id as string;
       const newState = lastEvent.new_state as string;
 
-      setReleases((prev) => {
-        const exists = prev.some((r) => r.id === eventId);
-        if (exists) {
-          return prev.map((r) =>
-            r.id === eventId ? { ...r, status: newState as ReleaseState } : r,
-          );
-        }
-        return prev;
-      });
-
-      // New release created: fetch full data (same pattern as incidents)
       if (newState === "created") {
+        // New release: fetch full list
         api<ReleaseRow[]>(`/teams/${teamId}/releases`, { token: token! })
           .then((data) => setReleases(data))
+          .catch(() => {});
+      } else {
+        api<ReleaseRow>(`/teams/${teamId}/releases/${eventId}`, {
+          token: token!,
+        })
+          .then((updated) => {
+            setReleases((prev) =>
+              prev.map((r) => (r.id === eventId ? updated : r)),
+            );
+          })
           .catch(() => {});
       }
     }
@@ -168,6 +168,19 @@ export function ReleasesClient() {
         .then((updated) => {
           setReleases((prev) =>
             prev.map((r) => (r.id === affectedReleaseId ? updated : r)),
+          );
+        })
+        .catch(() => {});
+    }
+
+    if (lastEvent.type === "release_step_validated") {
+      const affectedId = lastEvent.release_id as string;
+      api<ReleaseRow>(`/teams/${teamId}/releases/${affectedId}`, {
+        token: token!,
+      })
+        .then((updated) => {
+          setReleases((prev) =>
+            prev.map((r) => (r.id === affectedId ? updated : r)),
           );
         })
         .catch(() => {});

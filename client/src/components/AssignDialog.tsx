@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { t } from "@/lib/i18n";
+import { t, TranslationKey } from "@/lib/i18n";
 
 interface Member {
   user_id: string;
@@ -49,7 +49,9 @@ export function AssignDialog({
                 className="w-full rounded-md border px-4 py-2 text-left text-sm hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {m.display_name}{" "}
-                <span className="text-muted-foreground">({m.role})</span>
+                <span className="text-muted-foreground">
+                  ({t(`members.role.${m.role}` as TranslationKey)})
+                </span>
               </button>
             ))}
           </div>

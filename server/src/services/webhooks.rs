@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::repo::{self, webhooks::NewDelivery};
+use crate::repo::{self};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use sqlx::PgPool;
@@ -37,6 +37,7 @@ pub struct IncomingDelivery<'a> {
     pub headers: Option<&'a serde_json::Value>,
     pub source: Option<&'a str>,
     pub hmac_valid: bool,
+    pub connection_id: Option<Uuid>,
 }
 
 pub async fn persist_delivery(
@@ -47,7 +48,7 @@ pub async fn persist_delivery(
 
     repo::webhooks::insert_delivery(
         pool,
-        NewDelivery {
+        repo::webhooks::NewDelivery {
             id,
             service: incoming.service,
             event_type: incoming.event_type,
@@ -55,6 +56,7 @@ pub async fn persist_delivery(
             headers: incoming.headers,
             source: incoming.source,
             hmac_valid: incoming.hmac_valid,
+            connection_id: incoming.connection_id,
         },
     )
     .await?;
@@ -68,6 +70,7 @@ pub async fn process_delivery(
     service: &str,
     event_type: &str,
     payload: &serde_json::Value,
+    team_id: Option<Uuid>,
 ) {
     tracing::info!(
         delivery_id = %delivery_id,
@@ -76,7 +79,7 @@ pub async fn process_delivery(
         "Processing webhook delivery"
     );
 
-    crate::hooks::engine::evaluate(ctx, service, event_type, payload, delivery_id).await;
+    crate::hooks::engine::evaluate(ctx, service, event_type, payload, delivery_id, team_id).await;
 
     if let Err(e) = repo::webhooks::mark_processed(ctx.pool, delivery_id).await {
         tracing::error!(error = %e, "Failed to mark delivery as processed");

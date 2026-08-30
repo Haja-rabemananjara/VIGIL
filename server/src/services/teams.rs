@@ -347,6 +347,10 @@ pub async fn ban_member(
 
     check_moderation_target(pool, team_id, manager_id, target_user_id).await?;
 
+    if repo::invitations::is_user_banned(pool, team_id, target_user_id).await? {
+        return Err(AppError::Conflict("This member is already banned".into()));
+    }
+
     let mut tx = pool.begin().await?;
 
     let updated = repo::teams::deactivate_member_tx(&mut tx, team_id, target_user_id).await?;

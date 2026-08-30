@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Plug, User as UserIcon, Languages } from "lucide-react";
+import { LogOut, User as UserIcon, Languages } from "lucide-react";
 import { useAuth } from "@/stores/auth";
 import {
   DropdownMenu,
@@ -48,12 +48,6 @@ export function UserMenu() {
           <Link href="/settings/profile">
             <UserIcon className="mr-2 h-4 w-4" aria-hidden="true" />
             <span>{t("user.profile")}</span>
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/settings/services">
-            <Plug className="mr-2 h-4 w-4" aria-hidden="true" />
-            <span>{t("user.services")}</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
