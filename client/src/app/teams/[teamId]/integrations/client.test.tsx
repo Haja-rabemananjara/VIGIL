@@ -126,9 +126,7 @@ describe("IntegrationsClient", () => {
   it("shows error when connecting with empty token", async () => {
     mockApi.mockResolvedValueOnce([]);
     render(<IntegrationsClient />);
-    await waitFor(() =>
-      expect(screen.getByText("GitHub")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("GitHub")).toBeInTheDocument());
 
     const connectButtons = screen.getAllByText("Connect");
     fireEvent.click(connectButtons[0]);
@@ -148,13 +146,9 @@ describe("IntegrationsClient", () => {
     });
 
     render(<IntegrationsClient />);
-    await waitFor(() =>
-      expect(screen.getByText("GitHub")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("GitHub")).toBeInTheDocument());
 
-    const input = screen.getByPlaceholderText(
-      /secret you set in github/i,
-    );
+    const input = screen.getByPlaceholderText(/secret you set in github/i);
     fireEvent.change(input, { target: { value: "my-secret" } });
 
     const connectButtons = screen.getAllByText("Connect");
@@ -168,7 +162,9 @@ describe("IntegrationsClient", () => {
           body: { token: "my-secret" },
         }),
       );
-      expect(screen.getByDisplayValue("https://example.com/webhooks/c1")).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("https://example.com/webhooks/c1"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -183,9 +179,7 @@ describe("IntegrationsClient", () => {
       expect(screen.getByText("Discord")).toBeInTheDocument(),
     );
 
-    const input = screen.getByPlaceholderText(
-      /discord\.com\/api\/webhooks/i,
-    );
+    const input = screen.getByPlaceholderText(/discord\.com\/api\/webhooks/i);
     fireEvent.change(input, {
       target: { value: "https://discord.com/api/webhooks/123/abc" },
     });
@@ -211,9 +205,7 @@ describe("IntegrationsClient", () => {
     );
 
     render(<IntegrationsClient />);
-    await waitFor(() =>
-      expect(screen.getByText("GitHub")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("GitHub")).toBeInTheDocument());
 
     const input = screen.getByPlaceholderText(/secret you set in github/i);
     fireEvent.change(input, { target: { value: "bad" } });
