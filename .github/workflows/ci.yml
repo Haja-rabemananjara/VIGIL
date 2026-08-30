@@ -146,6 +146,19 @@ jobs:
         run: cargo test -- --test-threads=2
         continue-on-error: true
 
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
+
+      - name: Generate server coverage report
+        run: cargo llvm-cov --html --output-dir coverage --ignore-run-fail -- --test-threads=2
+
+      - name: Upload server coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage
+          path: server/coverage/
+          retention-days: 14
+
       - name: Build release binary
         run: cargo build --release
 
