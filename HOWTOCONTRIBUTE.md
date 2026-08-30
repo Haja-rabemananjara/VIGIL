@@ -96,13 +96,17 @@ Rules: never fetch inside a WS handler (use `setState` with event data). Excepti
 
 1. Install ngrok: https://ngrok.com/download
 2. `ngrok http 8080` (or with a static domain: `ngrok http --url=your-domain.ngrok-free.dev 8080`)
-3. Configure webhook on GitHub repo: Settings > Webhooks, payload URL = ngrok URL + `/webhooks/github`, secret = your `WEBHOOK_SECRET`
-4. Create a rule in VIGIL matching `github` / `workflow_run` with filter `{"workflow_run.conclusion": "failure"}`
-5. Push a failing CI (`exit 1` in the workflow)
+3. In VIGIL, go to your team's **Integrations** page and connect GitHub with a webhook secret of your choice
+4. Copy the generated webhook URL (e.g. `https://your-domain.ngrok-free.dev/webhooks/<connection-id>`)
+5. Configure webhook on GitHub repo: Settings > Webhooks, payload URL = the copied URL, content type = `application/json`, secret = the same secret you entered in VIGIL
+6. Create a rule in VIGIL matching `github` / `workflow_run` with filter `{"workflow_run.conclusion": "failure"}`
+7. Push a failing CI (`exit 1` in the workflow)
 
-**Discord:** connect a webhook URL in `/settings/services`, create a `discord_message` rule. One CI failure triggers both an incident and a Discord message (two rules, isolated failure domains).
+**Discord:** connect a Discord webhook URL in your team's **Integrations** page, then create a `discord_message` rule. One CI failure triggers both an incident and a Discord message (two rules, isolated failure domains).
 
 **Fallback (no network):**
+
+The legacy endpoint `/webhooks/github` still works with the global `WEBHOOK_SECRET` from `.env`:
 
 ```bash
 SECRET=$(grep WEBHOOK_SECRET .env | cut -d= -f2)

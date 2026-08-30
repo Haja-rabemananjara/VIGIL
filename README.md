@@ -343,14 +343,13 @@ Pipeline: HMAC validation -> persist payload -> 202 -> async evaluation -> filte
 | Kind | Effect |
 |------|--------|
 | `vigil_create_incident` | Creates an incident |
-| `vigil_escalate_incident` | Escalates an incident |
-| `vigil_block_release` | Links incident to release, triggers auto-block |
-| `vigil_validate_release_step` | Validates a release step |
 | `discord_message` | Posts to a Discord webhook |
 
 ### Testing locally
 
 **Simulated (no network):**
+
+The legacy endpoint `/webhooks/github` uses the global `WEBHOOK_SECRET` from `.env`:
 
 ```bash
 SECRET=$(grep WEBHOOK_SECRET .env | cut -d= -f2)
@@ -368,11 +367,19 @@ curl -X POST http://localhost:8080/webhooks/github \
 ```bash
 # Install: https://ngrok.com/download
 ngrok http 8080
+
+# With a static domain
+ngrok http --url=cycle-preflight-affiliate.ngrok-free.dev 8080
 ```
 
-Configure webhook on GitHub repo (Settings > Webhooks), create a matching rule in VIGIL, push a failing CI. See [HOWTOCONTRIBUTE.md](./HOWTOCONTRIBUTE.md) for the full walkthrough.
+1. Set `PUBLIC_URL` to your ngrok domain so the Integrations page displays the correct webhook URL
+2. In VIGIL, go to your team's **Integrations** page and connect GitHub with a secret
+3. Copy the generated webhook URL and paste it in your GitHub repo Settings > Webhooks (content type: `application/json`, same secret)
+4. Create a matching rule in VIGIL, push a failing CI
 
-**Discord:** connect a Discord webhook URL in `/settings/services`, create a `discord_message` rule. One CI failure triggers both an incident AND a Discord message (two separate rules, isolated failure domains).
+See [HOWTOCONTRIBUTE.md](./HOWTOCONTRIBUTE.md) for the full walkthrough.
+
+**Discord:** connect a Discord webhook URL in your team's **Integrations** page, create a `discord_message` rule. One CI failure triggers both an incident AND a Discord message (two separate rules, isolated failure domains).
 
 ---
 
@@ -381,14 +388,15 @@ Configure webhook on GitHub repo (Settings > Webhooks), create a matching rule i
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | yes | PostgreSQL connection string |
-| `SERVER_HOST` | no | Default `0.0.0.0` |
+| `SERVER_HOST` | no | Bind address, default `0.0.0.0` |
 | `SERVER_PORT` | no | Default `8080` |
-| `WEBHOOK_SECRET` | no | HMAC secret for webhooks |
-| `MASTER_KEY_HEX` | yes | 64 hex chars for AES-256-GCM |
-| `STUDENT_FIRSTNAME` | yes | For `/about.json` token |
-| `STUDENT_LOGIN` | yes | For `/about.json` token |
-| `GITHUB_CLIENT_ID` | no | OAuth2 (optional) |
-| `GITHUB_CLIENT_SECRET` | no | OAuth2 (optional) |
+| `PUBLIC_URL` | no | Public URL for generated webhook endpoints (e.g. ngrok domain). Default `http://localhost:8080` |
+| `WEBHOOK_SECRET` | no | HMAC secret for the legacy `/webhooks/github` endpoint |
+| `MASTER_KEY_HEX` | yes | 64 hex chars for AES-256-GCM token encryption |
+| `STUDENT_FIRSTNAME` | yes | For `/about.json` kickoff token |
+| `STUDENT_LOGIN` | yes | For `/about.json` kickoff token |
+| `GITHUB_CLIENT_ID` | no | OAuth2 GitHub sign-in (optional) |
+| `GITHUB_CLIENT_SECRET` | no | OAuth2 GitHub sign-in (optional) |
 
 ---
 
