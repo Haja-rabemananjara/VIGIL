@@ -154,6 +154,7 @@
   "members.ban.reason.placeholder": "ex. Spam répété",
   "members.ban.confirm": "Bannir le membre",
   "members.ban.error.pastDate": "La date de fin du bannissement doit être dans le futur",
+  "members.ban.error.alreadyBanned": "Ce membre est deja banni",
   "members.message": "Message",
 
   "messages.title": "Messages",
@@ -288,6 +289,9 @@
   "teams.join.submit": "Rejoindre",
   "teams.join.error.empty": "Le code d'invitation est requis",
   "teams.join.success": "Vous avez rejoint l'équipe !",
+  "teams.join.error.banned": "Vous avez été banni de cette équipe",
+  "teams.join.error.expired": "Ce code d'invitation a expire",
+  "teams.join.error.notFound": "Code d'invitation introuvable",
 
   "teams.invite.dialogTitle": "Inviter dans l'équipe",
   "teams.invite.dialogDesc": "Partagez ce code avec les personnes que vous souhaitez inviter.",

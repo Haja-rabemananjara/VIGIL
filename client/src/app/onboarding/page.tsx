@@ -127,7 +127,19 @@ export default function OnboardingPage() {
       handleJoinOpenChange(false);
       router.push(`/teams/${result.team_id}/incidents`);
     } catch (e) {
-      setJoinError(e instanceof ApiError ? e.message : t("common.error"));
+      if (e instanceof ApiError) {
+        if (e.status === 403 && e.message.toLowerCase().includes("banned")) {
+          setJoinError(t("teams.join.error.banned"));
+        } else if (e.status === 410) {
+          setJoinError(t("teams.join.error.expired"));
+        } else if (e.status === 404) {
+          setJoinError(t("teams.join.error.notFound"));
+        } else {
+          setJoinError(e.message);
+        }
+      } else {
+        setJoinError(t("common.error"));
+      }
     } finally {
       setJoinLoading(false);
     }
