@@ -166,14 +166,14 @@ cd server && cargo llvm-cov --html --output-dir ../docs/coverage --ignore-run-fa
 cd client && npm test -- --run --coverage
 ```
 
-### Open report
+### Open report on local
 
 ```bash
 # Server: HTML report in docs/coverage/
 xdg-open docs/coverage/html/index.html
 
 # Client
-xdg-open docs/client-coverage/index.html
+xdg-open client/coverage/index.html
 ```
 
 | Component | Coverage | Threshold |

@@ -11,13 +11,31 @@ env:
 
 jobs:
 
+  changes:
+    name: "Detect changes"
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'server/**'
+            client:
+              - 'client/**'
+
   server-quality:
     name: "Server: Quality"
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
     defaults:
       run:
         working-directory: server
-
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +49,10 @@ jobs:
             ~/.cargo/registry/
             ~/.cargo/git/
             server/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('server/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-quality-${{ hashFiles('server/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-quality-
+            ${{ runner.os }}-cargo-
 
       - name: Format check
         run: cargo fmt --check
@@ -42,10 +63,11 @@ jobs:
   client-quality:
     name: "Client: Quality"
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
     defaults:
       run:
         working-directory: client
-
     steps:
       - uses: actions/checkout@v4
 
@@ -66,7 +88,8 @@ jobs:
   server-build:
     name: "Server: Build & Test"
     runs-on: ubuntu-latest
-    needs: server-quality
+    needs: [changes, server-quality]
+    if: needs.changes.outputs.server == 'true'
     defaults:
       run:
         working-directory: server
@@ -104,7 +127,11 @@ jobs:
             ~/.cargo/registry/
             ~/.cargo/git/
             server/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('server/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('server/Cargo.lock') }}-${{ hashFiles('server/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-${{ hashFiles('server/Cargo.lock') }}-
+            ${{ runner.os }}-cargo-build-
+            ${{ runner.os }}-cargo-
 
       - name: Install SQLx CLI
         run: cargo install sqlx-cli --no-default-features --features postgres
@@ -133,11 +160,11 @@ jobs:
   client-build:
     name: "Client: Build & Test"
     runs-on: ubuntu-latest
-    needs: client-quality
+    needs: [changes, client-quality]
+    if: needs.changes.outputs.client == 'true'
     defaults:
       run:
         working-directory: client
-
     steps:
       - uses: actions/checkout@v4
 
@@ -158,9 +185,8 @@ jobs:
           name: client-coverage
           path: client/coverage/
           retention-days: 14
-          if-no-files-found: warn
 
-      - name: Build
+      - name: Build static export
         run: npm run build
 
       - name: Upload client build
