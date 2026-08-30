@@ -108,7 +108,11 @@ export function DateTimePicker({ value, onChange, id }: DateTimePickerProps) {
           selected={parsed.date}
           onSelect={handleDateSelect}
           locale={locale}
-          disabled={(date) => date < new Date()}
+          disabled={(date) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return date < today;
+          }}
         />
         <div className="flex items-center gap-2 border-t px-3 py-2">
           <select

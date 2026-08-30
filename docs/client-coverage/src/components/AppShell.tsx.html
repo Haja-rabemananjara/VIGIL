@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">88.46% </span>
+                <span class="strong">72.72% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>23/26</span>
+                <span class='fraction'>24/33</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.42% </span>
+                <span class="strong">65.85% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>25/35</span>
+                <span class='fraction'>27/41</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">85.71% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>6/7</span>
+                <span class='fraction'>6/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">86.95% </span>
+                <span class="strong">72.41% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>20/23</span>
+                <span class='fraction'>21/29</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -251,7 +251,18 @@
 <a name='L186'></a><a href='#L186'>186</a>
 <a name='L187'></a><a href='#L187'>187</a>
 <a name='L188'></a><a href='#L188'>188</a>
-<a name='L189'></a><a href='#L189'>189</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -306,10 +317,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -490,14 +512,25 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() =&gt; {
     if (!lastEvent) return;
 &nbsp;
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (
+      lastEvent.type === "member_role_changed" &amp;&amp;
+      (<span class="branch-1 cbranch-no" title="branch not covered" >lastEvent.user_id as string) === user?.id</span>
+    ) {
+      const changedTeamId = <span class="cstat-no" title="statement not covered" >lastEvent.team_id as string;</span>
+      const newRole = <span class="cstat-no" title="statement not covered" >lastEvent.new_role as string;</span>
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+<span class="cstat-no" title="statement not covered" >      setTeams(<span class="fstat-no" title="function not covered" >(p</span>rev) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >        prev.map(<span class="fstat-no" title="function not covered" >(t</span>) =&gt; (<span class="cstat-no" title="statement not covered" >t.id === changedTeamId ? { ...t, role: newRole } : t))</span>,</span>
+      );
+<span class="cstat-no" title="statement not covered" >      return;</span>
+    }
+&nbsp;
     <span class="missing-if-branch" title="else path not taken" >E</span>if (
       (lastEvent.type === "member_kicked" ||
 <span class="branch-1 cbranch-no" title="branch not covered" >        lastEvent.type === "member_banned") &amp;&amp;</span>
       (lastEvent.user_id as string) === user?.id
     ) {
       const removedTeamId = lastEvent.team_id as string;
-&nbsp;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTeams((prev) =&gt; {
         const remaining = prev.filter((t) =&gt; t.id !== removedTeamId);
 &nbsp;
@@ -634,7 +667,7 @@ export function AppShell({ children }: AppShellProps) {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-08-30T14:30:40.407Z
+                at 2026-08-30T16:39:22.278Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

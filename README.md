@@ -149,7 +149,7 @@ cd client && npm test -- --run --coverage
 | Component | Coverage | Threshold |
 |-----------|----------|-----------|
 | Server | **+78%** | 70% |
-| Client | **+72%** | 70% |
+| Client | **+71%** | 70% |
 
 ### Linting
 

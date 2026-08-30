@@ -50,13 +50,24 @@ export function AppShell({ children }: AppShellProps) {
     if (!lastEvent) return;
 
     if (
+      lastEvent.type === "member_role_changed" &&
+      (lastEvent.user_id as string) === user?.id
+    ) {
+      const changedTeamId = lastEvent.team_id as string;
+      const newRole = lastEvent.new_role as string;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTeams((prev) =>
+        prev.map((t) => (t.id === changedTeamId ? { ...t, role: newRole } : t)),
+      );
+      return;
+    }
+
+    if (
       (lastEvent.type === "member_kicked" ||
         lastEvent.type === "member_banned") &&
       (lastEvent.user_id as string) === user?.id
     ) {
       const removedTeamId = lastEvent.team_id as string;
-
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTeams((prev) => {
         const remaining = prev.filter((t) => t.id !== removedTeamId);
 
