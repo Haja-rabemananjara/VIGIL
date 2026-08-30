@@ -3,6 +3,7 @@ CREATE TABLE "users" (
   "email" text UNIQUE NOT NULL,
   "password_hash" text NOT NULL,
   "display_name" text NOT NULL,
+  "avatar_seed" text,
   "language" text NOT NULL DEFAULT 'en',
   "created_at" timestamptz NOT NULL DEFAULT (now()),
   "updated_at" timestamptz NOT NULL DEFAULT (now())
@@ -172,7 +173,8 @@ CREATE TABLE "webhook_deliveries" (
   "source" text,
   "hmac_valid" boolean,
   "received_at" timestamptz NOT NULL DEFAULT (now()),
-  "processed_at" timestamptz
+  "processed_at" timestamptz,
+  "connection_id" uuid
 );
 
 CREATE TABLE "rule_executions" (
@@ -184,6 +186,16 @@ CREATE TABLE "rule_executions" (
   "error" text,
   "incident_id" uuid,
   "executed_at" timestamptz NOT NULL DEFAULT (now())
+);
+
+CREATE TABLE "team_service_connections" (
+  "id" uuid PRIMARY KEY,
+  "team_id" uuid NOT NULL,
+  "service" text NOT NULL,
+  "encrypted_token" bytea NOT NULL,
+  "created_by" uuid NOT NULL,
+  "created_at" timestamptz NOT NULL DEFAULT (now()),
+  "updated_at" timestamptz NOT NULL DEFAULT (now())
 );
 
 CREATE TABLE "audit_log" (
@@ -259,6 +271,8 @@ CREATE INDEX "executions_delivery_id_idx" ON "rule_executions" ("delivery_id");
 
 CREATE INDEX "executions_executed_idx" ON "rule_executions" ("executed_at");
 
+CREATE UNIQUE INDEX "team_conn_team_service_idx" ON "team_service_connections" ("team_id", "service");
+
 CREATE INDEX "audit_team_id_idx" ON "audit_log" ("team_id", "created_at");
 
 CREATE INDEX "audit_actor_id_idx" ON "audit_log" ("actor_id", "created_at");
@@ -310,6 +324,8 @@ COMMENT ON COLUMN "webhook_deliveries"."hmac_valid" IS 'null = no HMAC configure
 COMMENT ON COLUMN "rule_executions"."status" IS 'CHECK in (''success'',''failure'')';
 
 COMMENT ON COLUMN "rule_executions"."result" IS 'ex: incident_created';
+
+COMMENT ON COLUMN "team_service_connections"."service" IS 'check: service IN (''github'', ''discord'')';
 
 COMMENT ON COLUMN "audit_log"."team_id" IS 'no FK — survives team deletion';
 
