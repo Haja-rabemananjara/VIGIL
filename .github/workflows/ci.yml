@@ -13,7 +13,7 @@ jobs:
 
   server-quality:
     name: "Server: Quality"
-    runs-on: ubuntu-latest²
+    runs-on: ubuntu-latest
 
     defaults:
       run:
