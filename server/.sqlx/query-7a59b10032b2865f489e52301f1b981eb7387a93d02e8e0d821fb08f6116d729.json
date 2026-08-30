@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            id, team_id, name, enabled,\n            trigger_service, trigger_event,\n            trigger_filters as \"trigger_filters: serde_json::Value\",\n            reaction_type,\n            reaction_payload as \"reaction_payload: serde_json::Value\",\n            created_by, created_at, updated_at\n        FROM rules\n        WHERE team_id = $1\n          AND trigger_service = $2\n          AND trigger_event = $3\n          AND enabled = true\n        ORDER BY created_at ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "team_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "enabled",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "trigger_service",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "trigger_event",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "trigger_filters: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "reaction_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "reaction_payload: serde_json::Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7a59b10032b2865f489e52301f1b981eb7387a93d02e8e0d821fb08f6116d729"
+}

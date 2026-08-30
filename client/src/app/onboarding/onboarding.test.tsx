@@ -274,7 +274,9 @@ describe("OnboardingPage", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: /join/i }));
 
     await waitFor(() =>
-      expect(within(dialog).getByText("Invalid code")).toBeInTheDocument(),
+      expect(
+        within(dialog).getByText("Invitation code not found"),
+      ).toBeInTheDocument(),
     );
   });
 

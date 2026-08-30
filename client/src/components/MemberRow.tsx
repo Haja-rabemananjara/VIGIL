@@ -40,15 +40,16 @@ export function MemberRow({
   const isMemberManager = member.role === "manager";
 
   return (
-    <div className="flex items-center justify-between rounded-md border px-4 py-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-2 rounded-md border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3 min-w-0">
         <UserAvatar
           seed={member.avatar_seed}
           displayName={member.display_name}
           size={32}
+          className="shrink-0"
         />
-        <div>
-          <span className="font-medium">
+        <div className="min-w-0">
+          <span className="font-medium truncate block">
             {member.display_name}
             {isMe && (
               <span className="ml-1 text-sm text-muted-foreground">
@@ -56,14 +57,13 @@ export function MemberRow({
               </span>
             )}
           </span>
-          <span className="ml-2 text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {t(`members.role.${member.role}` as TranslationKey)}
           </span>
         </div>
       </div>
 
-      <div className="flex gap-2">
-        {/* Message button (not on self) */}
+      <div className="flex flex-wrap gap-2 sm:shrink-0">
         {!isMe && (
           <Button
             size="sm"
@@ -75,7 +75,6 @@ export function MemberRow({
           </Button>
         )}
 
-        {/* Manager actions (not on self, not on other managers) */}
         {isManager && !isMe && !isMemberManager && (
           <>
             {member.role === "observer" ? (

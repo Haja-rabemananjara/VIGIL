@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT EXISTS(\n            SELECT 1\n            FROM release_incident_links ril\n            JOIN incidents i ON i.id = ril.incident_id\n            WHERE ril.release_id = $1\n              AND ril.status = 'active'\n              AND i.status != 'resolved'\n        ) AS \"exists!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "487935735a1e9d376aadd2175cc58311a07bdb12f101b622929e7d37384db271"
+}

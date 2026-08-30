@@ -8,6 +8,7 @@ pub mod reactions;
 pub mod releases;
 pub mod rules;
 pub mod service_connections;
+pub mod team_connections;
 pub mod teams;
 pub mod webhooks;
 pub mod ws;
@@ -31,4 +32,5 @@ pub fn router() -> Router<AppState> {
         .merge(messages::routes())
         .merge(audit::routes())
         .merge(oauth::routes())
+        .merge(team_connections::routes())
 }

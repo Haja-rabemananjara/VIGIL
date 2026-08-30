@@ -1,38 +1,38 @@
 import { Wifi, WifiOff, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
+import { useAuth } from "@/stores/auth";
 import { type ConnectionStatus } from "@/stores/socket";
-
-const config: Record<
-  ConnectionStatus,
-  {
-    icon: typeof Wifi;
-    label: string;
-    className: string;
-  }
-> = {
-  connected: {
-    icon: Wifi,
-    label: t("ws.connected"),
-    className: "text-success",
-  },
-  connecting: {
-    icon: Loader2,
-    label: t("ws.connecting"),
-    className: "text-warning animate-spin",
-  },
-  disconnected: {
-    icon: WifiOff,
-    label: t("ws.disconnected"),
-    className: "text-destructive",
-  },
-};
 
 interface Props {
   status: ConnectionStatus;
 }
 
 export function ConnectionIndicator({ status }: Props) {
+  const { language } = useAuth();
+  void language;
+
+  const config: Record<
+    ConnectionStatus,
+    { icon: typeof Wifi; label: string; className: string }
+  > = {
+    connected: {
+      icon: Wifi,
+      label: t("ws.connected"),
+      className: "text-success",
+    },
+    connecting: {
+      icon: Loader2,
+      label: t("ws.connecting"),
+      className: "text-warning animate-spin",
+    },
+    disconnected: {
+      icon: WifiOff,
+      label: t("ws.disconnected"),
+      className: "text-destructive",
+    },
+  };
+
   const { icon: Icon, label, className } = config[status];
   return (
     <span

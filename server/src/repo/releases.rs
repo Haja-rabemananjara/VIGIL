@@ -353,3 +353,23 @@ pub async fn get_linked_incidents(
     .fetch_all(pool)
     .await
 }
+
+pub async fn has_active_blocker(pool: &PgPool, release_id: Uuid) -> Result<bool, sqlx::Error> {
+    let row = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM release_incident_links ril
+            JOIN incidents i ON i.id = ril.incident_id
+            WHERE ril.release_id = $1
+              AND ril.status = 'active'
+              AND i.status != 'resolved'
+        ) AS "exists!"
+        "#,
+        release_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row)
+}

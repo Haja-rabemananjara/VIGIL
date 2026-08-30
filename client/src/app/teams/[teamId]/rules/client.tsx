@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/stores/auth";
 import { api, ApiError } from "@/lib/api";
-import { t } from "@/lib/i18n";
+import { getLanguage, t } from "@/lib/i18n";
 import { useRouteParams } from "@/lib/useRouteParams";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -318,7 +318,12 @@ export function RulesClient() {
                     )}
                   </div>
                   <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                    {new Date(exec.at).toLocaleTimeString()}
+                    {new Date(exec.at * 1000).toLocaleString(getLanguage(), {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
               ))}

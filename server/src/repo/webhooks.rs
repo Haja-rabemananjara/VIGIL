@@ -9,13 +9,15 @@ pub struct NewDelivery<'a> {
     pub headers: Option<&'a serde_json::Value>,
     pub source: Option<&'a str>,
     pub hmac_valid: bool,
+    pub connection_id: Option<Uuid>,
 }
 
 pub async fn insert_delivery(pool: &PgPool, delivery: NewDelivery<'_>) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
-        INSERT INTO webhook_deliveries (id, service, event_type, payload, headers, source, hmac_valid)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO webhook_deliveries
+            (id, service, event_type, payload, headers, source, hmac_valid, connection_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
         delivery.id,
         delivery.service,
@@ -24,9 +26,10 @@ pub async fn insert_delivery(pool: &PgPool, delivery: NewDelivery<'_>) -> Result
         delivery.headers,
         delivery.source,
         delivery.hmac_valid,
+        delivery.connection_id,
     )
-        .execute(pool)
-        .await?;
+    .execute(pool)
+    .await?;
 
     Ok(())
 }

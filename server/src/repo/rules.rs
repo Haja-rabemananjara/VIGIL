@@ -197,6 +197,38 @@ pub async fn list_matching_rules(
     Ok(rows)
 }
 
+pub async fn list_matching_rules_for_team(
+    pool: &PgPool,
+    team_id: Uuid,
+    trigger_service: &str,
+    trigger_event: &str,
+) -> Result<Vec<Rule>, sqlx::Error> {
+    let rows = sqlx::query_as!(
+        Rule,
+        r#"
+        SELECT
+            id, team_id, name, enabled,
+            trigger_service, trigger_event,
+            trigger_filters as "trigger_filters: serde_json::Value",
+            reaction_type,
+            reaction_payload as "reaction_payload: serde_json::Value",
+            created_by, created_at, updated_at
+        FROM rules
+        WHERE team_id = $1
+          AND trigger_service = $2
+          AND trigger_event = $3
+          AND enabled = true
+        ORDER BY created_at ASC
+        "#,
+        team_id,
+        trigger_service,
+        trigger_event,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows)
+}
 pub struct RuleExecutionRow {
     pub id: Uuid,
     pub rule_name: String,

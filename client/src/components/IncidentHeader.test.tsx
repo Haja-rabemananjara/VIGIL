@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { IncidentHeader } from "./IncidentHeader";
+import { renderWithAuth } from "@/test-utils";
 
 const baseIncident = {
   title: "Database is down",
@@ -29,17 +30,17 @@ describe("IncidentHeader", () => {
   });
 
   it("renders the incident title", () => {
-    render(<IncidentHeader {...defaultProps} />);
+    renderWithAuth(<IncidentHeader {...defaultProps} />);
     expect(screen.getByText("Database is down")).toBeInTheDocument();
   });
 
   it("renders the incident body", () => {
-    render(<IncidentHeader {...defaultProps} />);
+    renderWithAuth(<IncidentHeader {...defaultProps} />);
     expect(screen.getByText("Primary DB is unreachable")).toBeInTheDocument();
   });
 
   it("does not render an empty body", () => {
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         incident={{ ...baseIncident, body: "" }}
@@ -51,12 +52,12 @@ describe("IncidentHeader", () => {
   });
 
   it("shows the creator's display name", () => {
-    render(<IncidentHeader {...defaultProps} />);
+    renderWithAuth(<IncidentHeader {...defaultProps} />);
     expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 
   it("shows the assignee's display name when assigned", () => {
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         assignee="user-2"
@@ -67,12 +68,12 @@ describe("IncidentHeader", () => {
   });
 
   it("shows an unassigned label when no assignee", () => {
-    render(<IncidentHeader {...defaultProps} assignee={null} />);
+    renderWithAuth(<IncidentHeader {...defaultProps} assignee={null} />);
     expect(screen.getByText(/unassigned/i)).toBeInTheDocument();
   });
 
   it("does not show action buttons when canAct is false", () => {
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         canAct={false}
@@ -85,7 +86,7 @@ describe("IncidentHeader", () => {
   });
 
   it("shows transition buttons when canAct is true", () => {
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         canAct
@@ -99,7 +100,7 @@ describe("IncidentHeader", () => {
 
   it("calls onTransition with the next status when a transition button is clicked", () => {
     const onTransition = vi.fn();
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         canAct
@@ -112,7 +113,7 @@ describe("IncidentHeader", () => {
   });
 
   it("disables transition buttons while transitionLoading", () => {
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         canAct
@@ -124,7 +125,7 @@ describe("IncidentHeader", () => {
   });
 
   it("shows the assign button only for managers", () => {
-    const { rerender } = render(
+    const { rerender } = renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         canAct
@@ -151,7 +152,7 @@ describe("IncidentHeader", () => {
 
   it("calls onOpenAssign when assign button is clicked", () => {
     const onOpenAssign = vi.fn();
-    render(
+    renderWithAuth(
       <IncidentHeader
         {...defaultProps}
         canAct
@@ -165,7 +166,7 @@ describe("IncidentHeader", () => {
   });
 
   it("uses distinct visual signals for state and severity badges", () => {
-    const { container } = render(<IncidentHeader {...defaultProps} />);
+    const { container } = renderWithAuth(<IncidentHeader {...defaultProps} />);
     expect(container.innerHTML).toMatch(/open/i);
     expect(container.innerHTML).toMatch(/critical/i);
   });

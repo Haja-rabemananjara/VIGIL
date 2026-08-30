@@ -5,5 +5,6 @@ pub mod releases;
 pub mod rules;
 pub mod service_connections;
 pub mod team;
+pub mod team_connections;
 pub mod user;
 pub mod webhooks;
