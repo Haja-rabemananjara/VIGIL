@@ -1,25 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { ConnectionIndicator } from "./ConnectionIndicator";
+import { renderWithAuth } from "@/test-utils";
 
 describe("ConnectionIndicator", () => {
   it("renders 'connected' text when status is connected", () => {
-    render(<ConnectionIndicator status="connected" />);
+    renderWithAuth(<ConnectionIndicator status="connected" />);
     expect(screen.getByText(/connected/i)).toBeInTheDocument();
   });
 
   it("renders 'connecting' text when status is connecting", () => {
-    render(<ConnectionIndicator status="connecting" />);
+    renderWithAuth(<ConnectionIndicator status="connecting" />);
     expect(screen.getByText(/connecting/i)).toBeInTheDocument();
   });
 
   it("renders 'disconnected' text when status is disconnected", () => {
-    render(<ConnectionIndicator status="disconnected" />);
+    renderWithAuth(<ConnectionIndicator status="disconnected" />);
     expect(screen.getByText(/disconnected/i)).toBeInTheDocument();
   });
 
   it("uses distinct visual signals for each status (color+icon+text)", () => {
-    const { rerender, container } = render(
+    const { rerender, container } = renderWithAuth(
       <ConnectionIndicator status="connected" />,
     );
     const connectedHtml = container.innerHTML;
